@@ -32,6 +32,8 @@ import SaveIcon from '@mui/icons-material/Save';
 import * as XLSX from 'xlsx';
 import { useSelector } from 'react-redux';
 import { getMstColumns, submitColumnMapping } from '../api/pageApi';
+import Snackbar from '@mui/material/Snackbar';
+
 
 const WarrantyColumnMapper = () => {
   const { customers } = useSelector(state => state.masters);
@@ -43,10 +45,12 @@ const WarrantyColumnMapper = () => {
   const [draggedColumn, setDraggedColumn] = useState(null);
   const [selectedMaster, setSelectedMaster] = useState(null);
   const [openDialog, setOpenDialog] = useState(false);
-  const [message, setMessage] = useState('');
+  const [popup, setPopup] = useState({
+    open: false,
+    message: '',
+    severity: 'success', // success | error | info | warning
+  });
   const [uploadedFile, setUploadedFile] = useState(null);
-
-
   const fileInputRef = useRef(null);
 
   /* -------- Fetch master columns -------- */
@@ -78,11 +82,16 @@ const WarrantyColumnMapper = () => {
     setCustomerSelected(customerId);
     setCustomerColumns([]);
     setMappings({});
-    setMessage(`Selected customer ${customerId}. Upload Excel to continue.`);
+    showPopup(`Selected customer ${customerId}. Upload Excel to continue.`);
   };
 
 
   const handleUploadClick = () => fileInputRef.current.click();
+
+  const showPopup = (message, severity = 'success') => {
+    setPopup({ open: true, message, severity });
+  };
+
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -100,7 +109,7 @@ const WarrantyColumnMapper = () => {
 
       setCustomerColumns(headers);
       setMappings({});
-      setMessage(`✓ ${headers.length} columns loaded`);
+      showPopup('Mapping saved successfully', 'success');
     };
 
     reader.readAsBinaryString(file);
@@ -118,7 +127,7 @@ const WarrantyColumnMapper = () => {
       m => m?.masterColumnId === masterCol.id
     );
     if (alreadyMapped) {
-      setMessage(`❌ ${masterCol.name} already mapped`);
+      showPopup(`${masterCol.name} already mapped`, 'error');
       return;
     }
 
@@ -130,7 +139,7 @@ const WarrantyColumnMapper = () => {
       },
     }));
 
-    setMessage(`✓ ${draggedColumn} → ${masterCol.name}`);
+    showPopup(`✓ ${draggedColumn} → ${masterCol.name}`, 'success');
     setDraggedColumn(null);
   };
 
@@ -152,7 +161,7 @@ const WarrantyColumnMapper = () => {
       },
     }));
 
-    setMessage(`✓ ${draggedColumn} → ${selectedMaster.name}`);
+    showPopup(`✓ ${draggedColumn} → ${selectedMaster.name}`, 'success');
     setOpenDialog(false);
     setDraggedColumn(null);
     setSelectedMaster(null);
@@ -170,7 +179,7 @@ const WarrantyColumnMapper = () => {
 
   const handleSaveMapping = async () => {
     if (!customerSelected) {
-      setMessage('Select customer first');
+      showPopup('Select customer first', 'error');
       return;
     }
 
@@ -186,7 +195,7 @@ const WarrantyColumnMapper = () => {
     };
 
     if (!payload.mappings.length) {
-      setMessage('No mappings to save');
+      showPopup('No mappings to save', 'error');
       return;
     }
 
@@ -194,7 +203,7 @@ const WarrantyColumnMapper = () => {
       await submitColumnMapping(payload);
 
       // ✅ SUCCESS MESSAGE
-      setMessage('✓ Mapping saved successfully');
+      showPopup('✓ Mapping saved successfully', 'success');
 
       // ✅ RESET EVERYTHING
       setCustomerSelected('');
@@ -209,7 +218,7 @@ const WarrantyColumnMapper = () => {
 
     } catch (e) {
       console.error(e);
-      setMessage('❌ Server error while saving');
+      showPopup('❌ Server error while saving', 'error');
     }
   };
 
@@ -457,14 +466,14 @@ const WarrantyColumnMapper = () => {
       )}
 
       {/* ================= MESSAGE ================= */}
-      {message && (
+      {/* {message && (
         <Alert
           sx={{ mt: 3 }}
           severity={message.includes('✓') ? 'success' : 'info'}
         >
           {message}
         </Alert>
-      )}
+      )} */}
 
       {/* ================= DIALOG ================= */}
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)} fullWidth>
@@ -497,6 +506,22 @@ const WarrantyColumnMapper = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <Snackbar
+        open={popup.open}
+        autoHideDuration={3000}
+        onClose={() => setPopup(prev => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert
+          severity={popup.severity}
+          variant="filled"
+          onClose={() => setPopup(prev => ({ ...prev, open: false }))}
+          sx={{ minWidth: 280 }}
+        >
+          {popup.message}
+        </Alert>
+      </Snackbar> 
     </Container>
   );
 };

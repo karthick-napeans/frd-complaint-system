@@ -41,8 +41,7 @@ const ComplaintEntry = () => {
     { id: 'DRAFT001', customerName: 'Customer C', lastSaved: '2025-11-01', daysInactive: 2 },
   ]);
 
-  const [message, setMessage] = useState('');
-
+  const [message, setMessage] = useState(''); 
   const steps = ['Complaint Details', 'Attachments', 'Review & Submit'];
 
   const handleInputChange = (e) => {
