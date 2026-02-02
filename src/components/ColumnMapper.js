@@ -37,7 +37,7 @@ import Snackbar from '@mui/material/Snackbar';
 
 const WarrantyColumnMapper = () => {
   const { customers } = useSelector(state => state.masters);
-
+  console.log('Customers from store:', customers);
   const [customerSelected, setCustomerSelected] = useState('');
   const [customerColumns, setCustomerColumns] = useState([]);
   const [masterColumns, setMasterColumns] = useState([]);
@@ -521,7 +521,7 @@ const WarrantyColumnMapper = () => {
         >
           {popup.message}
         </Alert>
-      </Snackbar> 
+      </Snackbar>
     </Container>
   );
 };

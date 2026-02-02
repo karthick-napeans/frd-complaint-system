@@ -1,4 +1,5 @@
 import React from 'react';
+import { useEffect } from "react"; 
 import {
   Box,
   Container,
@@ -20,8 +21,22 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import PendingIcon from '@mui/icons-material/Pending';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import WarningIcon from '@mui/icons-material/Warning';
+import { useDispatch, useSelector } from "react-redux";
+import { loadMasters } from "../store/masterSlice";
+
+
 
 const Dashboard = () => {
+
+  const dispatch = useDispatch();
+  const loaded = useSelector(state => state.masters.loaded);
+
+  useEffect(() => {
+    if (!loaded) {
+      dispatch(loadMasters());
+    }
+  }, [loaded, dispatch]);
+
   const statData = [
     { title: 'Total Complaints', value: '242', change: '+8%', icon: TrendingUpIcon, color: 'primary' },
     { title: 'Pending Review', value: '45', change: '-3%', icon: PendingIcon, color: 'warning' },
