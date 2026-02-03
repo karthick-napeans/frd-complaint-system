@@ -3,6 +3,16 @@ import apiClient from "./apiClient";
 export const getRequest = (url, params = {}) =>
     apiClient.get(url, { params });
 
+export const getRequestWithBody = (url, body = {}) =>
+    apiClient.request({
+        method: "GET",
+        url,
+        data: body,
+        headers: {
+            "Content-Type": "application/json",
+        },
+    });
+
 export const postRequest = (url, payload) => {
     const isFormData = payload instanceof FormData;
 
@@ -12,10 +22,10 @@ export const postRequest = (url, payload) => {
         isFormData
             ? undefined
             : {
-                  headers: {
-                      "Content-Type": "application/json",
-                  },
-              }
+                headers: {
+                    "Content-Type": "application/json",
+                },
+            }
     );
 };
 

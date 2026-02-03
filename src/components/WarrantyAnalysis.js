@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Box,
   Container,
@@ -36,6 +36,78 @@ import {
   ReferenceLine
 } from 'recharts';
 import SettingsIcon from '@mui/icons-material/Settings';
+import { getWrantyReport } from '../api/pageApi';
+import { generateWarrantyMockData } from './generateWarrantyMockData';
+
+
+
+const warrantyMockData = [
+  {
+    Row_No: 1,
+    HK: "HK00000001",
+    Domestic_Export: "Domestic",
+    System_Code: "SYS1",
+    Period_Code: "2024Q2",
+    Sequence_No: 1,
+    Order_Type: "A",
+    Order_Description: "Brake system issue",
+    VIN: "VIN00000000000000000001",
+    Plant_Code: "A",
+    Model_Code: "MDL1",
+    Model_Name: "Model Alpha",
+    Part_Number: "PN000001",
+    Part_Name: "Brake Pad",
+    Old_Part_Number: "OPN000001",
+    Cause_Code: "CC1",
+    Nature_Code: "NC1",
+    Production_Date: "2023-04-18T00:00:00",
+    Repair_Date: "2023-05-22T00:00:00",
+    Sales_Date: "2023-05-24T00:00:00",
+    Used_Month: 14,
+    Mileage: 21657,
+    Supply_Ratio: 0.85,
+    Burden_Ratio: 0.72,
+    Apply_Ratio: 0.25,
+    Part_Cost: 4500,
+    Labor_Cost: 1200,
+    Sublet_Cost: 300,
+    Total_Cost: 6000
+  },
+
+  {
+    Row_No: 2,
+    HK: "HK00000002",
+    Domestic_Export: "Export",
+    System_Code: "SYS2",
+    Period_Code: "2024Q1",
+    Sequence_No: 2,
+    Order_Type: "B",
+    Order_Description: "Engine oil leakage",
+    VIN: "VIN00000000000000000002",
+    Plant_Code: "B",
+    Model_Code: "MDL2",
+    Model_Name: "Model Beta",
+    Part_Number: "PN000002",
+    Part_Name: "Oil Seal",
+    Old_Part_Number: "OPN000002",
+    Cause_Code: "CC2",
+    Nature_Code: "NC2",
+    Production_Date: "2022-11-10T00:00:00",
+    Repair_Date: "2023-01-15T00:00:00",
+    Sales_Date: "2022-12-01T00:00:00",
+    Used_Month: 26,
+    Mileage: 40210,
+    Supply_Ratio: 0.78,
+    Burden_Ratio: 0.66,
+    Apply_Ratio: 0.3,
+    Part_Cost: 7800.5,
+    Labor_Cost: 2400,
+    Sublet_Cost: 600,
+    Total_Cost: 10800.5
+  }
+];
+
+
 
 const WarrantyAnalysis = () => {
   const [customerSelected, setCustomerSelected] = useState('Customer A');
@@ -43,6 +115,122 @@ const WarrantyAnalysis = () => {
   const [prodDateTo, setProdDateTo] = useState('2025-12-31');
   const [repairDateFrom, setRepairDateFrom] = useState('2023-01-01');
   const [repairDateTo, setRepairDateTo] = useState('2025-12-31');
+  const [rawData, setRawData] = useState([]);
+  const [rawWarrantyData, setRawWarrantyData] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const normalizeWarrantyData = (apiData = []) =>
+    apiData.map(d => ({
+      rowNo: d.Row_No,
+      hk: d.HK?.trim(),
+      domesticExport: d.Domestic_Export,
+      systemCode: d.System_Code,
+      period: d.Period_Code,
+      sequenceNo: d.Sequence_No,
+
+      orderType: d.Order_Type?.trim(),
+      orderDescription: d.Order_Description,
+
+      vin: d.VIN,
+      plantCode: d.Plant_Code?.trim(),
+
+      modelCode: d.Model_Code,
+      modelName: d.Model_Name,
+
+      partNumber: d.Part_Number,
+      partName: d.Part_Name,
+      oldPartNumber: d.Old_Part_Number,
+
+      causeCode: d.Cause_Code,
+      natureCode: d.Nature_Code,
+
+      productionDate: new Date(d.Production_Date),
+      repairDate: new Date(d.Repair_Date),
+      salesDate: new Date(d.Sales_Date),
+
+      usedMonths: d.Used_Month,
+      mileage: d.Mileage,
+
+      supplyRatio: d.Supply_Ratio,
+      burdenRatio: d.Burden_Ratio,
+      applyRatio: d.Apply_Ratio,
+
+      partCost: d.Part_Cost,
+      laborCost: d.Labor_Cost,
+      subletCost: d.Sublet_Cost,
+      totalCost: d.Total_Cost,
+    }));
+
+
+  useEffect(() => {
+    fetchWarrantyReport();
+  }, [customerSelected, prodDateFrom, prodDateTo]);
+
+  const toDate = (value) => {
+    if (!value) return null;
+    const d = new Date(value);
+    return isNaN(d.getTime()) ? null : d;
+  };
+
+
+  const fetchWarrantyReport = async () => {
+    try {
+      setLoading(true);
+
+      // 🔴 MOCK DATA (acts like backend)
+      const mockData = generateWarrantyMockData(500);
+
+      const prodFrom = toDate(prodDateFrom);
+      const prodTo = toDate(prodDateTo);
+
+      // ✅ BACKEND-LIKE PRODUCTION FILTER
+      const prodFiltered = mockData.filter(d => {
+        const prodDate = toDate(d.Production_Date);
+        return (
+          prodDate &&
+          prodFrom &&
+          prodTo &&
+          prodDate >= prodFrom &&
+          prodDate <= prodTo
+        );
+      });
+
+      setRawData(prodFiltered);
+
+      /*
+      // 🟢 REAL API (later)
+      const response = await getWrantyReport({
+        CustomerId: 6,
+        ProductionFromDate: prodDateFrom,
+        ProductionToDate: prodDateTo,
+      });
+      setRawData(response.data);
+      */
+
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+
+  const warrantyData = useMemo(() => {
+    return normalizeWarrantyData(rawData);
+  }, [rawData]);
+
+  const filteredData = useMemo(() => {
+    return warrantyData.filter(d =>
+      d.productionDate >= new Date(prodDateFrom) &&
+      d.productionDate <= new Date(prodDateTo) &&
+      d.repairDate >= new Date(repairDateFrom) &&
+      d.repairDate <= new Date(repairDateTo)
+    );
+  }, [warrantyData, prodDateFrom, prodDateTo, repairDateFrom, repairDateTo]);
+
+
+
 
   // Master Configuration - Last Improvement Date
   const [masterConfig, setMasterConfig] = useState({
@@ -53,140 +241,156 @@ const WarrantyAnalysis = () => {
   const [openConfigDialog, setOpenConfigDialog] = useState(false);
   const [tempConfig, setTempConfig] = useState(masterConfig);
 
-  // Mock warranty data
-  const warrantyData = [
-    { vin_no: 'VIN001', Model: 'FH', model_name: 'CRETA', part_no: 'P001', part_name: 'WHEEL BEARING', prod_date: '2023-10-03', repair_date: '2025-05-08', used_months: 18, mileage: 32594, c_code: 'ZZ4', repair_count: 1 },
-    { vin_no: 'VIN002', Model: 'FH', model_name: 'CRETA', part_no: 'P002', part_name: 'BRAKE DISC', prod_date: '2023-09-26', repair_date: '2025-04-22', used_months: 19, mileage: 44293, c_code: 'ZZ3', repair_count: 1 },
-    { vin_no: 'VIN003', Model: 'HQ', model_name: 'VENUE', part_no: 'P001', part_name: 'WHEEL BEARING', prod_date: '2023-08-15', repair_date: '2025-03-10', used_months: 20, mileage: 55000, c_code: 'ZZ2', repair_count: 1 },
-    { vin_no: 'VIN004', Model: 'FH', model_name: 'CRETA', part_no: 'P003', part_name: 'ENGINE', prod_date: '2023-07-01', repair_date: '2025-02-15', used_months: 21, mileage: 65000, c_code: 'ZZ1', repair_count: 1 },
-    { vin_no: 'VIN005', Model: 'SV', model_name: 'XCENT', part_no: 'P002', part_name: 'BRAKE DISC', prod_date: '2023-06-20', repair_date: '2025-01-30', used_months: 22, mileage: 48000, c_code: 'ZZ3', repair_count: 1 },
-    { vin_no: 'VIN006', Model: 'HQ', model_name: 'VENUE', part_no: 'P001', part_name: 'WHEEL BEARING', prod_date: '2023-05-10', repair_date: '2024-12-20', used_months: 23, mileage: 72000, c_code: 'ZZ4', repair_count: 1 },
-    { vin_no: 'VIN007', Model: 'FH', model_name: 'CRETA', part_no: 'P001', part_name: 'WHEEL BEARING', prod_date: '2023-04-15', repair_date: '2024-11-25', used_months: 24, mileage: 85000, c_code: 'ZZ2', repair_count: 1 },
-  ];
 
-  const filteredData = useMemo(() => {
-    return warrantyData.filter(item => {
-      const prodDate = new Date(item.prod_date);
-      const repairDate = new Date(item.repair_date);
-      const prodFromDate = new Date(prodDateFrom);
-      const prodToDate = new Date(prodDateTo);
-      const repFromDate = new Date(repairDateFrom);
-      const repToDate = new Date(repairDateTo);
 
-      return prodDate >= prodFromDate && prodDate <= prodToDate &&
-        repairDate >= repFromDate && repairDate <= repToDate;
-    });
-  }, [prodDateFrom, prodDateTo, repairDateFrom, repairDateTo]);
+
+
+
 
   const modelAnalysis = useMemo(() => {
-    const models = {};
-    filteredData.forEach(item => {
-      if (!models[item.model_name]) {
-        models[item.model_name] = { name: item.model_name, production: 0, repairs: 0 };
+    const map = {};
+    filteredData.forEach(d => {
+      if (!map[d.modelName]) {
+        map[d.modelName] = { name: d.modelName, production: 0, repairs: 0 };
       }
-      models[item.model_name].production += 1;
-      models[item.model_name].repairs += item.repair_count;
+      map[d.modelName].production += 1;
+      map[d.modelName].repairs += 1; // each record = one repair
     });
-    return Object.values(models);
+    return Object.values(map);
   }, [filteredData]);
+
+
 
   const mileageAnalysis = useMemo(() => {
     const ranges = {
-      '0-10K': { label: '0-10K', count: 0 },
-      '10-20K': { label: '10-20K', count: 0 },
-      '20-30K': { label: '20-30K', count: 0 },
-      '30-40K': { label: '30-40K', count: 0 },
-      '40-50K': { label: '40-50K', count: 0 },
-      '50K+': { label: '50K+', count: 0 },
+      '0-10K': 0,
+      '10-20K': 0,
+      '20-30K': 0,
+      '30-40K': 0,
+      '40-50K': 0,
+      '50K+': 0,
     };
 
-    filteredData.forEach(item => {
-      if (item.mileage < 10000) ranges['0-10K'].count++;
-      else if (item.mileage < 20000) ranges['10-20K'].count++;
-      else if (item.mileage < 30000) ranges['20-30K'].count++;
-      else if (item.mileage < 40000) ranges['30-40K'].count++;
-      else if (item.mileage < 50000) ranges['40-50K'].count++;
-      else ranges['50K+'].count++;
+    filteredData.forEach(d => {
+      if (d.mileage < 10000) ranges['0-10K']++;
+      else if (d.mileage < 20000) ranges['10-20K']++;
+      else if (d.mileage < 30000) ranges['20-30K']++;
+      else if (d.mileage < 40000) ranges['30-40K']++;
+      else if (d.mileage < 50000) ranges['40-50K']++;
+      else ranges['50K+']++;
     });
 
-    return Object.values(ranges);
+    return Object.entries(ranges).map(([label, count]) => ({ label, count }));
   }, [filteredData]);
 
+
   const partAnalysis = useMemo(() => {
-    const parts = {};
-    filteredData.forEach(item => {
-      if (!parts[item.part_name]) {
-        parts[item.part_name] = { name: item.part_name, count: 0 };
-      }
-      parts[item.part_name].count++;
+    const map = {};
+    filteredData.forEach(d => {
+      map[d.partName] = (map[d.partName] || 0) + 1;
     });
-    return Object.values(parts).sort((a, b) => b.count - a.count).slice(0, 5);
+
+    return Object.entries(map)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
   }, [filteredData]);
 
   const monthAnalysis = useMemo(() => {
-    const months = {};
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-    filteredData.forEach(item => {
-      const date = new Date(item.repair_date);
-      const monthKey = `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
-      months[monthKey] = (months[monthKey] || 0) + 1;
+    const map = {};
+    filteredData.forEach(d => {
+      const key = d.repairDate.toLocaleString('en', {
+        month: 'short',
+        year: 'numeric',
+      });
+      map[key] = (map[key] || 0) + 1;
     });
 
-    return Object.entries(months).map(([month, count]) => ({ month, count }));
+    return Object.entries(map).map(([month, count]) => ({ month, count }));
   }, [filteredData]);
+
 
   const usedMonthsAnalysis = useMemo(() => {
     const ranges = {
-      '0-5': { label: '0-5', count: 0 },
-      '5-10': { label: '5-10', count: 0 },
-      '10-15': { label: '10-15', count: 0 },
-      '15-20': { label: '15-20', count: 0 },
-      '20+': { label: '20+', count: 0 },
+      '0-5': 0,
+      '5-10': 0,
+      '10-15': 0,
+      '15-20': 0,
+      '20+': 0,
     };
 
-    filteredData.forEach(item => {
-      if (item.used_months < 5) ranges['0-5'].count++;
-      else if (item.used_months < 10) ranges['5-10'].count++;
-      else if (item.used_months < 15) ranges['10-15'].count++;
-      else if (item.used_months < 20) ranges['15-20'].count++;
-      else ranges['20+'].count++;
+    filteredData.forEach(d => {
+      if (d.usedMonths < 5) ranges['0-5']++;
+      else if (d.usedMonths < 10) ranges['5-10']++;
+      else if (d.usedMonths < 15) ranges['10-15']++;
+      else if (d.usedMonths < 20) ranges['15-20']++;
+      else ranges['20+']++;
     });
 
-    return Object.values(ranges);
+    return Object.entries(ranges).map(([label, count]) => ({ label, count }));
   }, [filteredData]);
+
 
   const causeCodeAnalysis = useMemo(() => {
-    const codes = {};
-    filteredData.forEach(item => {
-      codes[item.c_code] = (codes[item.c_code] || 0) + 1;
+    const map = {};
+    filteredData.forEach(d => {
+      map[d.causeCode] = (map[d.causeCode] || 0) + 1;
     });
-    return Object.entries(codes).map(([code, count]) => ({ code, count }));
+    return Object.entries(map).map(([code, count]) => ({ code, count }));
   }, [filteredData]);
 
-  const improvementTrendData = [
-    { period: '2023 Q1', production: 48, repair: 42, improvement: 3 },
-    { period: '2023 Q2', production: 52, repair: 38, improvement: 7 },
-    { period: '2023 Q3', production: 58, repair: 32, improvement: 13 },
-    { period: '2023 Q4', production: 62, repair: 28, improvement: 17 },
-    { period: '2024 Q1', production: 65, repair: 25, improvement: 20 },
-    { period: '2024 Q2', production: 70, repair: 20, improvement: 25 }, // ← Improvement marker point
-    { period: '2024 Q3', production: 75, repair: 15, improvement: 30 },
-    { period: '2024 Q4', production: 78, repair: 12, improvement: 33 },
-  ];
 
-  const qualityMetricsData = [
-    { month: 'Jan 2024', defects: 28, warranty: 32, cost: 35 },
-    { month: 'Feb 2024', defects: 26, warranty: 30, cost: 33 }, // ← Improvement marker point
-    { month: 'Mar 2024', defects: 24, warranty: 28, cost: 31 },
-    { month: 'Apr 2024', defects: 22, warranty: 26, cost: 29 },
-    { month: 'May 2024', defects: 20, warranty: 24, cost: 27 },
-    { month: 'Jun 2024', defects: 18, warranty: 22, cost: 25 },
-    { month: 'Jul 2024', defects: 16, warranty: 20, cost: 23 },
-    { month: 'Aug 2024', defects: 15, warranty: 19, cost: 22 },
-    { month: 'Sep 2024', defects: 14, warranty: 18, cost: 21 },
-    { month: 'Oct 2024', defects: 13, warranty: 17, cost: 20 },
-  ];
+  const improvementTrendData = useMemo(() => {
+    const map = {};
+
+    filteredData.forEach(d => {
+      const year = d.productionDate.getFullYear();
+      const quarter = `Q${Math.ceil((d.productionDate.getMonth() + 1) / 3)}`;
+      const period = `${year} ${quarter}`;
+
+      if (!map[period]) {
+        map[period] = {
+          period,
+          production: 0,
+          repair: 0,
+          improvement: 0,
+        };
+      }
+
+      map[period].production += 1;
+      map[period].repair += 1;
+    });
+
+    return Object.values(map);
+  }, [filteredData]);
+
+
+  const qualityMetricsData = useMemo(() => {
+    const map = {};
+
+    filteredData.forEach(d => {
+      const key = d.repairDate.toLocaleString('en', {
+        month: 'short',
+        year: 'numeric',
+      });
+
+      if (!map[key]) {
+        map[key] = {
+          month: key,
+          defects: 0,
+          warranty: 0,
+          cost: 0,
+        };
+      }
+
+      map[key].defects += 1;
+      map[key].warranty += 1;
+      map[key].cost += d.totalCost;
+    });
+
+    return Object.values(map);
+  }, [filteredData]);
+
 
   const handleOpenConfigDialog = () => {
     setTempConfig(masterConfig);
@@ -252,6 +456,30 @@ const WarrantyAnalysis = () => {
       boxShadow: '0 12px 30px rgba(0,0,0,0.15)',
     },
   };
+
+  const summaryStats = useMemo(() => ([
+    {
+      label: 'Total Claims',
+      value: filteredData.length,
+      bg: '#e3f2fd',
+    },
+    {
+      label: 'Models',
+      value: new Set(filteredData.map(d => d.modelName)).size,
+      bg: '#f3e5f5',
+    },
+    {
+      label: 'Parts',
+      value: new Set(filteredData.map(d => d.partName)).size,
+      bg: '#e8f5e9',
+    },
+    {
+      label: 'Cause Codes',
+      value: new Set(filteredData.map(d => d.causeCode)).size,
+      bg: '#fff3e0',
+    },
+  ]), [filteredData]);
+
 
 
 
@@ -498,31 +726,29 @@ const WarrantyAnalysis = () => {
 
       {/* Summary Stats */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={6} sm={3}>
-          <Paper sx={{ p: 2, textAlign: 'center', backgroundColor: '#e3f2fd' }}>
-            <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'primary.main' }}>{filteredData.length}</Typography>
-            <Typography variant="caption">Total Claims</Typography>
-          </Paper>
-        </Grid>
-        <Grid item xs={6} sm={3}>
-          <Paper sx={{ p: 2, textAlign: 'center', backgroundColor: '#f3e5f5' }}>
-            <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'primary.main' }}>{new Set(filteredData.map(d => d.model_name)).size}</Typography>
-            <Typography variant="caption">Models</Typography>
-          </Paper>
-        </Grid>
-        <Grid item xs={6} sm={3}>
-          <Paper sx={{ p: 2, textAlign: 'center', backgroundColor: '#e8f5e9' }}>
-            <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'primary.main' }}>{new Set(filteredData.map(d => d.part_name)).size}</Typography>
-            <Typography variant="caption">Parts</Typography>
-          </Paper>
-        </Grid>
-        <Grid item xs={6} sm={3}>
-          <Paper sx={{ p: 2, textAlign: 'center', backgroundColor: '#fff3e0' }}>
-            <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'primary.main' }}>{new Set(filteredData.map(d => d.c_code)).size}</Typography>
-            <Typography variant="caption">Cause Codes</Typography>
-          </Paper>
-        </Grid>
+        {summaryStats.map((stat, index) => (
+          <Grid item xs={6} sm={3} key={index}>
+            <Paper
+              sx={{
+                p: 2,
+                textAlign: 'center',
+                backgroundColor: stat.bg,
+              }}
+            >
+              <Typography
+                variant="h6"
+                sx={{ fontWeight: 'bold', color: 'primary.main' }}
+              >
+                {stat.value}
+              </Typography>
+              <Typography variant="caption">
+                {stat.label}
+              </Typography>
+            </Paper>
+          </Grid>
+        ))}
       </Grid>
+
 
       {/* 6 Original Charts */}
       <Grid container spacing={3}>

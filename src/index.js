@@ -5,6 +5,8 @@ import { Provider } from 'react-redux';
 import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
 import App from './App';
 import { store } from './store'; // ✅ ADD THIS
+import { PersistGate } from 'redux-persist/integration/react';
+import { persistor } from './store'; 
 
 const theme = createTheme({
   palette: {
@@ -52,11 +54,13 @@ const root = ReactDOM.createRoot(document.getElementById('root'));
 
 root.render(
   <React.StrictMode>
-    <Provider store={store}>   {/* ✅ REDUX */}
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        <App />
-      </ThemeProvider>
+    <Provider store={store}>
+      <PersistGate loading={null} persistor={persistor}> 
+        <ThemeProvider theme={theme}>
+          <CssBaseline />
+          <App />
+        </ThemeProvider>
+      </PersistGate>
     </Provider>
   </React.StrictMode>
 );

@@ -376,11 +376,11 @@ const WarrantyEntry = () => {
                   Data Preview
                 </Typography>
 
-                <Chip
+                {/* <Chip
                   label="First 10 rows"
                   size="small"
                   color="info"
-                />
+                /> */}
               </Box>
 
               {previewData.length > 0 ? (

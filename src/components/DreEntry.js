@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Container,
@@ -23,7 +23,7 @@ import {
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import SaveIcon from '@mui/icons-material/Save';
-import { saveDreDraft, saveDreWithFiles } from "../api/pageApi"
+import { saveDreDraft, saveDreWithFiles, getDreList } from "../api/pageApi"
 
 const DREEntry = () => {
   const [attachments, setAttachments] = useState([]);
@@ -32,22 +32,67 @@ const DREEntry = () => {
   const [editingDraftId, setEditingDraftId] = useState(null);
 
   const [activeStep, setActiveStep] = useState(0);
-  const [drafts, setDrafts] = useState([]);
   const [activeDraftId, setActiveDraftId] = useState(null);
   const [message, setMessage] = useState('');
-  const [submitted, setSubmitted] = useState([]);
+  const [dreList, setDreList] = useState([]);
+  const drafts = dreList.filter(d => d.Status === "DRAFT");
+  const submitted = dreList.filter(d => d.Status === "OPEN");
 
-  const [formData, setFormData] = useState({
-    id: '',                // IMPORTANT for draft tracking
+  console.log("Draft Counts:", drafts.length, submitted.length);
+
+  const loadDreList = async () => {
+    try {
+      const res = await getDreList();
+
+      console.log("DRE List response:", res);
+
+      // ✅ res itself is the array
+      const list = Array.isArray(res) ? res : [];
+
+      setDreList(list);
+    } catch (err) {
+      console.error("Failed to load DRE list", err);
+      setDreList([]); // fail-safe
+    }
+  }; 
+
+  useEffect(() => {
+    loadDreList();
+  }, []);
+
+
+
+  const EMPTY_FORM = {
     dreId: '',
-    dreName: '',
+    dreNumber: '',
+    dreEngineerName: '',
     date: '',
     model: '',
     part: '',
     problem: '',
-    attachments: [],
+    status: 'Draft',
+  };
+
+
+  const [formData, setFormData] = useState({
+    dreId: '',
+    dreNumber: '',          // ✅ DRE Number
+    dreEngineerName: '',    // ✅ Engineer name
+    date: '',
+    model: '',
+    part: '',
+    problem: '',
     status: 'Draft',
   });
+
+  const resetForm = () => {
+    setFormData(EMPTY_FORM);
+    setAttachments([]);
+    setActiveStep(0);
+    setShowHeaderError(false);
+  };
+
+
 
   const buildDrePayload = (status) => ({
     dreId: formData.dreId || null,
@@ -75,33 +120,60 @@ const DREEntry = () => {
     },
   });
 
-  const buildDreFormData = (drePayload, files = []) => {
-    const formData = new FormData();
+  const buildDreFormData = (status, attachments = []) => {
+    const fd = new FormData();
 
-    // Postman → Text
-    formData.append("dreData", JSON.stringify(drePayload));
+    fd.append("DreNumber", formData.dreNumber);            // ✅ correct
+    fd.append("Date", formData.date);
+    fd.append("Model", formData.model);
+    fd.append("Part", formData.part);
+    fd.append("ProblemDescription", formData.problem);
+    fd.append("DreEngineerName", formData.dreEngineerName); // ✅ FIXED
+    fd.append("Status", status);
 
-    // Postman → File (repeated key)
-    files.forEach((file) => {
-      formData.append("files", file);
+    if (formData.dreId) {
+      fd.append("DreId", formData.dreId);
+    }
+
+    attachments.forEach((file, index) => {
+      fd.append(`file${index + 1}`, file);
     });
 
-    return formData;
+    return fd;
   };
 
 
 
+
+
   const handleDraftClick = (draft) => {
-    setActiveDraftId(draft.id);
-    setFormData({ ...draft });
+    setActiveDraftId(draft.DreId);
+
+    setFormData({
+      dreId: draft.DreId,
+      dreNumber: draft.DreNumber,
+      date: draft.DreDate?.split("T")[0], // 🔑 fix date
+      model: draft.Model,
+      part: draft.Part,
+      problem: draft.ProblemDescription || '',
+      dreEngineerName: draft.DreEngineerName || '',
+      status: draft.Status,
+    });
+
+    setAttachments(
+      draft.AttachmentNames
+        ? draft.AttachmentNames.split(",").map(name => ({ name }))
+        : []
+    );
+
     setActiveStep(0);
   };
 
   const handleNext = () => {
     if (activeStep === 0) {
       if (
-        !formData.dreId ||
-        !formData.dreName ||
+        !formData.dreNumber ||
+        !formData.dreEngineerName ||
         !formData.date ||
         !formData.model ||
         !formData.part
@@ -111,58 +183,73 @@ const DREEntry = () => {
       }
     }
 
-    if (activeStep === 1) {
-      if (!formData.problem) {
-        setMessage('Please fill Problem Description');
-        return;
-      }
+    if (activeStep === 1 && !formData.problem) {
+      setMessage('Please fill Problem Description');
+      return;
     }
 
     setMessage('');
-    setActiveStep(activeStep + 1);
+    setActiveStep((prev) => prev + 1);
   };
 
+
   const handleBack = () => {
-    setActiveStep(activeStep - 1);
+    setActiveStep((prev) => Math.max(prev - 1, 0));
   };
 
   const handleSaveDraft = async () => {
     try {
-      const payload = buildDrePayload("DRAFT");
+      // 👇 build FormData with DRAFT status
+      const fd = buildDreFormData("DRAFT", attachments);
 
-      const res = await saveDreDraft(payload);
+      // optional debug
+      for (const [k, v] of fd.entries()) {
+        console.log("DRAFT FD →", k, v);
+      }
 
-      // backend may return dreId
+      const res = await saveDreWithFiles(fd);
+
+      // 👇 update local state with dreId + status
       setFormData((prev) => ({
         ...prev,
-        dreId: res.data?.dreId || prev.dreId,
-        status: "Draft",
+        dreId: res?.data?.dreId || prev.dreId,
+        status: "DRAFT",
       }));
 
       setMessage("✓ DRE draft saved.");
+      resetForm();
     } catch (err) {
-      console.error("Draft save failed", err);
+      console.error("Draft save failed", err.response?.data || err);
       setMessage("❌ Failed to save draft");
     }
   };
 
+
   const handleSubmitDRE = async () => {
     try {
-      const payload = buildDrePayload("SUBMITTED");
+      const fd = buildDreFormData("OPEN", attachments);
+      const res = await saveDreWithFiles(fd);
 
-      const fd = buildDreFormData(payload, attachments);
+      setMessage("✓ DRE submitted successfully");
 
-      for (const [k, v] of fd.entries()) {
-        console.log("FD →", k, v);
-      }
+      // 🔄 Update local list
+      setDreList(prev =>
+        prev.map(d =>
+          d.DreId === formData.dreId
+            ? { ...d, Status: "OPEN" }
+            : d
+        )
+      );
 
-      await saveDreWithFiles(fd);
-      setMessage("✓ DRE saved successfully");
+      resetForm();
     } catch (err) {
-      console.error("Submit failed", err.response?.data || err);
-      setMessage("❌ DRE save failed");
+      console.error(err);
+      setMessage("❌ DRE submit failed");
     }
   };
+
+
+
 
 
 
@@ -211,22 +298,24 @@ const DREEntry = () => {
                 <Grid container spacing={3}>
                   <Grid item xs={12}>
                     <TextField
-                      label="DRE ID *"
-                      name="dreId"
+                      label="DRE Number *"
+                      name="dreNumber"
                       fullWidth
-                      value={formData.dreId}
+                      value={formData.dreNumber}
                       onChange={handleChange}
                     />
+
                   </Grid>
 
                   <Grid item xs={12}>
                     <TextField
                       label="DRE Engineer Name *"
-                      name="dreName"
+                      name="dreEngineerName"
                       fullWidth
-                      value={formData.dreName}
+                      value={formData.dreEngineerName}
                       onChange={handleChange}
                     />
+
                   </Grid>
 
                   <Grid item xs={12}>

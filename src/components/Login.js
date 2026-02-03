@@ -2,56 +2,28 @@ import React, { useState } from 'react';
 import { Box, Container, TextField, Button, Typography, Card, CardContent, Alert } from '@mui/material';
 import LoginIcon from '@mui/icons-material/Login';
 import { loginApi } from '../api/pageApi';
+import { useNavigate } from 'react-router-dom';
+
 
 const Login = ({ onLogin }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+
 
   const handleLogin = async () => {
-    if (!username || !password) {
-      setError("Please enter username and password");
-      return;
-    }
+    const response = await loginApi({ UserName: username, Password: password });
 
-    setLoading(true);
-    setError("");
+    const { Token, UserRole, UserName } = response;
 
-    try {
-      const response = await loginApi({
-        UserName: username,
-        Password: password,
-      }); 
+    localStorage.setItem("authToken", Token);
+    localStorage.setItem("username", UserName);
 
-      console.log("Login response:", response);
-      
-      const {
-        Token,
-        UserRole,
-        UserName
-      } = response;
+    onLogin(UserRole, UserName);
 
-      if (!Token || !UserRole) {
-        throw new Error("Invalid login response");
-      }
-
-      // localStorage.setItem("authToken", Token);
-      // localStorage.setItem("userRole", UserRole);
-      // localStorage.setItem("username", UserName);
-
-      onLogin(UserRole, Token);
-
-
-    } catch (error) {
-      console.error("Login error:", error);
-      setError(
-        error?.response?.message ||
-        "Invalid username or password"
-      );
-    } finally {
-      setLoading(false);
-    }
+    navigate("/dashboard", { replace: true });
   };
 
   return (
