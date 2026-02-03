@@ -108,7 +108,7 @@ const AppLayout = ({ userRole, username, onLogout }) => {
 
       >
         <Routes>
-          {/* <Route path="/dashboard" element={<Dashboard />} /> */}
+          <Route path="/dashboard" element={<Dashboard />} />
 
           {/* Warranty */}
           <Route path="/warranty/entry" element={<WarrantyEntry />} />

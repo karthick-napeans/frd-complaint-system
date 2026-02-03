@@ -37,6 +37,8 @@ const ComplaintForm = () => {
 
   console.log("Parts from store:", parts);
   console.log("Models from store:", models);
+  console.log("Repair Causes from store:", repairCauses);
+  const SEVERITY_LEVELS = ["Low", "Medium", "High", "Critical"];
 
   const [activeStep, setActiveStep] = useState(0);
   const [formData, setFormData] = useState({
@@ -48,9 +50,9 @@ const ComplaintForm = () => {
     partSelected: "",
     problemStatement: "",
     causeCode: "",
-    severityLevel: "Medium",
+    severityLevel: SEVERITY_LEVELS[0],
     attachments: [],
-    status: "Draft",
+    status: "",
   });
 
   const [message, setMessage] = useState("");
@@ -59,9 +61,6 @@ const ComplaintForm = () => {
   const [drafts, setDrafts] = useState([]);
   const [activeDraftId, setActiveDraftId] = useState(null);
   const [submitted, setSubmitted] = useState([]);
-  const [repairCauseSelected, setRepairCauseSelected] = useState("");
-  const [modelSelected, setModelSelected] = useState("");
-  const [partSelected, setPartSelected] = useState("");
 
   const steps = [
     "Complaint Header",
@@ -70,7 +69,6 @@ const ComplaintForm = () => {
     "Review & Submit",
   ];
 
-  const SEVERITY_LEVELS = ["Low", "Medium", "High", "Critical"];
 
   const handleAccordionChange = (panel) => (_, isExpanded) => {
     setExpanded(isExpanded ? panel : false);
@@ -301,13 +299,16 @@ const ComplaintForm = () => {
                   />
 
                   <FormControl fullWidth required>
-                    <InputLabel>Model</InputLabel>
+                    <InputLabel shrink>Model</InputLabel>
                     <Select
                       name="modelSelected"
                       value={formData.modelSelected}
                       onChange={handleSelectChange}
                       displayEmpty
+                      label="Model"
                     >
+
+
                       {activeModels.map((m) => (
                         <MenuItem key={m.ModelId} value={m.ModelCode}>
                           {m.ModelCode}
@@ -316,37 +317,28 @@ const ComplaintForm = () => {
                     </Select>
                   </FormControl>
 
+
                   <FormControl fullWidth>
-                    <InputLabel>Part</InputLabel>
+                    <InputLabel shrink>Part</InputLabel>
                     <Select
-                      name="partSelected" // ✅ REQUIRED
+                      name="partSelected"
                       value={formData.partSelected}
                       onChange={handleSelectChange}
                       displayEmpty
+                      label="Part"
                     >
+
+
                       {activeParts.map((p) => (
-                        <MenuItem key={p.PartId} value={p.PartCode}>
+                        <MenuItem key={p.PartId} value={p.PartNumber}>
                           {p.PartName}
                         </MenuItem>
                       ))}
                     </Select>
                   </FormControl>
 
-                  <FormControl fullWidth required>
-                    <InputLabel>Cause Code</InputLabel>
-                    <Select
-                      name="causeCode"
-                      value={formData.causeCode}
-                      onChange={handleSelectChange}
-                      displayEmpty
-                    >
-                      {activeRepairCauses.map((c) => (
-                        <MenuItem key={c.RepairCauseId} value={c.CauseCode}>
-                          {c.CauseCode}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+
+
                 </Box>
               )}
 
@@ -364,18 +356,24 @@ const ComplaintForm = () => {
                     required
                   />
                   <FormControl fullWidth required>
-                    <InputLabel>Cause Code</InputLabel>
+                    <InputLabel shrink>Cause Code</InputLabel>
                     <Select
-                      value={repairCauseSelected}
-                      onChange={(e) => setRepairCauseSelected(e.target.value)}
+                      name="causeCode"
+                      value={formData.causeCode}
+                      onChange={handleSelectChange}
+                      displayEmpty
+                      label="Cause Code"
                     >
+
+
                       {activeRepairCauses.map((c) => (
-                        <MenuItem key={c.RepairCauseId} value={c.CauseCode}>
-                          {c.CauseCode}
+                        <MenuItem key={c.RepairCauseCodeId} value={c.Code}>
+                          {c.Code} - {c.CodeDescription}
                         </MenuItem>
                       ))}
                     </Select>
                   </FormControl>
+
                   <FormControl fullWidth>
                     <InputLabel>Severity Level</InputLabel>
                     <Select
@@ -514,23 +512,16 @@ const ComplaintForm = () => {
 
         {/* Sidebar */}
         <Grid item xs={12} md={4}>
+
           {/* DRAFTS */}
-          <Accordion
-            expanded={expanded === "drafts"}
-            onChange={handleAccordionChange("drafts")}
-            sx={{ mb: 2 }}
-          >
+          <Accordion defaultExpanded>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Typography variant="h6">Drafts ({drafts.length})</Typography>
+              <Typography fontWeight={600}>
+                Drafts ({drafts.length})
+              </Typography>
             </AccordionSummary>
 
-            <AccordionDetails
-              sx={{
-                maxHeight: 230, // 👈 fits ~3 cards
-                overflowY: "auto", // 👈 scroll INSIDE
-                pr: 1, // space for scrollbar
-              }}
-            >
+            <AccordionDetails>
               {drafts.length === 0 ? (
                 <Typography variant="caption" color="text.secondary">
                   No drafts available
@@ -539,79 +530,32 @@ const ComplaintForm = () => {
                 drafts.map((draft) => (
                   <Paper
                     key={draft.ComplaintId}
+                    elevation={0}
                     sx={{
                       p: 1.5,
                       mb: 1,
-                      cursor: "pointer",
-                      backgroundColor:
-                        activeDraftId === draft.ComplaintId
-                          ? "#ffe69c"
-                          : "#fff3cd",
-                      "&:hover": {
-                        backgroundColor: "#ffe69c",
+                      borderRadius: 2,
+                      border: '1px solid #e5e7eb',
+                      cursor: 'pointer',
+                      transition: '0.2s',
+                      '&:hover': {
+                        backgroundColor: '#f9fafb',
+                        borderColor: '#2563eb',
                       },
                     }}
                     onClick={() => handleDraftClick(draft)}
                   >
-                    <Typography variant="caption">
-                      <strong>{draft.ComplaintNo}</strong>
+                    <Typography fontWeight={600} fontSize={13}>
+                      {draft.ComplaintNo || 'Untitled Draft'}
                     </Typography>
 
-                    <Typography variant="caption" display="block">
-                      {draft.CustomerEmail}
-                    </Typography>
-
-                    <Typography
-                      variant="caption"
-                      display="block"
-                      color="text.secondary"
-                    >
-                      Saved on{" "}
-                      {new Date(draft.ComplaintDate).toLocaleDateString()}
-                    </Typography>
-                  </Paper>
-                ))
-              )}
-            </AccordionDetails>
-          </Accordion>
-
-          {/* SUBMITTED */}
-          <Accordion
-            expanded={expanded === "submitted"}
-            onChange={handleAccordionChange("submitted")}
-          >
-            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Typography variant="h6">
-                Submitted ({submitted.length})
-              </Typography>
-            </AccordionSummary>
-
-            <AccordionDetails
-              sx={{
-                maxHeight: 230, // 👈 fits ~3 cards
-                overflowY: "auto", // 👈 scroll INSIDE
-                pr: 1, // space for scrollbar
-              }}
-            >
-              {submitted.length === 0 ? (
-                <Typography variant="caption" color="text.secondary">
-                  No submitted complaints
-                </Typography>
-              ) : (
-                submitted.map((complaint) => (
-                  <Paper key={complaint.ComplaintId} sx={{ p: 1.5, mb: 1 }}>
-                    <Typography variant="caption">
-                      <strong>{complaint.ComplaintNo}</strong>
-                    </Typography>
-
-                    <Typography variant="caption" display="block">
-                      {complaint.CustomerEmail}
+                    <Typography variant="caption" color="text.secondary">
+                      {draft.Model || '—'} • {draft.Part || '—'}
                     </Typography>
 
                     <Chip
-                      label={complaint.Status}
+                      label="Draft"
                       size="small"
-                      color="success"
                       sx={{ mt: 0.5 }}
                     />
                   </Paper>
@@ -619,7 +563,55 @@ const ComplaintForm = () => {
               )}
             </AccordionDetails>
           </Accordion>
+
+          {/* SUBMITTED */}
+          <Accordion sx={{ mt: 2 }}>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+              <Typography fontWeight={600}>
+                Submitted ({submitted.length})
+              </Typography>
+            </AccordionSummary>
+
+            <AccordionDetails>
+              {submitted.length === 0 ? (
+                <Typography variant="caption" color="text.secondary">
+                  No submitted complaints
+                </Typography>
+              ) : (
+                submitted.map((complaint) => (
+                  <Paper
+                    key={complaint.ComplaintId}
+                    elevation={0}
+                    sx={{
+                      p: 1.5,
+                      mb: 1,
+                      borderRadius: 2,
+                      border: '1px solid #e5e7eb',
+                      backgroundColor: '#f0fdf4',
+                    }}
+                  >
+                    <Typography fontWeight={600} fontSize={13}>
+                      {complaint.ComplaintNo}
+                    </Typography>
+
+                    <Typography variant="caption" color="text.secondary">
+                      Submitted • {new Date(complaint.ComplaintDate).toLocaleDateString()}
+                    </Typography>
+
+                    <Chip
+                      label="Submitted"
+                      color="success"
+                      size="small"
+                      sx={{ mt: 0.5 }}
+                    />
+                  </Paper>
+                ))
+              )}
+            </AccordionDetails>
+          </Accordion>
+
         </Grid>
+
       </Grid>
     </Container>
   );

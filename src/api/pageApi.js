@@ -39,12 +39,7 @@ export const getUploadHistory = () => {
     return getRequest("/warranty-claims/upload/history");
 }
 
-export const getWrantyReport = (payload) => {
-    return getRequestWithBody(
-        "/warranty-claims/analysis/report",
-        payload
-    );
-};
+
 
 export const getDreList = () => {
     return getRequest("/dre/list");
@@ -87,6 +82,14 @@ export const submitColumnMapping = (payload) => {
 export const uploadWarrantyClaims = (formData) => {
     return postRequest("/warranty-claims/upload", formData);
 }
+
+export const getWrantyReport = (payload) => {
+    console.log("Generating warranty report with payload:", payload);
+    return postRequest(
+        "/warranty-claims/analysis/report",
+        payload
+    );
+};
 
 
 

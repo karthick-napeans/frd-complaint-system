@@ -37,87 +37,27 @@ import {
 } from 'recharts';
 import SettingsIcon from '@mui/icons-material/Settings';
 import { getWrantyReport } from '../api/pageApi';
-import { generateWarrantyMockData } from './generateWarrantyMockData';
-
-
-
-const warrantyMockData = [
-  {
-    Row_No: 1,
-    HK: "HK00000001",
-    Domestic_Export: "Domestic",
-    System_Code: "SYS1",
-    Period_Code: "2024Q2",
-    Sequence_No: 1,
-    Order_Type: "A",
-    Order_Description: "Brake system issue",
-    VIN: "VIN00000000000000000001",
-    Plant_Code: "A",
-    Model_Code: "MDL1",
-    Model_Name: "Model Alpha",
-    Part_Number: "PN000001",
-    Part_Name: "Brake Pad",
-    Old_Part_Number: "OPN000001",
-    Cause_Code: "CC1",
-    Nature_Code: "NC1",
-    Production_Date: "2023-04-18T00:00:00",
-    Repair_Date: "2023-05-22T00:00:00",
-    Sales_Date: "2023-05-24T00:00:00",
-    Used_Month: 14,
-    Mileage: 21657,
-    Supply_Ratio: 0.85,
-    Burden_Ratio: 0.72,
-    Apply_Ratio: 0.25,
-    Part_Cost: 4500,
-    Labor_Cost: 1200,
-    Sublet_Cost: 300,
-    Total_Cost: 6000
-  },
-
-  {
-    Row_No: 2,
-    HK: "HK00000002",
-    Domestic_Export: "Export",
-    System_Code: "SYS2",
-    Period_Code: "2024Q1",
-    Sequence_No: 2,
-    Order_Type: "B",
-    Order_Description: "Engine oil leakage",
-    VIN: "VIN00000000000000000002",
-    Plant_Code: "B",
-    Model_Code: "MDL2",
-    Model_Name: "Model Beta",
-    Part_Number: "PN000002",
-    Part_Name: "Oil Seal",
-    Old_Part_Number: "OPN000002",
-    Cause_Code: "CC2",
-    Nature_Code: "NC2",
-    Production_Date: "2022-11-10T00:00:00",
-    Repair_Date: "2023-01-15T00:00:00",
-    Sales_Date: "2022-12-01T00:00:00",
-    Used_Month: 26,
-    Mileage: 40210,
-    Supply_Ratio: 0.78,
-    Burden_Ratio: 0.66,
-    Apply_Ratio: 0.3,
-    Part_Cost: 7800.5,
-    Labor_Cost: 2400,
-    Sublet_Cost: 600,
-    Total_Cost: 10800.5
-  }
-];
-
-
+import { useSelector } from "react-redux";
 
 const WarrantyAnalysis = () => {
-  const [customerSelected, setCustomerSelected] = useState('Customer A');
+  const { customers } = useSelector((state) => state.masters);
+  const activeCustomers = customers.filter((c) => c.IsActive === true);
+  const [customerSelected, setCustomerSelected] = useState("");
   const [prodDateFrom, setProdDateFrom] = useState('2023-01-01');
   const [prodDateTo, setProdDateTo] = useState('2025-12-31');
   const [repairDateFrom, setRepairDateFrom] = useState('2023-01-01');
   const [repairDateTo, setRepairDateTo] = useState('2025-12-31');
   const [rawData, setRawData] = useState([]);
-  const [rawWarrantyData, setRawWarrantyData] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (activeCustomers.length > 0 && !customerSelected) {
+      setCustomerSelected(activeCustomers[0].CustomerId);
+    }
+  }, [activeCustomers, customerSelected]);
+
+  const parseDate = (v) =>
+    v ? new Date(v.split('T')[0]) : null;
 
   const normalizeWarrantyData = (apiData = []) =>
     apiData.map(d => ({
@@ -144,9 +84,9 @@ const WarrantyAnalysis = () => {
       causeCode: d.Cause_Code,
       natureCode: d.Nature_Code,
 
-      productionDate: new Date(d.Production_Date),
-      repairDate: new Date(d.Repair_Date),
-      salesDate: new Date(d.Sales_Date),
+      productionDate: parseDate(d.Production_Date),
+      repairDate: parseDate(d.Repair_Date),
+      salesDate: parseDate(d.Sales_Date),
 
       usedMonths: d.Used_Month,
       mileage: d.Mileage,
@@ -177,42 +117,34 @@ const WarrantyAnalysis = () => {
     try {
       setLoading(true);
 
-      // 🔴 MOCK DATA (acts like backend)
-      const mockData = generateWarrantyMockData(500);
 
-      const prodFrom = toDate(prodDateFrom);
-      const prodTo = toDate(prodDateTo);
-
-      // ✅ BACKEND-LIKE PRODUCTION FILTER
-      const prodFiltered = mockData.filter(d => {
-        const prodDate = toDate(d.Production_Date);
-        return (
-          prodDate &&
-          prodFrom &&
-          prodTo &&
-          prodDate >= prodFrom &&
-          prodDate <= prodTo
-        );
-      });
-
-      setRawData(prodFiltered);
-
-      /*
-      // 🟢 REAL API (later)
       const response = await getWrantyReport({
-        CustomerId: 6,
+        CustomerId: customerSelected,
         ProductionFromDate: prodDateFrom,
         ProductionToDate: prodDateTo,
       });
-      setRawData(response.data);
-      */
+
+      console.log("Warranty report response:", response);
+
+      const apiData = Array.isArray(response)
+        ? response
+        : Array.isArray(response?.data)
+          ? response.data
+          : [];
+
+
+      // 🚨 NO FILTER HERE
+      setRawData(apiData);
 
     } catch (error) {
-      console.error(error);
+      console.error("Warranty report fetch failed:", error);
+      setRawData([]);
     } finally {
       setLoading(false);
     }
   };
+
+
 
 
 
@@ -221,13 +153,23 @@ const WarrantyAnalysis = () => {
   }, [rawData]);
 
   const filteredData = useMemo(() => {
-    return warrantyData.filter(d =>
-      d.productionDate >= new Date(prodDateFrom) &&
-      d.productionDate <= new Date(prodDateTo) &&
-      d.repairDate >= new Date(repairDateFrom) &&
-      d.repairDate <= new Date(repairDateTo)
-    );
+    const prodFrom = new Date(prodDateFrom);
+    const prodTo = new Date(prodDateTo);
+    const repFrom = new Date(repairDateFrom);
+    const repTo = new Date(repairDateTo);
+
+    return warrantyData.filter(d => {
+      if (!d.productionDate || !d.repairDate) return false;
+
+      return (
+        d.productionDate >= prodFrom &&
+        d.productionDate <= prodTo &&
+        d.repairDate >= repFrom &&
+        d.repairDate <= repTo
+      );
+    });
   }, [warrantyData, prodDateFrom, prodDateTo, repairDateFrom, repairDateTo]);
+
 
 
 
@@ -401,6 +343,10 @@ const WarrantyAnalysis = () => {
     setMasterConfig(tempConfig);
     setOpenConfigDialog(false);
   };
+
+
+
+
 
   const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7c7c', '#8dd1e1', '#d084d0'];
 
@@ -696,13 +642,22 @@ const WarrantyAnalysis = () => {
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6} md={2}>
               <FormControl fullWidth size="small">
-                <InputLabel>Customer</InputLabel>
-                <Select value={customerSelected} onChange={(e) => setCustomerSelected(e.target.value)} label="Customer">
-                  <MenuItem value="Customer A">Customer A</MenuItem>
-                  <MenuItem value="Customer B">Customer B</MenuItem>
-                  <MenuItem value="Customer C">Customer C</MenuItem>
+                <InputLabel shrink>Select Customer</InputLabel>
+                <Select
+                  value={customerSelected}
+                  label="Select Customer"
+                  displayEmpty
+                  onChange={(e) => setCustomerSelected(e.target.value)}
+                >
+
+                  {activeCustomers.map((c) => (
+                    <MenuItem key={c.CustomerId} value={c.CustomerId}>
+                      {c.CustomerName}
+                    </MenuItem>
+                  ))}
                 </Select>
               </FormControl>
+
             </Grid>
 
             <Grid item xs={12} sm={6} md={2.5}>

@@ -23,9 +23,15 @@ import {
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import SaveIcon from '@mui/icons-material/Save';
+import { useSelector } from "react-redux";
 import { saveDreDraft, saveDreWithFiles, getDreList } from "../api/pageApi"
 
 const DREEntry = () => {
+  const { parts, models, repairCauses } = useSelector((state) => state.masters);
+  const activeParts = parts.filter((p) => p.IsActive === true);
+  const activeModels = models.filter((m) => m.IsActive === true);
+  const activeRepairCauses = repairCauses.filter((c) => c.IsActive === true);
+
   const [attachments, setAttachments] = useState([]);
   const [showHeaderError, setShowHeaderError] = useState(false);
 
@@ -54,7 +60,7 @@ const DREEntry = () => {
       console.error("Failed to load DRE list", err);
       setDreList([]); // fail-safe
     }
-  }; 
+  };
 
   useEffect(() => {
     loadDreList();
@@ -91,34 +97,6 @@ const DREEntry = () => {
     setActiveStep(0);
     setShowHeaderError(false);
   };
-
-
-
-  const buildDrePayload = (status) => ({
-    dreId: formData.dreId || null,
-    status, // "DRAFT" or "SUBMITTED"
-
-    basicInfo: {
-      dreNumber: formData.dreName,
-      date: formData.date,
-      model: formData.model,
-      part: formData.part,
-      problemDescription: formData.problem,
-    },
-
-    vehicleDetails: {
-      vinNumber: formData.vinNumber,
-      vehicleProductionDate: formData.vehicleProductionDate,
-      vehicleSalesDate: formData.vehicleSalesDate,
-      vehicleRepairDate: formData.vehicleRepairDate,
-    },
-
-    analysisDetails: {
-      dreEngineerName: formData.dreEngineerName,
-      dreAnalysis: formData.dreAnalysis,
-      resultConclusion: formData.resultConclusion,
-    },
-  });
 
   const buildDreFormData = (status, attachments = []) => {
     const fd = new FormData();
@@ -268,8 +246,12 @@ const DREEntry = () => {
     'Review & Submit',
   ];
 
-  const MODELS = ['FH', 'HQ', 'SV', 'SP'];
   const PARTS = ['WHEEL BEARING', 'BRAKE DISC', 'ENGINE'];
+
+  const handleSelectChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+  };
 
   const handleChange = (e) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -334,17 +316,20 @@ const DREEntry = () => {
                   </Grid>
 
                   <Grid item xs={12}>
-                    <FormControl fullWidth>
-                      <InputLabel>Model *</InputLabel>
+                    <FormControl fullWidth required>
+                      <InputLabel shrink>Model</InputLabel>
                       <Select
-                        name="model"
-                        value={formData.model}
-                        label="Model *"
-                        onChange={handleChange}
+                        name="modelSelected"
+                        value={formData.modelSelected}
+                        onChange={handleSelectChange}
+                        displayEmpty
+                        label="Model"
                       >
-                        {MODELS.map((m) => (
-                          <MenuItem key={m} value={m}>
-                            {m}
+
+
+                        {activeModels.map((m) => (
+                          <MenuItem key={m.ModelId} value={m.ModelCode}>
+                            {m.ModelCode}
                           </MenuItem>
                         ))}
                       </Select>
@@ -353,16 +338,19 @@ const DREEntry = () => {
 
                   <Grid item xs={12}>
                     <FormControl fullWidth>
-                      <InputLabel>Part *</InputLabel>
+                      <InputLabel shrink>Part</InputLabel>
                       <Select
-                        name="part"
-                        value={formData.part}
-                        label="Part *"
-                        onChange={handleChange}
+                        name="partSelected"
+                        value={formData.partSelected}
+                        onChange={handleSelectChange}
+                        displayEmpty
+                        label="Part"
                       >
-                        {PARTS.map((p) => (
-                          <MenuItem key={p} value={p}>
-                            {p}
+
+
+                        {activeParts.map((p) => (
+                          <MenuItem key={p.PartId} value={p.PartNumber}>
+                            {p.PartName}
                           </MenuItem>
                         ))}
                       </Select>
