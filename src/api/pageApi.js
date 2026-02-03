@@ -1,5 +1,6 @@
 import { getRequest } from "./apiService";
 import { postRequest } from "./apiService";
+import { getRequestWithBody } from "./apiService";
 
 //getRequest 
 export const healthCheck = () => {
@@ -36,6 +37,17 @@ export const getMstColumns = () => {
 
 export const getUploadHistory = () => {
     return getRequest("/warranty-claims/upload/history");
+}
+
+export const getWrantyReport = (payload) => {
+    return getRequestWithBody(
+        "/warranty-claims/analysis/report",
+        payload
+    );
+};
+
+export const getDreList = () => {
+    return getRequest("/dre/list");
 }
 
 //postRequest
