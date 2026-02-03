@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from "react";
 import {
   Box,
   Container,
@@ -25,20 +25,22 @@ import {
   MenuItem,
   FormControl,
   InputLabel,
-} from '@mui/material';
-import UploadFileIcon from '@mui/icons-material/UploadFile';
-import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
-import SaveIcon from '@mui/icons-material/Save';
-import * as XLSX from 'xlsx';
-import { useSelector } from 'react-redux';
-import { getMstColumns, submitColumnMapping } from '../api/pageApi';
-import Snackbar from '@mui/material/Snackbar';
-
+} from "@mui/material";
+import UploadFileIcon from "@mui/icons-material/UploadFile";
+import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
+import SaveIcon from "@mui/icons-material/Save";
+import * as XLSX from "xlsx";
+import { useSelector } from "react-redux";
+import { getMstColumns, submitColumnMapping } from "../api/pageApi";
+import Snackbar from "@mui/material/Snackbar";
 
 const WarrantyColumnMapper = () => {
-  const { customers } = useSelector(state => state.masters);
-  console.log('Customers from store:', customers);
-  const [customerSelected, setCustomerSelected] = useState('');
+  const { customers } = useSelector((state) => state.masters);
+  console.log("Customers from store:", customers);
+  const activeCustomers = customers.filter((c) => c.IsActive === true);
+  console.log("Active Customers:", activeCustomers);
+
+  const [customerSelected, setCustomerSelected] = useState("");
   const [customerColumns, setCustomerColumns] = useState([]);
   const [masterColumns, setMasterColumns] = useState([]);
   const [mappings, setMappings] = useState({});
@@ -47,8 +49,8 @@ const WarrantyColumnMapper = () => {
   const [openDialog, setOpenDialog] = useState(false);
   const [popup, setPopup] = useState({
     open: false,
-    message: '',
-    severity: 'success', // success | error | info | warning
+    message: "",
+    severity: "success", // success | error | info | warning
   });
   const [uploadedFile, setUploadedFile] = useState(null);
   const fileInputRef = useRef(null);
@@ -61,12 +63,12 @@ const WarrantyColumnMapper = () => {
         const data = await getMstColumns();
         const cols = Array.isArray(data)
           ? data
-            .filter(c => c.IsActive)
-            .sort((a, b) => a.MasterColumnPosition - b.MasterColumnPosition)
-            .map(c => ({
-              id: c.MasterColumnId,
-              name: c.MasterColumnName,
-            }))
+              .filter((c) => c.IsActive)
+              .sort((a, b) => a.MasterColumnPosition - b.MasterColumnPosition)
+              .map((c) => ({
+                id: c.MasterColumnId,
+                name: c.MasterColumnName,
+              }))
           : [];
         setMasterColumns(cols);
       } catch (e) {
@@ -77,7 +79,6 @@ const WarrantyColumnMapper = () => {
     fetchMasterColumns();
   }, []);
 
-
   const handleCustomerSelect = (customerId) => {
     setCustomerSelected(customerId);
     setCustomerColumns([]);
@@ -85,13 +86,11 @@ const WarrantyColumnMapper = () => {
     showPopup(`Selected customer ${customerId}. Upload Excel to continue.`);
   };
 
-
   const handleUploadClick = () => fileInputRef.current.click();
 
-  const showPopup = (message, severity = 'success') => {
+  const showPopup = (message, severity = "success") => {
     setPopup({ open: true, message, severity });
   };
-
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -102,19 +101,18 @@ const WarrantyColumnMapper = () => {
 
     const reader = new FileReader();
     reader.onload = (evt) => {
-      const wb = XLSX.read(evt.target.result, { type: 'binary' });
+      const wb = XLSX.read(evt.target.result, { type: "binary" });
       const ws = wb.Sheets[wb.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
       const headers = rows[0]?.filter(Boolean) || [];
 
       setCustomerColumns(headers);
       setMappings({});
-      showPopup('Mapping saved successfully', 'success');
+      showPopup("Mapping saved successfully", "success");
     };
 
     reader.readAsBinaryString(file);
   };
-
 
   /* -------- Drag & drop -------- */
 
@@ -124,14 +122,14 @@ const WarrantyColumnMapper = () => {
     if (!draggedColumn) return;
 
     const alreadyMapped = Object.values(mappings).some(
-      m => m?.masterColumnId === masterCol.id
+      (m) => m?.masterColumnId === masterCol.id,
     );
     if (alreadyMapped) {
-      showPopup(`${masterCol.name} already mapped`, 'error');
+      showPopup(`${masterCol.name} already mapped`, "error");
       return;
     }
 
-    setMappings(prev => ({
+    setMappings((prev) => ({
       ...prev,
       [draggedColumn]: {
         masterColumnId: masterCol.id,
@@ -139,7 +137,7 @@ const WarrantyColumnMapper = () => {
       },
     }));
 
-    showPopup(`✓ ${draggedColumn} → ${masterCol.name}`, 'success');
+    showPopup(`✓ ${draggedColumn} → ${masterCol.name}`, "success");
     setDraggedColumn(null);
   };
 
@@ -153,7 +151,7 @@ const WarrantyColumnMapper = () => {
   const handleConfirmMapping = () => {
     if (!selectedMaster || !draggedColumn) return;
 
-    setMappings(prev => ({
+    setMappings((prev) => ({
       ...prev,
       [draggedColumn]: {
         masterColumnId: selectedMaster.id,
@@ -161,7 +159,7 @@ const WarrantyColumnMapper = () => {
       },
     }));
 
-    showPopup(`✓ ${draggedColumn} → ${selectedMaster.name}`, 'success');
+    showPopup(`✓ ${draggedColumn} → ${selectedMaster.name}`, "success");
     setOpenDialog(false);
     setDraggedColumn(null);
     setSelectedMaster(null);
@@ -179,7 +177,7 @@ const WarrantyColumnMapper = () => {
 
   const handleSaveMapping = async () => {
     if (!customerSelected) {
-      showPopup('Select customer first', 'error');
+      showPopup("Select customer first", "error");
       return;
     }
 
@@ -195,7 +193,7 @@ const WarrantyColumnMapper = () => {
     };
 
     if (!payload.mappings.length) {
-      showPopup('No mappings to save', 'error');
+      showPopup("No mappings to save", "error");
       return;
     }
 
@@ -203,25 +201,23 @@ const WarrantyColumnMapper = () => {
       await submitColumnMapping(payload);
 
       // ✅ SUCCESS MESSAGE
-      showPopup('✓ Mapping saved successfully', 'success');
+      showPopup("✓ Mapping saved successfully", "success");
 
       // ✅ RESET EVERYTHING
-      setCustomerSelected('');
+      setCustomerSelected("");
       setCustomerColumns([]);
       setMappings({});
       setUploadedFile(null);
 
       // ✅ CLEAR FILE INPUT
       if (fileInputRef.current) {
-        fileInputRef.current.value = '';
+        fileInputRef.current.value = "";
       }
-
     } catch (e) {
       console.error(e);
-      showPopup('❌ Server error while saving', 'error');
+      showPopup("❌ Server error while saving", "error");
     }
   };
-
 
   /* -------- UI (UNCHANGED) -------- */
 
@@ -243,7 +239,7 @@ const WarrantyColumnMapper = () => {
                   label="Select Customer"
                   onChange={(e) => handleCustomerSelect(e.target.value)}
                 >
-                  {customers.map((c) => (
+                  {activeCustomers.map((c) => (
                     <MenuItem key={c.CustomerId} value={c.CustomerId}>
                       {c.CustomerName}
                     </MenuItem>
@@ -274,16 +270,15 @@ const WarrantyColumnMapper = () => {
                   variant="body2"
                   sx={{
                     mt: 1,
-                    color: 'text.secondary',
-                    display: 'flex',
-                    alignItems: 'center',
+                    color: "text.secondary",
+                    display: "flex",
+                    alignItems: "center",
                     gap: 0.5,
                   }}
                 >
                   📄 {uploadedFile.name}
                 </Typography>
               )}
-
             </Grid>
           </Grid>
         </CardContent>
@@ -308,11 +303,11 @@ const WarrantyColumnMapper = () => {
                     sx={{
                       p: 1.5,
                       my: 1,
-                      border: '2px solid #1976d2',
+                      border: "2px solid #1976d2",
                       borderRadius: 1,
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
                     }}
                   >
                     <Box display="flex" gap={1} alignItems="center">
@@ -350,7 +345,7 @@ const WarrantyColumnMapper = () => {
 
                 {masterColumns.map((col) => {
                   const mappedFrom = Object.entries(mappings).find(
-                    ([_, m]) => m?.masterColumnId === col.id
+                    ([_, m]) => m?.masterColumnId === col.id,
                   )?.[0];
 
                   return (
@@ -361,11 +356,11 @@ const WarrantyColumnMapper = () => {
                       sx={{
                         p: 1.5,
                         my: 1,
-                        border: '2px dashed #1976d2',
+                        border: "2px dashed #1976d2",
                         borderRadius: 1,
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
                       }}
                     >
                       <Typography>{col.name}</Typography>
@@ -413,37 +408,33 @@ const WarrantyColumnMapper = () => {
                 </TableHead>
 
                 <TableBody>
-                  {Object.entries(mappings).map(
-                    ([customerCol, master]) => (
-                      <TableRow key={customerCol}>
-                        <TableCell>
-                          <Chip
-                            label={customerCol}
-                            size="small"
-                            variant="outlined"
-                          />
-                        </TableCell>
+                  {Object.entries(mappings).map(([customerCol, master]) => (
+                    <TableRow key={customerCol}>
+                      <TableCell>
+                        <Chip
+                          label={customerCol}
+                          size="small"
+                          variant="outlined"
+                        />
+                      </TableCell>
 
-                        <TableCell>
-                          <Typography fontWeight={600}>
-                            {master.masterColumnName}
-                          </Typography>
-                        </TableCell>
+                      <TableCell>
+                        <Typography fontWeight={600}>
+                          {master.masterColumnName}
+                        </Typography>
+                      </TableCell>
 
-                        <TableCell align="center">
-                          <Button
-                            size="small"
-                            color="error"
-                            onClick={() =>
-                              handleRemoveMapping(customerCol)
-                            }
-                          >
-                            Remove
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    )
-                  )}
+                      <TableCell align="center">
+                        <Button
+                          size="small"
+                          color="error"
+                          onClick={() => handleRemoveMapping(customerCol)}
+                        >
+                          Remove
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
             </TableContainer>
@@ -483,10 +474,10 @@ const WarrantyColumnMapper = () => {
             select
             fullWidth
             label="Master Column"
-            value={selectedMaster?.id || ''}
+            value={selectedMaster?.id || ""}
             onChange={(e) => {
               const found = masterColumns.find(
-                (m) => m.id === Number(e.target.value)
+                (m) => m.id === Number(e.target.value),
               );
               setSelectedMaster(found);
             }}
@@ -510,13 +501,13 @@ const WarrantyColumnMapper = () => {
       <Snackbar
         open={popup.open}
         autoHideDuration={3000}
-        onClose={() => setPopup(prev => ({ ...prev, open: false }))}
-        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+        onClose={() => setPopup((prev) => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: "top", horizontal: "right" }}
       >
         <Alert
           severity={popup.severity}
           variant="filled"
-          onClose={() => setPopup(prev => ({ ...prev, open: false }))}
+          onClose={() => setPopup((prev) => ({ ...prev, open: false }))}
           sx={{ minWidth: 280 }}
         >
           {popup.message}

@@ -60,7 +60,7 @@ const Login = ({ onLogin }) => {
                 onChange={(e) => setUsername(e.target.value)}
                 disabled={loading}
                 onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
-                placeholder="Try: admin"
+                placeholder="Try: Karthick"
               />
               <TextField
                 label="Password"
@@ -70,7 +70,7 @@ const Login = ({ onLogin }) => {
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={loading}
                 onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
-                placeholder="Try: admin123"
+                placeholder="Try: Admin@123"
               />
               <Button
                 variant="contained"

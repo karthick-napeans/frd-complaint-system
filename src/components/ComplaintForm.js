@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Container,
@@ -21,41 +21,56 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
-} from '@mui/material';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import CloudUploadIcon from '@mui/icons-material/CloudUpload';
-import SaveIcon from '@mui/icons-material/Save';
-import SaveAltIcon from '@mui/icons-material/SaveAlt';
-import { submitCustomerComplaint, getCustomerComplaints } from '../api/pageApi';
+} from "@mui/material";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import CloudUploadIcon from "@mui/icons-material/CloudUpload";
+import SaveIcon from "@mui/icons-material/Save";
+import SaveAltIcon from "@mui/icons-material/SaveAlt";
+import { useSelector } from "react-redux";
+import { submitCustomerComplaint, getCustomerComplaints } from "../api/pageApi";
 
 const ComplaintForm = () => {
+  const { parts, models, repairCauses } = useSelector((state) => state.masters);
+  const activeParts = parts.filter((p) => p.IsActive === true);
+  const activeModels = models.filter((m) => m.IsActive === true);
+  const activeRepairCauses = repairCauses.filter((c) => c.IsActive === true);
+
+  console.log("Parts from store:", parts);
+  console.log("Models from store:", models);
+
   const [activeStep, setActiveStep] = useState(0);
   const [formData, setFormData] = useState({
-    complaintId: '',
-    customerName: '',
-    customerEmail: '',
-    complaintDate: '',
-    modelSelected: '',
-    partSelected: '',
-    problemStatement: '',
-    causeCode: '',
-    severityLevel: 'Medium',
+    complaintId: "",
+    customerName: "",
+    customerEmail: "",
+    complaintDate: "",
+    modelSelected: "",
+    partSelected: "",
+    problemStatement: "",
+    causeCode: "",
+    severityLevel: "Medium",
     attachments: [],
-    status: 'Draft',
+    status: "Draft",
   });
 
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState("");
   const [complaints, setComplaints] = useState([]);
   const [expanded, setExpanded] = useState(false);
   const [drafts, setDrafts] = useState([]);
   const [activeDraftId, setActiveDraftId] = useState(null);
   const [submitted, setSubmitted] = useState([]);
-  const steps = ['Complaint Header', 'Problem & Cause', 'Attachments', 'Review & Submit'];
-  const MODELS = ['FH', 'HQ', 'SV', '0Y', 'SP', 'TU', 'XV'];
-  const PARTS = ['WHEEL BEARING-FR', 'FRONT BRAKE DISC', 'ENGINE BLOCK', 'TRANSMISSION', 'SUSPENSION ARM'];
-  const CAUSE_CODES = ['ZZ1', 'ZZ2', 'ZZ3', 'ZZ4', 'ZZ5'];
-  const SEVERITY_LEVELS = ['Low', 'Medium', 'High', 'Critical'];
+  const [repairCauseSelected, setRepairCauseSelected] = useState("");
+  const [modelSelected, setModelSelected] = useState("");
+  const [partSelected, setPartSelected] = useState("");
 
+  const steps = [
+    "Complaint Header",
+    "Problem & Cause",
+    "Attachments",
+    "Review & Submit",
+  ];
+
+  const SEVERITY_LEVELS = ["Low", "Medium", "High", "Critical"];
 
   const handleAccordionChange = (panel) => (_, isExpanded) => {
     setExpanded(isExpanded ? panel : false);
@@ -77,9 +92,9 @@ const ComplaintForm = () => {
         status?.toString().trim().toUpperCase();
 
       setComplaints(safeData);
-      setDrafts(safeData.filter(i => normalizeStatus(i.Status) === 'DRAFT'));
+      setDrafts(safeData.filter((i) => normalizeStatus(i.Status) === "DRAFT"));
       setSubmitted(
-        safeData.filter(i => normalizeStatus(i.Status) === 'SUBMITTED')
+        safeData.filter((i) => normalizeStatus(i.Status) === "SUBMITTED"),
       );
     } catch (err) {
       console.error(err);
@@ -93,24 +108,24 @@ const ComplaintForm = () => {
     setActiveDraftId(draft.ComplaintId);
 
     setFormData({
-      complaintId: draft.ComplaintId || '',
-      customerName: draft.CustomerName || '',
-      customerEmail: draft.CustomerEmail || '',
-      complaintDate: draft.ComplaintDate?.split('T')[0] || '',
-      modelSelected: draft.Model || '',
-      partSelected: draft.Part || '',
-      problemStatement: draft.ProblemStatement || '',
-      causeCode: draft.CauseCode || '',
-      severityLevel: draft.Severity || 'Medium',
+      complaintId: draft.ComplaintId || "",
+      customerName: draft.CustomerName || "",
+      customerEmail: draft.CustomerEmail || "",
+      complaintDate: draft.ComplaintDate?.split("T")[0] || "",
+      modelSelected: draft.Model || "",
+      partSelected: draft.Part || "",
+      problemStatement: draft.ProblemStatement || "",
+      causeCode: draft.CauseCode || "",
+      severityLevel: draft.Severity || "Medium",
       attachments: [],
-      status: draft.Status || 'DRAFT',
+      status: draft.Status || "DRAFT",
     });
 
     // Optional UX: jump user to first step
     setActiveStep(0);
 
     // Optional UX: auto-open draft accordion
-    setExpanded('drafts');
+    setExpanded("drafts");
   };
 
   const handleInputChange = (e) => {
@@ -125,7 +140,7 @@ const ComplaintForm = () => {
 
   const handleFileUpload = (e) => {
     const files = Array.from(e.target.files);
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       attachments: [...prev.attachments, ...files],
     }));
@@ -133,14 +148,18 @@ const ComplaintForm = () => {
 
   const handleNext = () => {
     if (activeStep === 0) {
-      if (!formData.customerName || !formData.complaintDate || !formData.modelSelected) {
-        setMessage('Please fill all required fields in Complaint Header');
+      if (
+        !formData.customerName ||
+        !formData.complaintDate ||
+        !formData.modelSelected
+      ) {
+        setMessage("Please fill all required fields in Complaint Header");
         return;
       }
     }
     if (activeStep === 1) {
       if (!formData.problemStatement || !formData.causeCode) {
-        setMessage('Please fill Problem Statement and Cause Code');
+        setMessage("Please fill Problem Statement and Cause Code");
         return;
       }
     }
@@ -164,7 +183,7 @@ const ComplaintForm = () => {
     fd.append("causeCode", formData.causeCode);
     fd.append("severity", formData.severityLevel);
 
-    formData.attachments.forEach(file => {
+    formData.attachments.forEach((file) => {
       fd.append("files", file);
     });
 
@@ -214,14 +233,12 @@ const ComplaintForm = () => {
         status: "",
       });
 
-
       setActiveStep(0);
     } catch (err) {
       console.error("Submit failed", err.response?.data || err);
       setMessage("❌ Complaint submit failed");
     }
   };
-
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
@@ -242,14 +259,17 @@ const ComplaintForm = () => {
               </Stepper>
 
               {message && (
-                <Alert severity={message.includes('✓') ? 'success' : 'error'} sx={{ mb: 2 }}>
+                <Alert
+                  severity={message.includes("✓") ? "success" : "error"}
+                  sx={{ mb: 2 }}
+                >
                   {message}
                 </Alert>
               )}
 
               {/* Tab 1: Complaint Header */}
               {activeStep === 0 && (
-                <Box sx={{ gap: 2, display: 'flex', flexDirection: 'column' }}>
+                <Box sx={{ gap: 2, display: "flex", flexDirection: "column" }}>
                   <TextField
                     label="Customer Name"
                     fullWidth
@@ -257,7 +277,6 @@ const ComplaintForm = () => {
                     value={formData.customerName}
                     onChange={handleInputChange}
                     required
-
                   />
                   <TextField
                     label="Customer Email"
@@ -277,7 +296,7 @@ const ComplaintForm = () => {
                     InputLabelProps={{ shrink: true }}
                     required
                     inputProps={{
-                      max: new Date().toISOString().split('T')[0],
+                      max: new Date().toISOString().split("T")[0],
                     }}
                   />
 
@@ -287,26 +306,43 @@ const ComplaintForm = () => {
                       name="modelSelected"
                       value={formData.modelSelected}
                       onChange={handleSelectChange}
-                      label="Model"
+                      displayEmpty
                     >
-                      {MODELS.map((model) => (
-                        <MenuItem key={model} value={model}>
-                          {model}
+                      {activeModels.map((m) => (
+                        <MenuItem key={m.ModelId} value={m.ModelCode}>
+                          {m.ModelCode}
                         </MenuItem>
                       ))}
                     </Select>
                   </FormControl>
+
                   <FormControl fullWidth>
                     <InputLabel>Part</InputLabel>
                     <Select
-                      name="partSelected"
+                      name="partSelected" // ✅ REQUIRED
                       value={formData.partSelected}
                       onChange={handleSelectChange}
-                      label="Part"
+                      displayEmpty
                     >
-                      {PARTS.map((part) => (
-                        <MenuItem key={part} value={part}>
-                          {part}
+                      {activeParts.map((p) => (
+                        <MenuItem key={p.PartId} value={p.PartCode}>
+                          {p.PartName}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+
+                  <FormControl fullWidth required>
+                    <InputLabel>Cause Code</InputLabel>
+                    <Select
+                      name="causeCode"
+                      value={formData.causeCode}
+                      onChange={handleSelectChange}
+                      displayEmpty
+                    >
+                      {activeRepairCauses.map((c) => (
+                        <MenuItem key={c.RepairCauseId} value={c.CauseCode}>
+                          {c.CauseCode}
                         </MenuItem>
                       ))}
                     </Select>
@@ -316,7 +352,7 @@ const ComplaintForm = () => {
 
               {/* Tab 2: Problem & Cause */}
               {activeStep === 1 && (
-                <Box sx={{ gap: 2, display: 'flex', flexDirection: 'column' }}>
+                <Box sx={{ gap: 2, display: "flex", flexDirection: "column" }}>
                   <TextField
                     label="Problem Statement"
                     fullWidth
@@ -330,14 +366,12 @@ const ComplaintForm = () => {
                   <FormControl fullWidth required>
                     <InputLabel>Cause Code</InputLabel>
                     <Select
-                      name="causeCode"
-                      value={formData.causeCode}
-                      onChange={handleSelectChange}
-                      label="Cause Code"
+                      value={repairCauseSelected}
+                      onChange={(e) => setRepairCauseSelected(e.target.value)}
                     >
-                      {CAUSE_CODES.map((code) => (
-                        <MenuItem key={code} value={code}>
-                          {code}
+                      {activeRepairCauses.map((c) => (
+                        <MenuItem key={c.RepairCauseId} value={c.CauseCode}>
+                          {c.CauseCode}
                         </MenuItem>
                       ))}
                     </Select>
@@ -362,8 +396,10 @@ const ComplaintForm = () => {
 
               {/* Tab 3: Attachments */}
               {activeStep === 2 && (
-                <Box sx={{ gap: 2, display: 'flex', flexDirection: 'column' }}>
-                  <Typography variant="body1">Upload Attachments (PDF, Images)</Typography>
+                <Box sx={{ gap: 2, display: "flex", flexDirection: "column" }}>
+                  <Typography variant="body1">
+                    Upload Attachments (PDF, Images)
+                  </Typography>
                   <Button
                     component="label"
                     variant="outlined"
@@ -386,7 +422,12 @@ const ComplaintForm = () => {
                         Attached Files:
                       </Typography>
                       {formData.attachments.map((file, idx) => (
-                        <Chip key={idx} label={file.name} variant="outlined" sx={{ m: 0.5 }} />
+                        <Chip
+                          key={idx}
+                          label={file.name}
+                          variant="outlined"
+                          sx={{ m: 0.5 }}
+                        />
                       ))}
                     </Box>
                   )}
@@ -395,32 +436,59 @@ const ComplaintForm = () => {
 
               {/* Tab 4: Review & Submit */}
               {activeStep === 3 && (
-                <Box sx={{ gap: 2, display: 'flex', flexDirection: 'column' }}>
+                <Box sx={{ gap: 2, display: "flex", flexDirection: "column" }}>
                   <Typography variant="h6">Review Complaint Summary</Typography>
-                  <Paper sx={{ p: 2, backgroundColor: '#f5f5f5' }}>
-                    <Box sx={{ gap: 1, display: 'flex', flexDirection: 'column' }}>
-                      <Typography><strong>Customer:</strong> {formData.customerName}</Typography>
-                      <Typography><strong>Email:</strong> {formData.customerEmail}</Typography>
-                      <Typography><strong>Date:</strong> {formData.complaintDate}</Typography>
-                      <Typography><strong>Model:</strong> {formData.modelSelected}</Typography>
-                      <Typography><strong>Part:</strong> {formData.partSelected}</Typography>
-                      <Typography><strong>Problem:</strong> {formData.problemStatement}</Typography>
-                      <Typography><strong>Cause Code:</strong> {formData.causeCode}</Typography>
-                      <Typography><strong>Severity:</strong> {formData.severityLevel}</Typography>
-                      <Typography><strong>Attachments:</strong> {formData.attachments.length} file(s)</Typography>
+                  <Paper sx={{ p: 2, backgroundColor: "#f5f5f5" }}>
+                    <Box
+                      sx={{ gap: 1, display: "flex", flexDirection: "column" }}
+                    >
+                      <Typography>
+                        <strong>Customer:</strong> {formData.customerName}
+                      </Typography>
+                      <Typography>
+                        <strong>Email:</strong> {formData.customerEmail}
+                      </Typography>
+                      <Typography>
+                        <strong>Date:</strong> {formData.complaintDate}
+                      </Typography>
+                      <Typography>
+                        <strong>Model:</strong> {formData.modelSelected}
+                      </Typography>
+                      <Typography>
+                        <strong>Part:</strong> {formData.partSelected}
+                      </Typography>
+                      <Typography>
+                        <strong>Problem:</strong> {formData.problemStatement}
+                      </Typography>
+                      <Typography>
+                        <strong>Cause Code:</strong> {formData.causeCode}
+                      </Typography>
+                      <Typography>
+                        <strong>Severity:</strong> {formData.severityLevel}
+                      </Typography>
+                      <Typography>
+                        <strong>Attachments:</strong>{" "}
+                        {formData.attachments.length} file(s)
+                      </Typography>
                     </Box>
                   </Paper>
                 </Box>
               )}
 
               {/* Navigation */}
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
+              <Box
+                sx={{ display: "flex", justifyContent: "space-between", mt: 3 }}
+              >
                 <Button disabled={activeStep === 0} onClick={handleBack}>
                   Back
                 </Button>
 
-                <Box sx={{ gap: 1, display: 'flex' }}>
-                  <Button variant="outlined" startIcon={<SaveAltIcon />} onClick={handleSaveDraft}>
+                <Box sx={{ gap: 1, display: "flex" }}>
+                  <Button
+                    variant="outlined"
+                    startIcon={<SaveAltIcon />}
+                    onClick={handleSaveDraft}
+                  >
                     Save Draft
                   </Button>
 
@@ -446,24 +514,21 @@ const ComplaintForm = () => {
 
         {/* Sidebar */}
         <Grid item xs={12} md={4}>
-
           {/* DRAFTS */}
           <Accordion
-            expanded={expanded === 'drafts'}
-            onChange={handleAccordionChange('drafts')}
+            expanded={expanded === "drafts"}
+            onChange={handleAccordionChange("drafts")}
             sx={{ mb: 2 }}
           >
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Typography variant="h6">
-                Drafts ({drafts.length})
-              </Typography>
+              <Typography variant="h6">Drafts ({drafts.length})</Typography>
             </AccordionSummary>
 
             <AccordionDetails
               sx={{
-                maxHeight: 230,          // 👈 fits ~3 cards
-                overflowY: 'auto',       // 👈 scroll INSIDE
-                pr: 1,                   // space for scrollbar
+                maxHeight: 230, // 👈 fits ~3 cards
+                overflowY: "auto", // 👈 scroll INSIDE
+                pr: 1, // space for scrollbar
               }}
             >
               {drafts.length === 0 ? (
@@ -477,13 +542,13 @@ const ComplaintForm = () => {
                     sx={{
                       p: 1.5,
                       mb: 1,
-                      cursor: 'pointer',
+                      cursor: "pointer",
                       backgroundColor:
                         activeDraftId === draft.ComplaintId
-                          ? '#ffe69c'
-                          : '#fff3cd',
-                      '&:hover': {
-                        backgroundColor: '#ffe69c',
+                          ? "#ffe69c"
+                          : "#fff3cd",
+                      "&:hover": {
+                        backgroundColor: "#ffe69c",
                       },
                     }}
                     onClick={() => handleDraftClick(draft)}
@@ -501,7 +566,7 @@ const ComplaintForm = () => {
                       display="block"
                       color="text.secondary"
                     >
-                      Saved on{' '}
+                      Saved on{" "}
                       {new Date(draft.ComplaintDate).toLocaleDateString()}
                     </Typography>
                   </Paper>
@@ -512,8 +577,8 @@ const ComplaintForm = () => {
 
           {/* SUBMITTED */}
           <Accordion
-            expanded={expanded === 'submitted'}
-            onChange={handleAccordionChange('submitted')}
+            expanded={expanded === "submitted"}
+            onChange={handleAccordionChange("submitted")}
           >
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
               <Typography variant="h6">
@@ -523,9 +588,9 @@ const ComplaintForm = () => {
 
             <AccordionDetails
               sx={{
-                maxHeight: 230,        // 👈 fits ~3 cards
-                overflowY: 'auto',     // 👈 scroll INSIDE
-                pr: 1,                 // space for scrollbar
+                maxHeight: 230, // 👈 fits ~3 cards
+                overflowY: "auto", // 👈 scroll INSIDE
+                pr: 1, // space for scrollbar
               }}
             >
               {submitted.length === 0 ? (
@@ -554,10 +619,7 @@ const ComplaintForm = () => {
               )}
             </AccordionDetails>
           </Accordion>
-
-
         </Grid>
-
       </Grid>
     </Container>
   );
