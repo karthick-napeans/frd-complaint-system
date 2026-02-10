@@ -17,5 +17,5 @@ export const updateMaster = (type, data) => {
 
 export const deleteMaster = (type, id) => {
   const cfg = MASTER_CONFIG[type];
-  return postRequest(`${cfg.baseUrl}/delete`, cfg.mapDelete(id));
+  return postRequest(`${cfg.baseUrl}/active`, cfg.mapDelete(id));
 };

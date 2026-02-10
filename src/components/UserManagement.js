@@ -37,7 +37,6 @@ const UserManagement = () => {
     password: '',
   });
 
-
   useEffect(() => {
     fetchUsers();
   }, []);
@@ -58,7 +57,6 @@ const UserManagement = () => {
     }
     return "Something went wrong. Please try again.";
   };
-
 
   const fetchUsers = async () => {
     try {
@@ -124,7 +122,7 @@ const UserManagement = () => {
       UserRole: formData.role || editingUser.UserRole,
       Designation: formData.designation || editingUser.Designation,
     };
-  }; 
+  };
 
   const handleCreateEditUser = async () => {
     setSubmitError(""); // clear old error
@@ -159,7 +157,6 @@ const UserManagement = () => {
     }
   };
 
-
   const RoleChip = ({ value }) => (
     <Chip
       label={value}
@@ -185,7 +182,6 @@ const UserManagement = () => {
     />
   );
 
-  /* ---------------- COLUMNS ---------------- */
   const columns = [
     {
       field: 'sno',
@@ -260,8 +256,6 @@ const UserManagement = () => {
     },
   ];
 
-
-  /* ---------------- UI ---------------- */
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
@@ -276,22 +270,38 @@ const UserManagement = () => {
 
       <Card>
         <CardContent>
-          <Box sx={{ height: 420 }}>
+          <Box  >
             <DataGrid
               rows={users}
               columns={columns}
               getRowId={(row) => row.UserId}
+
+              pagination
+              autoHeight              // 🔥 KEY LINE
               pageSizeOptions={[10, 20, 50]}
+              initialState={{
+                pagination: {
+                  paginationModel: {
+                    page: 0,
+                    pageSize: 10,
+                  },
+                },
+              }}
+
               disableRowSelectionOnClick
+
               sx={{
                 border: 'none',
+
                 '& .MuiDataGrid-columnHeaders': {
                   backgroundColor: '#f8fafc',
                   fontWeight: 700,
                 },
+
                 '& .MuiDataGrid-row:hover': {
                   backgroundColor: '#f9fafb',
                 },
+
                 '& .MuiDataGrid-cell': {
                   justifyContent: 'center',
                   display: 'flex',
@@ -299,6 +309,7 @@ const UserManagement = () => {
                 },
               }}
             />
+
           </Box>
         </CardContent>
       </Card>

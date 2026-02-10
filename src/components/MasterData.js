@@ -300,23 +300,41 @@ const MasterData = ({ userRole = "Admin" }) => {
 
       <Card>
         <CardContent>
-          <Box sx={{ height: 420 }}>
+          <Box >
             <DataGrid
-              rows={loading ? [] : rows}   // ⭐ KEY LINE
-              columns={columnsMap[masterType].map((col) => ({
-                ...col,
-                editable: false,
-                sortable: true,
-                resizable: false,
-              }))}
-              getRowId={(row) => row[MASTER_ID_FIELD[masterType]]}
+              rows={loading ? [] : rows}
 
+              columns={[
+                {
+                  field: "sno",
+                  headerName: "S.No",
+                  width: 80,
+                  sortable: false,
+                  align: "center",
+                  headerAlign: "center",
+                  renderCell: (params) => {
+                    if (!params?.id) return "";
+
+                    const index = rows.findIndex(
+                      (row) =>
+                        row[MASTER_ID_FIELD[masterType]] === params.id
+                    );
+
+                    return index >= 0 ? index + 1 : "";
+                  },
+                },
+                ...columnsMap[masterType].map((col) => ({
+                  ...col,
+                  editable: false,
+                  sortable: true,
+                  resizable: false,
+                })),
+              ]}
+
+              getRowId={(row) => row[MASTER_ID_FIELD[masterType]]}
               loading={loading}
 
-              disableRowSelectionOnClick
-              disableColumnMenu
-              disableColumnReorder
-
+              pagination
               pageSizeOptions={[10, 20, 50]}
               initialState={{
                 pagination: {
@@ -324,27 +342,51 @@ const MasterData = ({ userRole = "Admin" }) => {
                 },
               }}
 
+              disableRowSelectionOnClick
+              disableColumnMenu
+              disableColumnReorder
+
               sx={{
                 border: "none",
+
+                /* center all headers */
+                "& .MuiDataGrid-columnHeader": {
+                  justifyContent: "center",
+                },
+                "& .MuiDataGrid-columnHeaderTitle": {
+                  textAlign: "center",
+                  width: "100%",
+                  fontWeight: 600,
+                },
+
                 "& .MuiDataGrid-columnHeaders": {
                   backgroundColor: "#f5f7fa",
                   fontWeight: 700,
                   borderBottom: "1px solid #e0e0e0",
                 },
-                "& .MuiDataGrid-columnHeaderTitle": {
-                  fontWeight: 600,
-                },
+
                 "& .MuiDataGrid-row": {
                   cursor: "pointer",
                 },
+
                 "& .MuiDataGrid-cell": {
                   outline: "none !important",
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
                 },
+
                 "& .MuiDataGrid-footerContainer": {
                   borderTop: "1px solid #e0e0e0",
                 },
+                "& .MuiDataGrid-columnHeaderTitleContainer": {
+                  justifyContent: "center",
+                },
+
               }}
             />
+
+
 
           </Box>
         </CardContent>

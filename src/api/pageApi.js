@@ -37,9 +37,7 @@ export const getMstColumns = () => {
 
 export const getUploadHistory = () => {
     return getRequest("/warranty-claims/upload/history");
-}
-
-
+}  
 
 export const getDreList = () => {
     return getRequest("/dre/list");
@@ -64,7 +62,7 @@ export const updateUser = (payload) => {
 }
 
 export const deleteUser = (id) => {
-    return postRequest(`/users/delete`, { UserId: id });
+    return postRequest(`/users/active`, { UserId: id });
 }
 
 export const saveDreDraft = (payload) => {
