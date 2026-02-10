@@ -11,6 +11,8 @@ import {
   CssBaseline,
   Divider,
 } from '@mui/material';
+import SettingsIcon from '@mui/icons-material/Settings';
+import LogoutIcon from '@mui/icons-material/Logout';
 import { BrowserRouter, Routes, Route, useNavigate, Navigate } from 'react-router-dom';
 import MenuIcon from '@mui/icons-material/Menu';
 import Login from './components/Login';
@@ -30,6 +32,7 @@ import ComplaintAnalysis from './components/ComplaintAnalysis';
 import DREAnalysis from './components/DREAnalysis';
 import AuditLogs from './components/AuditLogs';
 import { useReloadControl } from './reload/useReloadControl';
+import ImprovementBaselinePage from './components/ImprovementBaseline';
 
 
 //API
@@ -79,9 +82,12 @@ const AppLayout = ({ userRole, username, onLogout }) => {
             QC Complaint Management System
           </Typography>
 
-          <Avatar sx={{ cursor: "pointer" }}>
-            {username?.charAt(0)?.toUpperCase()}
-          </Avatar>
+          <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} sx={{ p: 0 }}>
+            <Avatar sx={{ cursor: "pointer" }}>
+              {username?.charAt(0)?.toUpperCase()}
+            </Avatar>
+          </IconButton>
+
         </Toolbar>
       </AppBar>
 
@@ -95,6 +101,37 @@ const AppLayout = ({ userRole, username, onLogout }) => {
         username={username}
         onLogout={handleLogout}
       />
+
+
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={() => setAnchorEl(null)}
+        anchorOrigin={{
+          vertical: "bottom",
+          horizontal: "right",
+        }}
+        transformOrigin={{
+          vertical: "top",
+          horizontal: "right",
+        }}
+      >
+        <MenuItem onClick={() => {
+          setAnchorEl(null);
+          navigate("/settings");
+        }}>
+          <SettingsIcon fontSize="small" sx={{ mr: 1 }} />
+          Settings
+        </MenuItem>
+
+        <Divider />
+
+        <MenuItem onClick={handleLogout}>
+          <LogoutIcon fontSize="small" sx={{ mr: 1 }} />
+          Logout
+        </MenuItem>
+      </Menu>
+
 
       <Box
         component="main"
@@ -113,6 +150,7 @@ const AppLayout = ({ userRole, username, onLogout }) => {
           {/* Warranty */}
           <Route path="/warranty/entry" element={<WarrantyEntry />} />
           <Route path="/warranty/analysis" element={<WarrantyAnalysis />} />
+          <Route path="/warranty/improvement-baseline" element={<ImprovementBaselinePage />} />
           <Route path="/warranty/mapper" element={<ColumnMapper />} />
 
           {/* DRE */}

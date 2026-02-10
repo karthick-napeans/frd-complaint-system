@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Box, Container, TextField, Button, Typography, Card, CardContent, Alert } from '@mui/material';
+import { Box, Container, TextField, Button, Typography, Card, CardContent, Alert, Link } from '@mui/material';
 import LoginIcon from '@mui/icons-material/Login';
 import { loginApi } from '../api/pageApi';
 import { useNavigate } from 'react-router-dom';
@@ -14,16 +14,32 @@ const Login = ({ onLogin }) => {
 
 
   const handleLogin = async () => {
-    const response = await loginApi({ UserName: username, Password: password });
+    setError("");
+    setLoading(true);
 
-    const { Token, UserRole, UserName } = response;
+    try {
+      const response = await loginApi({
+        UserName: username,
+        Password: password,
+      });
 
-    localStorage.setItem("authToken", Token);
-    localStorage.setItem("username", UserName);
+      const { Token, UserRole, UserName } = response;
 
-    onLogin(UserRole, UserName);
+      localStorage.setItem("authToken", Token);
+      localStorage.setItem("username", UserName);
 
-    navigate("/dashboard", { replace: true });
+      onLogin(UserRole, UserName);
+      navigate("/dashboard", { replace: true });
+
+    } catch (err) {
+      if (err.response?.status === 401) {
+        setError("Invalid username or password");
+      } else {
+        setError("Login failed. Please try again.");
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -60,7 +76,6 @@ const Login = ({ onLogin }) => {
                 onChange={(e) => setUsername(e.target.value)}
                 disabled={loading}
                 onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
-                placeholder="Try: Karthick"
               />
               <TextField
                 label="Password"
@@ -70,8 +85,21 @@ const Login = ({ onLogin }) => {
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={loading}
                 onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
-                placeholder="Try: Admin@123"
               />
+
+              <Box sx={{ textAlign: "right" }}>
+                <Link
+                  component="button"
+                  variant="body2"
+                  underline="hover"
+                  disabled={loading}
+                  onClick={() => navigate("/forgot-password")}
+                  sx={{ cursor: "pointer" }}
+                >
+                  Forgot password?
+                </Link>
+              </Box>
+
               <Button
                 variant="contained"
                 size="large"
@@ -82,25 +110,6 @@ const Login = ({ onLogin }) => {
                 {loading ? 'Signing in...' : 'Sign In'}
               </Button>
             </Box>
-
-            {/* Demo Credentials Help */}
-            {/* <Card sx={{ mt: 3, backgroundColor: '#e3f2fd', border: '1px solid #1976d2' }}>
-              <CardContent sx={{ py: 1.5 }}>
-                <Typography variant="body2" fontWeight="bold" sx={{ mb: 1 }}>
-                  Demo Credentials (No Backend Needed):
-                </Typography>
-                <Typography variant="caption" display="block" sx={{ mb: 0.5 }}>
-                  <strong>Super Admin:</strong> admin / admin123
-                </Typography>
-                <Typography variant="caption" display="block" sx={{ mb: 0.5 }}>
-                  <strong>QC Admin:</strong> qcadmin / qcadmin123
-                </Typography>
-                <Typography variant="caption" display="block">
-                  <strong>QC User:</strong> qcuser / qcuser123
-                </Typography>
-              </CardContent>
-            </Card> */}
-
 
           </CardContent>
         </Card>

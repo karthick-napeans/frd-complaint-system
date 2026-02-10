@@ -13,6 +13,7 @@ import {
   TextField,
   Chip,
   IconButton,
+  Alert
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import AddIcon from '@mui/icons-material/Add';
@@ -23,6 +24,7 @@ import { getAllUsers, createUser, updateUser, deleteUser } from '../api/pageApi'
 const UserManagement = () => {
   const [openDialog, setOpenDialog] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
+  const [submitError, setSubmitError] = useState("");
   const [users, setUsers] = useState([]);
   const [formData, setFormData] = useState({
     userId: null,
@@ -39,6 +41,24 @@ const UserManagement = () => {
   useEffect(() => {
     fetchUsers();
   }, []);
+
+  const getErrorMessage = (error) => {
+    const data = error?.response?.data;
+    if (data?.Message) {
+      return data.Message;
+    }
+    if (data?.message) {
+      return data.message;
+    }
+    if (typeof data === "string") {
+      return data;
+    }
+    if (error?.message) {
+      return error.message;
+    }
+    return "Something went wrong. Please try again.";
+  };
+
 
   const fetchUsers = async () => {
     try {
@@ -63,7 +83,6 @@ const UserManagement = () => {
 
   const handleEdit = (row) => {
     setEditingUser(row);
-
     setFormData({
       userId: row.UserId,
       username: row.UserName ?? '',
@@ -71,10 +90,8 @@ const UserManagement = () => {
       role: row.UserRole ?? 'QC_User',
       contactNumber: row.ContactNumber ? String(row.ContactNumber) : '',
       designation: row.Designation ?? '',
-      isActive: Boolean(row.IsActive),
       password: '',
     });
-
     setOpenDialog(true);
   };
 
@@ -93,56 +110,55 @@ const UserManagement = () => {
     return {
       UserId: editingUser.UserId,
 
-      UserName: formData.username ?? editingUser.UserName,
-      EmailId: formData.email ?? editingUser.EmailId,
+      UserName: formData.username || editingUser.UserName,
+      EmailId: formData.email || editingUser.EmailId,
 
       PasswordHash: editingUser.PasswordHash,
-      ProfilePicUrl: editingUser.ProfilePicUrl ?? "",
+      ProfilePicUrl: editingUser.ProfilePicUrl ?? null,
 
       ContactNumber:
         formData.contactNumber !== undefined && formData.contactNumber !== ""
-          ? Number(formData.contactNumber)
-          : editingUser.ContactNumber,
+          ? String(formData.contactNumber)
+          : String(editingUser.ContactNumber),
 
-      UserRole: formData.role ?? editingUser.UserRole,
-      Designation: formData.designation ?? editingUser.Designation,
+      UserRole: formData.role || editingUser.UserRole,
+      Designation: formData.designation || editingUser.Designation,
     };
   }; 
 
   const handleCreateEditUser = async () => {
+    setSubmitError(""); // clear old error
+
     try {
       if (editingUser) {
         const payload = buildUpdatePayload(formData, editingUser);
-
-        console.log("UPDATE PAYLOAD:", payload);
-
-        await updateUser(payload); // POST /users/update
+        await updateUser(payload);
         await fetchUsers();
       } else {
         const newUser = {
           UserName: formData.username,
           EmailId: formData.email,
           PasswordHash: formData.password,
-          ContactNumber: Number(formData.contactNumber),
+          ContactNumber: String(formData.contactNumber),
           UserRole: formData.role,
           Designation: formData.designation,
-          ProfilePicUrl: "",
+          ProfilePicUrl: null,
         };
 
-        const createdUser = await createUser(newUser);
-        console.log("Created user:", createdUser);
-
-        if (createdUser === 1) {
-          await fetchUsers();
-        }
+        await createUser(newUser);
+        await fetchUsers();
       }
 
       setOpenDialog(false);
       setEditingUser(null);
+
     } catch (error) {
-      console.error("Error creating/editing user:", error?.response || error);
+      const message = getErrorMessage(error);
+      setSubmitError(message);
+      console.error("Error creating/editing user:", error);
     }
-  }; 
+  };
+
 
   const RoleChip = ({ value }) => (
     <Chip
@@ -364,6 +380,11 @@ const UserManagement = () => {
 
           )}
 
+          {submitError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {submitError}
+            </Alert>
+          )}
 
 
         </DialogContent>
