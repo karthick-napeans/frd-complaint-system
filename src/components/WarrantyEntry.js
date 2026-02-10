@@ -31,68 +31,12 @@ import { uploadWarrantyClaims, getUploadHistory } from '../api/pageApi';
 const WarrantyEntry = () => {
   const { customers } = useSelector(state => state.masters);
   console.log('Customers from Redux:', customers);
-
+  const [pageSize, setPageSize] = useState(10);
   const [customerSelected, setCustomerSelected] = useState('');
   const [uploadedFile, setUploadedFile] = useState(null);
   const [previewData, setPreviewData] = useState([]);
   const [message, setMessage] = useState('');
   const [uploadHistory, setUploadHistory] = useState([]);
-  const [openPreview, setOpenPreview] = useState(false);
-
-  // Sample warranty data (from Iljin's actual data)
-  const MOCK_WARRANTY_DATA = [
-    {
-      vin_no: 'MALPC813MPM573770',
-      Model: 'FH',
-      model_name: '[SU2I] CRETA/ALCAZAR',
-      part_no: '51720F0500',
-      part_name: 'WHEEL BEARING-FR',
-      op_code: '51720R00',
-      c_code: 'ZZ4',
-      prod_date: '2023-10-03',
-      repair_date: '2025-05-08',
-      sales_date: '2023-11-22',
-      used_months: 18,
-      mileage: 32594,
-      part_cost: 1361.16,
-      labour_cost: 959.2,
-      sublet_cost: 0,
-    },
-    {
-      vin_no: 'MALPC813LPM571109',
-      Model: 'FH',
-      model_name: '[SU2I] CRETA/ALCAZAR',
-      part_no: '51720F0500',
-      part_name: 'WHEEL BEARING-FR',
-      op_code: '51720R0B',
-      c_code: 'ZZ3',
-      prod_date: '2023-09-26',
-      repair_date: '2025-04-22',
-      sales_date: '2023-10-03',
-      used_months: 19,
-      mileage: 44293,
-      part_cost: 1361.16,
-      labour_cost: 567.0,
-      sublet_cost: 593.0,
-    },
-    {
-      vin_no: 'MALPC813LPM570456',
-      Model: 'FH',
-      model_name: '[SU2I] CRETA/ALCAZAR',
-      part_no: '54100A0200',
-      part_name: 'FRONT BRAKE DISC',
-      op_code: '54100R00',
-      c_code: 'ZZ2',
-      prod_date: '2023-08-15',
-      repair_date: '2025-03-10',
-      sales_date: '2023-09-01',
-      used_months: 20,
-      mileage: 55000,
-      part_cost: 2500.0,
-      labour_cost: 450.0,
-      sublet_cost: 200.0,
-    },
-  ];
 
   const CUSTOMER_LIST = customers.map(c => ({
     id: c.CustomerId,
@@ -498,39 +442,47 @@ const WarrantyEntry = () => {
         <DataGrid
           rows={uploadHistory}
           columns={columns}
-          pageSize={10}
-          rowsPerPageOptions={[10]}
+
+          pagination
+          pageSizeOptions={[10]}   // 👈 only 10 rows allowed
+
+          initialState={{
+            pagination: {
+              paginationModel: {
+                page: 0,
+                pageSize: 10,
+              },
+            },
+          }}
+
           disableSelectionOnClick
           disableColumnMenu
           disableColumnFilter
           hideFooterSelectedRowCount
+
           rowHeight={52}
           headerHeight={48}
+
           sx={{
             border: '1px solid #eaeaea',
-          
             backgroundColor: '#ffffff',
 
-            /* Header */
             '& .MuiDataGrid-columnHeaders': {
               backgroundColor: '#fafafa',
               borderBottom: '1px solid #e0e0e0',
               fontWeight: 600,
-              fontSize:15,
+              fontSize: 15,
             },
 
-            /* Rows – flat, no gaps */
             '& .MuiDataGrid-row': {
               backgroundColor: '#ffffff',
               borderBottom: '1px solid #f0f0f0',
             },
 
-            /* Hover */
             '& .MuiDataGrid-row:hover': {
               backgroundColor: '#f5f8ff',
             },
 
-            /* Cells */
             '& .MuiDataGrid-cell': {
               borderBottom: 'none',
               fontSize: 16,
@@ -539,18 +491,17 @@ const WarrantyEntry = () => {
               alignItems: 'center',
             },
 
-            /* Remove focus outlines */
             '& .MuiDataGrid-cell:focus, & .MuiDataGrid-columnHeader:focus': {
               outline: 'none',
             },
 
-            /* Footer */
             '& .MuiDataGrid-footerContainer': {
               borderTop: '1px solid #eaeaea',
               minHeight: 44,
             },
           }}
         />
+
 
       </Box>
     </Container>
