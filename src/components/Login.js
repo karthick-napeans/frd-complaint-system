@@ -3,6 +3,8 @@ import { Box, Container, TextField, Button, Typography, Card, CardContent, Alert
 import LoginIcon from '@mui/icons-material/Login';
 import { loginApi } from '../api/pageApi';
 import { useNavigate } from 'react-router-dom';
+import LoginIconImg from "../assets/iljin-logo.png";
+
 
 
 const Login = ({ onLogin }) => {
@@ -57,13 +59,22 @@ const Login = ({ onLogin }) => {
         <Card sx={{ width: '100%', boxShadow: 3 }}>
           <CardContent>
             <Box sx={{ textAlign: 'center', mb: 3 }}>
-              <LoginIcon sx={{ fontSize: 60, color: 'primary.main', mb: 1 }} />
-              <Typography variant="h4" fontWeight="bold">
-                QC Complaint System
+              <Box
+                component="img"
+                src={LoginIconImg}
+                alt="Login"
+                sx={{
+                  width: 150,
+                  height: 40,
+                  mb: 1,
+                }}
+              />
+              <Typography variant="h5" fontWeight="bold">
+                QA-QC Dashboard
               </Typography>
-              <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
-                Customer Quality Claim & Complaint Management
-              </Typography>
+              {/* <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
+                Warranty Claim Management System
+              </Typography> */}
             </Box>
 
             {error && <Alert severity="error">{error}</Alert>}

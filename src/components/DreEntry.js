@@ -31,12 +31,9 @@ const DREEntry = () => {
   const activeParts = parts.filter((p) => p.IsActive === true);
   const activeModels = models.filter((m) => m.IsActive === true);
   const activeRepairCauses = repairCauses.filter((c) => c.IsActive === true);
-
   const [attachments, setAttachments] = useState([]);
   const [showHeaderError, setShowHeaderError] = useState(false);
-
-  const [editingDraftId, setEditingDraftId] = useState(null);
-
+  const [expandedPanel, setExpandedPanel] = useState(null);
   const [activeStep, setActiveStep] = useState(0);
   const [activeDraftId, setActiveDraftId] = useState(null);
   const [message, setMessage] = useState('');
@@ -44,7 +41,9 @@ const DREEntry = () => {
   const drafts = dreList.filter(d => d.Status === "DRAFT");
   const submitted = dreList.filter(d => d.Status === "OPEN");
 
-  console.log("Draft Counts:", drafts.length, submitted.length);
+  const handleAccordionChange = (panel) => (event, isExpanded) => {
+    setExpandedPanel(isExpanded ? panel : null);
+  };
 
   const loadDreList = async () => {
     try {
@@ -569,19 +568,27 @@ const DREEntry = () => {
           </Card>
         </Grid>
 
-        {/* RIGHT SIDE PANEL */}
         {/* RIGHT PANEL – DRAFTS & SUBMITTED */}
         <Grid item xs={12} md={4}>
 
           {/* DRAFTS */}
-          <Accordion defaultExpanded>
+          <Accordion
+            expanded={expandedPanel === "drafts"}
+            onChange={handleAccordionChange("drafts")}
+          >
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
               <Typography fontWeight={600}>
                 Drafts ({drafts.length})
               </Typography>
             </AccordionSummary>
 
-            <AccordionDetails>
+            <AccordionDetails
+              sx={{
+                maxHeight: 360,
+                overflowY: "auto",
+                pr: 1,
+              }}
+            >
               {drafts.length === 0 ? (
                 <Typography variant="caption" color="text.secondary">
                   No drafts available
@@ -589,50 +596,57 @@ const DREEntry = () => {
               ) : (
                 drafts.map((draft) => (
                   <Paper
-                    key={draft.id}
+                    key={draft.DreId}
                     elevation={0}
                     sx={{
                       p: 1.5,
                       mb: 1,
                       borderRadius: 2,
-                      border: '1px solid #e5e7eb',
-                      cursor: 'pointer',
-                      transition: '0.2s',
-                      '&:hover': {
-                        backgroundColor: '#f9fafb',
-                        borderColor: '#2563eb',
+                      border: "1px solid #e5e7eb",
+                      cursor: "pointer",
+                      transition: "0.2s",
+                      "&:hover": {
+                        backgroundColor: "#f9fafb",
+                        borderColor: "#2563eb",
                       },
                     }}
                     onClick={() => handleDraftClick(draft)}
                   >
                     <Typography fontWeight={600} fontSize={13}>
-                      {draft.dreId || 'Untitled Draft'}
+                      {draft.DreNumber || "Untitled Draft"}
                     </Typography>
 
                     <Typography variant="caption" color="text.secondary">
-                      {draft.model} • {draft.part}
+                      {draft.Model || "—"} • {draft.Part || "—"}
                     </Typography>
 
-                    <Chip
-                      label="Draft"
-                      size="small"
-                      sx={{ mt: 0.5 }}
-                    />
+                    <Chip label="Draft" size="small" sx={{ mt: 0.5 }} />
                   </Paper>
                 ))
               )}
             </AccordionDetails>
           </Accordion>
 
+
           {/* SUBMITTED */}
-          <Accordion sx={{ mt: 2 }}>
+          <Accordion
+            sx={{ mt: 2 }}
+            expanded={expandedPanel === "submitted"}
+            onChange={handleAccordionChange("submitted")}
+          >
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
               <Typography fontWeight={600}>
                 Submitted ({submitted.length})
               </Typography>
             </AccordionSummary>
 
-            <AccordionDetails>
+            <AccordionDetails
+              sx={{
+                maxHeight: 360,
+                overflowY: "auto",
+                pr: 1,
+              }}
+            >
               {submitted.length === 0 ? (
                 <Typography variant="caption" color="text.secondary">
                   No submitted entries
@@ -640,22 +654,23 @@ const DREEntry = () => {
               ) : (
                 submitted.map((entry) => (
                   <Paper
-                    key={entry.id}
+                    key={entry.DreId}
                     elevation={0}
                     sx={{
                       p: 1.5,
                       mb: 1,
                       borderRadius: 2,
-                      border: '1px solid #e5e7eb',
-                      backgroundColor: '#f0fdf4',
+                      border: "1px solid #e5e7eb",
+                      backgroundColor: "#f0fdf4",
                     }}
                   >
                     <Typography fontWeight={600} fontSize={13}>
-                      {entry.dreId}
+                      {entry.DreNumber}
                     </Typography>
 
                     <Typography variant="caption" color="text.secondary">
-                      Submitted • {entry.submittedDate}
+                      Submitted •{" "}
+                      {new Date(entry.DreDate).toLocaleDateString()}
                     </Typography>
 
                     <Chip

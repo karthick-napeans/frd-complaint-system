@@ -34,6 +34,8 @@ const ComplaintForm = () => {
   const activeParts = parts.filter((p) => p.IsActive === true);
   const activeModels = models.filter((m) => m.IsActive === true);
   const activeRepairCauses = repairCauses.filter((c) => c.IsActive === true);
+  const [expandedPanel, setExpandedPanel] = useState(null);
+
 
   console.log("Parts from store:", parts);
   console.log("Models from store:", models);
@@ -70,8 +72,8 @@ const ComplaintForm = () => {
   ];
 
 
-  const handleAccordionChange = (panel) => (_, isExpanded) => {
-    setExpanded(isExpanded ? panel : false);
+  const handleAccordionChange = (panel) => (event, isExpanded) => {
+    setExpandedPanel(isExpanded ? panel : null);
   };
 
   useEffect(() => {
@@ -239,8 +241,17 @@ const ComplaintForm = () => {
   };
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Typography variant="h4" fontWeight="bold" sx={{ mb: 3 }}>
+    <Container
+      maxWidth="lg"
+      sx={{
+        py: 2,
+        flex: 1,
+        overflow: "hidden", // 🚫 container scroll
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
+      <Typography variant="h5" fontWeight={700} sx={{ mb: 2 }}>
         Customer Complaint Entry
       </Typography>
 
@@ -514,14 +525,23 @@ const ComplaintForm = () => {
         <Grid item xs={12} md={4}>
 
           {/* DRAFTS */}
-          <Accordion defaultExpanded>
+          <Accordion
+            expanded={expandedPanel === "drafts"}
+            onChange={handleAccordionChange("drafts")}
+          >
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Typography fontWeight={600}>
+              <Typography fontWeight={600} fontSize={14}>
                 Drafts ({drafts.length})
               </Typography>
             </AccordionSummary>
 
-            <AccordionDetails>
+            <AccordionDetails
+              sx={{
+                maxHeight: 360,
+                overflowY: "auto",
+                pr: 1,
+              }}
+            >
               {drafts.length === 0 ? (
                 <Typography variant="caption" color="text.secondary">
                   No drafts available
@@ -535,44 +555,51 @@ const ComplaintForm = () => {
                       p: 1.5,
                       mb: 1,
                       borderRadius: 2,
-                      border: '1px solid #e5e7eb',
-                      cursor: 'pointer',
-                      transition: '0.2s',
-                      '&:hover': {
-                        backgroundColor: '#f9fafb',
-                        borderColor: '#2563eb',
+                      border: "1px solid #e5e7eb",
+                      cursor: "pointer",
+                      transition: "0.2s",
+                      "&:hover": {
+                        backgroundColor: "#f9fafb",
+                        borderColor: "#2563eb",
                       },
                     }}
                     onClick={() => handleDraftClick(draft)}
                   >
                     <Typography fontWeight={600} fontSize={13}>
-                      {draft.ComplaintNo || 'Untitled Draft'}
+                      {draft.ComplaintNo || "Untitled Draft"}
                     </Typography>
 
                     <Typography variant="caption" color="text.secondary">
-                      {draft.Model || '—'} • {draft.Part || '—'}
+                      {draft.Model || "—"} • {draft.Part || "—"}
                     </Typography>
 
-                    <Chip
-                      label="Draft"
-                      size="small"
-                      sx={{ mt: 0.5 }}
-                    />
+                    <Chip label="Draft" size="small" sx={{ mt: 0.5 }} />
                   </Paper>
                 ))
               )}
             </AccordionDetails>
           </Accordion>
 
+
           {/* SUBMITTED */}
-          <Accordion sx={{ mt: 2 }}>
+          <Accordion
+            sx={{ mt: 2 }}
+            expanded={expandedPanel === "submitted"}
+            onChange={handleAccordionChange("submitted")}
+          >
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Typography fontWeight={600}>
+              <Typography fontWeight={600} fontSize={14}>
                 Submitted ({submitted.length})
               </Typography>
             </AccordionSummary>
 
-            <AccordionDetails>
+            <AccordionDetails
+              sx={{
+                maxHeight: 360,
+                overflowY: "auto",
+                pr: 1,
+              }}
+            >
               {submitted.length === 0 ? (
                 <Typography variant="caption" color="text.secondary">
                   No submitted complaints
@@ -586,8 +613,8 @@ const ComplaintForm = () => {
                       p: 1.5,
                       mb: 1,
                       borderRadius: 2,
-                      border: '1px solid #e5e7eb',
-                      backgroundColor: '#f0fdf4',
+                      border: "1px solid #e5e7eb",
+                      backgroundColor: "#f0fdf4",
                     }}
                   >
                     <Typography fontWeight={600} fontSize={13}>
@@ -595,7 +622,8 @@ const ComplaintForm = () => {
                     </Typography>
 
                     <Typography variant="caption" color="text.secondary">
-                      Submitted • {new Date(complaint.ComplaintDate).toLocaleDateString()}
+                      Submitted •{" "}
+                      {new Date(complaint.ComplaintDate).toLocaleDateString()}
                     </Typography>
 
                     <Chip

@@ -106,28 +106,28 @@ const menuItems = [
   // DRE
   // =====================
   {
-    id: 'dre',
-    label: 'DRE',
+    id: 'dre-entry',
+    label: 'DRE-Entry',
     icon: <EngineeringIcon />,
-    path: '/dre',
+    path: '/dre/entry',
     roles: ['Super_Admin', 'QC Admin'],
     collapsible: true,
-    submenu: [
-      {
-        id: 'dre-entry',
-        label: 'Entry',
-        icon: <PostAddIcon />,
-        path: '/dre/entry',
-        roles: ['Super_Admin', 'QC Admin'],
-      },
-      {
-        id: 'dre-analysis',
-        label: 'Analysis',
-        icon: <FactCheckIcon />,
-        path: '/dre/analysis',
-        roles: ['Super_Admin', 'QC Admin'],
-      },
-    ],
+    // submenu: [
+    //   {
+    //     id: 'dre-entry',
+    //     label: 'Entry',
+    //     icon: <PostAddIcon />,
+    //     path: '/dre/entry',
+    //     roles: ['Super_Admin', 'QC Admin'],
+    //   },
+    //   {
+    //     id: 'dre-analysis',
+    //     label: 'Analysis',
+    //     icon: <FactCheckIcon />,
+    //     path: '/dre/analysis',
+    //     roles: ['Super_Admin', 'QC Admin'],
+    //   },
+    // ],
   },
 
   // =====================

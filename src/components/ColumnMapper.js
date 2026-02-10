@@ -39,7 +39,7 @@ const WarrantyColumnMapper = () => {
   console.log("Customers from store:", customers);
   const activeCustomers = customers.filter((c) => c.IsActive === true);
   console.log("Active Customers:", activeCustomers);
-
+  const ROW_HEIGHT = 56;
   const [customerSelected, setCustomerSelected] = useState("");
   const [customerColumns, setCustomerColumns] = useState([]);
   const [masterColumns, setMasterColumns] = useState([]);
@@ -63,12 +63,12 @@ const WarrantyColumnMapper = () => {
         const data = await getMstColumns();
         const cols = Array.isArray(data)
           ? data
-              .filter((c) => c.IsActive)
-              .sort((a, b) => a.MasterColumnPosition - b.MasterColumnPosition)
-              .map((c) => ({
-                id: c.MasterColumnId,
-                name: c.MasterColumnName,
-              }))
+            .filter((c) => c.IsActive)
+            .sort((a, b) => a.MasterColumnPosition - b.MasterColumnPosition)
+            .map((c) => ({
+              id: c.MasterColumnId,
+              name: c.MasterColumnName,
+            }))
           : [];
         setMasterColumns(cols);
       } catch (e) {
@@ -301,6 +301,8 @@ const WarrantyColumnMapper = () => {
                     draggable
                     onDragStart={() => handleDragStart(col)}
                     sx={{
+                      height: ROW_HEIGHT,
+                      minHeight: ROW_HEIGHT,
                       p: 1.5,
                       my: 1,
                       border: "2px solid #1976d2",
@@ -354,6 +356,8 @@ const WarrantyColumnMapper = () => {
                       onDragOver={(e) => e.preventDefault()}
                       onDrop={() => handleDropOnMaster(col)}
                       sx={{
+                        height: ROW_HEIGHT,
+                        minHeight: ROW_HEIGHT,
                         p: 1.5,
                         my: 1,
                         border: "2px dashed #1976d2",

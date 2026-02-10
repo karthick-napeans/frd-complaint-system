@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { useDispatch } from "react-redux";
+import { loadMasters } from "../store/masterSlice";
 import {
   Box,
   Container,
@@ -74,6 +76,7 @@ const MASTER_FORM_CONFIG = {
 /* ================= COMPONENT ================= */
 
 const MasterData = ({ userRole = "Admin" }) => {
+  const dispatch = useDispatch();
   const [masterType, setMasterType] = useState("customer");
   const [rows, setRows] = useState([]);
   const [openDialog, setOpenDialog] = useState(false);
@@ -119,26 +122,19 @@ const MasterData = ({ userRole = "Admin" }) => {
   const handleSave = async () => {
     try {
       if (editingRow) {
-        console.log("📝 UPDATE payload:", {
-          ...editingRow,
-          ...formData,
-        });
+        const payload = { ...editingRow, ...formData };
 
-        await updateMaster(masterType, {
-          ...editingRow,
-          ...formData,
-        });
-
+        await updateMaster(masterType, payload);
+        await fetchMasterData();
         console.log("✅ Update success");
       } else {
-        console.log("🆕 CREATE payload:", formData);
-
         await createMaster(masterType, formData);
-
+        await fetchMasterData();
         console.log("✅ Create success");
       }
 
-      await fetchMasterData();
+      await dispatch(loadMasters());
+
       setOpenDialog(false);
       setEditingRow(null);
       setFormData({});
@@ -150,20 +146,19 @@ const MasterData = ({ userRole = "Admin" }) => {
   const handleDelete = async (row) => {
     try {
       const idField = MASTER_ID_FIELD[masterType];
-      console.log("🗑️ Delete clicked:", {
-        masterType,
-        idField,
-        id: row[idField],
-      });
 
       await deleteMaster(masterType, row[idField]);
+      await fetchMasterData(); // 🔥 REFRESH LOCAL STATE
 
       console.log("✅ Delete success");
-      await fetchMasterData();
+
+      // 🔥 refresh Redux
+      await dispatch(loadMasters());
     } catch (err) {
       console.error("❌ Delete failed:", err);
     }
   };
+
 
   const StatusChip = ({ value }) => (
     <Chip

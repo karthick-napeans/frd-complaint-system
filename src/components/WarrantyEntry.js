@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   Box,
   Container,
@@ -29,9 +29,10 @@ import * as XLSX from 'xlsx';
 import { uploadWarrantyClaims, getUploadHistory } from '../api/pageApi';
 
 const WarrantyEntry = () => {
+  const fileInputRef = useRef(null);
   const { customers } = useSelector(state => state.masters);
-  console.log('Customers from Redux:', customers);
-  const [pageSize, setPageSize] = useState(10);
+  console.log('Raw Data customers:', customers);
+  const activeCustomers = customers.filter((c) => c.IsActive === true);
   const [customerSelected, setCustomerSelected] = useState('');
   const [uploadedFile, setUploadedFile] = useState(null);
   const [previewData, setPreviewData] = useState([]);
@@ -43,9 +44,7 @@ const WarrantyEntry = () => {
     name: c.CustomerName,
   }));
 
-  console.log('Customer List:', CUSTOMER_LIST);
-
-  const fetchUploadHistory = async () => {
+    const fetchUploadHistory = async () => {
     try {
       const response = await getUploadHistory(); // already response.data because interceptor
       const rows = response.map((item) => ({
@@ -115,32 +114,23 @@ const WarrantyEntry = () => {
         console.log(pair[0], pair[1]);
       }
 
-      // 🚀 API CALL
       const response = await uploadWarrantyClaims(formData);
+      await fetchUploadHistory();
       console.log('Upload response:', response);
 
-      // // ✅ Build upload history (UI)
-      // const newUpload = {
-      //   id: uploadHistory.length + 1,
-      //   customer: customerSelected,
-      //   filename: uploadedFile.name,
-      //   uploadDate: new Date().toISOString().split('T')[0],
-      //   recordsCount: previewData.length,
-      //   status: 'Success',
-      //   recordsProcessed: response?.data?.recordsProcessed ?? previewData.length,
-      //   validationErrors: response?.data?.validationErrors ?? 0,
-      // };
-
-      // setUploadHistory(prev => [...prev, newUpload]);
-
       setMessage(
-        `✓ Successfully uploaded ${response?.data?.recordsProcessed || 0} warranty claim records!`
+        `✓ Successfully uploaded ${response?.RecordsInserted ?? 0} warranty claim records!`
       );
 
-      // 🔄 Reset
+      // ✅ RESET EVERYTHING
       setUploadedFile(null);
       setPreviewData([]);
       setCustomerSelected('');
+
+      // ✅ THIS IS THE KEY LINE
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     } catch (error) {
       console.error('Upload failed:', error.response?.data || error);
 
@@ -230,9 +220,9 @@ const WarrantyEntry = () => {
                   label="Select Customer"
                   onChange={(e) => handleCustomerSelect(e.target.value)}
                 >
-                  {CUSTOMER_LIST.map(customer => (
-                    <MenuItem key={customer.id} value={customer.id}>
-                      {customer.name}
+                  {activeCustomers.map((c) => (
+                    <MenuItem key={c.CustomerId} value={c.CustomerId}>
+                      {c.CustomerName}
                     </MenuItem>
                   ))}
                 </Select>
@@ -272,11 +262,13 @@ const WarrantyEntry = () => {
                 >
                   Browse
                   <input
+                    ref={fileInputRef}
                     type="file"
                     accept=".xlsx,.xls"
                     hidden
                     onChange={handleFileUpload}
                   />
+
                 </Button>
               </Box>
 

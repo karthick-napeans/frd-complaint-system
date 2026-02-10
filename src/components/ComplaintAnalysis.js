@@ -213,29 +213,9 @@ const ComplaintAnalysis = () => {
                 <Typography variant="h4" fontWeight="bold">
                     Customer Complaint Analysis
                 </Typography>
-                <MuiButton startIcon={<SettingsIcon />} variant="outlined" onClick={() => setOpenConfigDialog(true)}>
-                    Config
-                </MuiButton>
+
             </Box>
 
-            <Card sx={{ mb: 3 }}>
-                <CardContent>
-                    <Typography fontWeight={600}>Improvement Baseline</Typography>
-                    <Typography variant="caption" color="text.secondary">
-                        All complaint trends are evaluated relative to this improvement
-                    </Typography>
-                    <Grid container spacing={2} sx={{ mt: 1 }}>
-                        <Grid item xs={12} sm={6}>
-                            <Typography variant="caption">Improvement Date</Typography>
-                            <Typography fontWeight={600}>{masterConfig.lastImprovementDate}</Typography>
-                        </Grid>
-                        <Grid item xs={12} sm={6}>
-                            <Typography variant="caption">Description</Typography>
-                            <Typography fontWeight={600}>{masterConfig.improvementDescription}</Typography>
-                        </Grid>
-                    </Grid>
-                </CardContent>
-            </Card>
 
             <Card sx={{ mb: 3 }}>
                 <CardContent>

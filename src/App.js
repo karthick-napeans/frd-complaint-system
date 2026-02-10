@@ -29,8 +29,7 @@ import DREEntry from './components/DreEntry';
 import WarrantyAnalysis from './components/WarrantyAnalysis';
 import Sidebar from './components/Sidebar';
 import ComplaintAnalysis from './components/ComplaintAnalysis';
-import DREAnalysis from './components/DREAnalysis';
-import AuditLogs from './components/AuditLogs';
+ import AuditLogs from './components/AuditLogs';
 import { useReloadControl } from './reload/useReloadControl';
 import ImprovementBaselinePage from './components/ImprovementBaseline';
 
@@ -155,7 +154,7 @@ const AppLayout = ({ userRole, username, onLogout }) => {
 
           {/* DRE */}
           <Route path="/dre/entry" element={<DREEntry />} />
-          <Route path="/dre/analysis" element={<DREAnalysis />} />
+          {/* <Route path="/dre/analysis" element={<DREAnalysis />} /> */}
 
           {/* Complaints */}
           <Route path="/complaints/entry" element={<ComplaintForm />} />
