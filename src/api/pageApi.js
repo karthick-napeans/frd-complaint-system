@@ -54,7 +54,12 @@ export const createUser = (payload) => {
     return postRequest("/users/create", payload);
 }
 
-export const updateUser = (id, payload) => {
+export const updateUser = (payload) => {
+    console.log(
+        "RAW UPDATE PAYLOAD:",
+        JSON.stringify(payload, null, 2)
+    );
+
     return postRequest(`/users/update`, payload);
 }
 

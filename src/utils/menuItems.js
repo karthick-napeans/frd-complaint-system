@@ -1,41 +1,40 @@
 // ============================================
-// MENU CONFIGURATION - Complete menuItems const
+// MENU CONFIGURATION (STANDARDIZED & CLEAN)
 // ============================================
-// Copy this entire code and replace in your Sidebar.js or App.js
 
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import BuildIcon from '@mui/icons-material/Build';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
-import AssessmentIcon from '@mui/icons-material/Assessment';
-import EmailIcon from '@mui/icons-material/Email';
+import PostAddIcon from '@mui/icons-material/PostAdd';
+import TimelineIcon from '@mui/icons-material/Timeline';
+import FactCheckIcon from '@mui/icons-material/FactCheck';
+import ReportProblemIcon from '@mui/icons-material/ReportProblem';
 import EngineeringIcon from '@mui/icons-material/Engineering';
 import StorageIcon from '@mui/icons-material/Storage';
 import PeopleIcon from '@mui/icons-material/People';
 import AssignmentIcon from '@mui/icons-material/Assignment';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import PersonAddAltIcon from '@mui/icons-material/PersonAddAlt';
+
 
 // ============================================
-// MENU ITEMS CONFIGURATION
+// MENU ITEMS
 // ============================================
 
 const menuItems = [
-  // ============================================
-  // 1. DASHBOARD
-  // ============================================
+  // =====================
+  // DASHBOARD
+  // =====================
   {
     id: 'dashboard',
     label: 'Dashboard',
     icon: <DashboardIcon />,
     path: '/dashboard',
     roles: ['Super_Admin', 'QC Admin', 'QC User'],
-    submenu: null,
-    description: 'View system overview and key metrics'
   },
 
-  // ============================================
-  // 2. WARRANTY CLAIM REPAIR DATA MANAGEMENT MODULE
-  // ============================================
+  // =====================
+  // FIELD REPORTS (WARRANTY)
+  // =====================
   {
     id: 'warranty',
     label: 'Field Reports',
@@ -46,38 +45,42 @@ const menuItems = [
     submenu: [
       {
         id: 'warranty-mapper',
-        label: 'Master Excel Template Mapper',
+        label: 'Excel Template Mapper',
         icon: <CloudUploadIcon />,
         path: '/warranty/mapper',
         roles: ['Super_Admin', 'QC Admin'],
-        description: 'Map customer Excel templates to master template'
       },
       {
         id: 'warranty-entry',
         label: 'Entry',
-        icon: <CloudUploadIcon />,
+        icon: <PostAddIcon />,
         path: '/warranty/entry',
         roles: ['Super_Admin', 'QC Admin'],
-        description: 'Upload and process warranty claim data'
+      },
+      {
+        id: 'warranty-improvement-baseline',
+        label: 'Improvement Baseline',
+        icon: <TimelineIcon />,
+        path: '/warranty/improvement-baseline',
+        roles: ['Super_Admin', 'QC Admin'],
       },
       {
         id: 'warranty-analysis',
         label: 'Analysis',
-        icon: <AssessmentIcon />,
+        icon: <FactCheckIcon />,
         path: '/warranty/analysis',
         roles: ['Super_Admin', 'QC Admin'],
-        description: 'View warranty trends and analytics'
-      }
-    ]
+      },
+    ],
   },
 
-  // ============================================
-  // 3. CUSTOMER COMPLAINTS MODULE
-  // ============================================
+  // =====================
+  // CUSTOMER COMPLAINTS
+  // =====================
   {
     id: 'complaints',
     label: 'Customer Complaints',
-    icon: <EmailIcon />,
+    icon: <PersonAddAltIcon />,
     path: '/complaints',
     roles: ['Super_Admin', 'QC Admin', 'QC User'],
     collapsible: true,
@@ -85,25 +88,23 @@ const menuItems = [
       {
         id: 'complaints-entry',
         label: 'Entry',
-        icon: <EmailIcon />,
+        icon: <PostAddIcon />,
         path: '/complaints/entry',
         roles: ['Super_Admin', 'QC Admin', 'QC User'],
-        description: 'Create and manage customer complaints'
       },
       {
         id: 'complaints-analysis',
         label: 'Analysis',
-        icon: <AssessmentIcon />,
+        icon: <FactCheckIcon />,
         path: '/complaints/analysis',
         roles: ['Super_Admin', 'QC Admin', 'QC User'],
-        description: 'View complaint analysis and trends'
-      }
-    ]
+      },
+    ],
   },
 
-  // ============================================
-  // 4. DRE (DESIGN RESOLUTION ENGINEER) MODULE
-  // ============================================
+  // =====================
+  // DRE
+  // =====================
   {
     id: 'dre',
     label: 'DRE',
@@ -115,60 +116,52 @@ const menuItems = [
       {
         id: 'dre-entry',
         label: 'Entry',
-        icon: <EngineeringIcon />,
+        icon: <PostAddIcon />,
         path: '/dre/entry',
         roles: ['Super_Admin', 'QC Admin'],
-        description: 'Create DRE entries (form or Excel upload)'
       },
       {
         id: 'dre-analysis',
         label: 'Analysis',
-        icon: <AssessmentIcon />,
+        icon: <FactCheckIcon />,
         path: '/dre/analysis',
         roles: ['Super_Admin', 'QC Admin'],
-        description: 'View DRE case analysis and reports'
-      }
-    ]
+      },
+    ],
   },
 
-  // ============================================
-  // 5. MASTER DATA MANAGEMENT
-  // ============================================
+  // =====================
+  // MASTER DATA
+  // =====================
   {
     id: 'masters',
     label: 'Master Data',
     icon: <StorageIcon />,
     path: '/masters',
     roles: ['Super_Admin', 'QC Admin'],
-    submenu: null,
-    description: 'Manage customers, models, parts, codes'
   },
 
-  // ============================================
-  // 6. USER MANAGEMENT
-  // ============================================
+  // =====================
+  // USER MANAGEMENT
+  // =====================
   {
     id: 'users',
     label: 'User Management',
     icon: <PeopleIcon />,
     path: '/users',
     roles: ['Super_Admin'],
-    submenu: null,
-    description: 'Create and manage users'
   },
 
-  // ============================================
-  // 7. AUDIT LOGS
-  // ============================================
+  // =====================
+  // AUDIT LOGS
+  // =====================
   {
     id: 'audit',
     label: 'Audit Logs',
     icon: <AssignmentIcon />,
     path: '/audit',
     roles: ['Super_Admin'],
-    submenu: null,
-    description: 'View system audit trail and activities'
-  }
+  },
 ];
 
 export default menuItems;
