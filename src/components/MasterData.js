@@ -387,7 +387,6 @@ const MasterData = ({ userRole = "Admin" }) => {
         </CardContent>
       </Card>
 
-      {/* ================= ADD / EDIT DIALOG ================= */}
 
       <Dialog
         open={openDialog}
@@ -409,12 +408,6 @@ const MasterData = ({ userRole = "Admin" }) => {
               rows={field.multiline ? 3 : 1}
               value={formData[field.name] || ""}
               onChange={(e) => {
-                console.log(
-                  "✏️ Field change:",
-                  field.name,
-                  "=>",
-                  e.target.value
-                );
                 setFormData({
                   ...formData,
                   [field.name]: e.target.value,

@@ -83,7 +83,7 @@ const WarrantyColumnMapper = () => {
     setCustomerSelected(customerId);
     setCustomerColumns([]);
     setMappings({});
-    showPopup(`Selected customer ${customerId}. Upload Excel to continue.`);
+    // showPopup(`Selected customer ${customerId}. Upload Excel to continue.`);
   };
 
   const handleUploadClick = () => fileInputRef.current.click();

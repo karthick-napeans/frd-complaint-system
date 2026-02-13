@@ -44,21 +44,21 @@ export const MASTER_CONFIG = {
         mapCreate: (data) => ({
             PartName: data.PartName,
             PartNumber: data.PartNumber,
-            PartDescription: data.Description,
+            PartDescription: data.PartDescription,  // ✅ FIXED
         }),
 
         mapUpdate: (data) => ({
             PartId: data.PartId,
             PartName: data.PartName,
             PartNumber: data.PartNumber,
-            PartDescription: data.Description,
+            PartDescription: data.PartDescription,  
         }),
-
 
         mapDelete: (id) => ({
             PartId: id,
         }),
     },
+
 
     cause: {
         baseUrl: "/masters/repair-cause-codes",

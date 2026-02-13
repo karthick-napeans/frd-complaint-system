@@ -65,8 +65,6 @@ const DREEntry = () => {
     loadDreList();
   }, []);
 
-
-
   const EMPTY_FORM = {
     dreId: '',
     dreNumber: '',
@@ -77,7 +75,6 @@ const DREEntry = () => {
     problem: '',
     status: 'Draft',
   };
-
 
   const [formData, setFormData] = useState({
     dreId: '',
@@ -119,10 +116,6 @@ const DREEntry = () => {
     return fd;
   };
 
-
-
-
-
   const handleDraftClick = (draft) => {
     setActiveDraftId(draft.DreId);
 
@@ -147,28 +140,22 @@ const DREEntry = () => {
   };
 
   const handleNext = () => {
+    console.log("Clicked Next");
+    console.log("Active Step:", activeStep);
+    console.log("Form Data:", formData);
+
     if (activeStep === 0) {
-      if (
-        !formData.dreNumber ||
-        !formData.dreEngineerName ||
-        !formData.date ||
-        !formData.model ||
-        !formData.part
-      ) {
-        setMessage('Please fill all required fields in DRE Header');
-        return;
-      }
+      console.log(
+        formData.dreNumber,
+        formData.dreEngineerName,
+        formData.date,
+        formData.model,
+        formData.part
+      );
     }
 
-    if (activeStep === 1 && !formData.problem) {
-      setMessage('Please fill Problem Description');
-      return;
-    }
-
-    setMessage('');
     setActiveStep((prev) => prev + 1);
   };
-
 
   const handleBack = () => {
     setActiveStep((prev) => Math.max(prev - 1, 0));
@@ -194,13 +181,13 @@ const DREEntry = () => {
       }));
 
       setMessage("✓ DRE draft saved.");
+      await loadDreList(); // refresh list to show new draft
       resetForm();
     } catch (err) {
       console.error("Draft save failed", err.response?.data || err);
       setMessage("❌ Failed to save draft");
     }
   };
-
 
   const handleSubmitDRE = async () => {
     try {
@@ -217,26 +204,13 @@ const DREEntry = () => {
             : d
         )
       );
-
+      await loadDreList();
       resetForm();
     } catch (err) {
       console.error(err);
       setMessage("❌ DRE submit failed");
     }
   };
-
-
-
-
-
-
-  const handleFileChange = (e) => {
-    setFormData((prev) => ({
-      ...prev,
-      attachments: Array.from(e.target.files),
-    }));
-  };
-
 
   const steps = [
     'DRE Header',
@@ -245,15 +219,20 @@ const DREEntry = () => {
     'Review & Submit',
   ];
 
-  const PARTS = ['WHEEL BEARING', 'BRAKE DISC', 'ENGINE'];
-
   const handleSelectChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
   };
 
-  const handleChange = (e) =>
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
 
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
@@ -318,8 +297,8 @@ const DREEntry = () => {
                     <FormControl fullWidth required>
                       <InputLabel shrink>Model</InputLabel>
                       <Select
-                        name="modelSelected"
-                        value={formData.modelSelected}
+                        name="model"
+                        value={formData.model}
                         onChange={handleSelectChange}
                         displayEmpty
                         label="Model"
@@ -339,8 +318,8 @@ const DREEntry = () => {
                     <FormControl fullWidth>
                       <InputLabel shrink>Part</InputLabel>
                       <Select
-                        name="partSelected"
-                        value={formData.partSelected}
+                        name="part"
+                        value={formData.part}
                         onChange={handleSelectChange}
                         displayEmpty
                         label="Part"
@@ -471,13 +450,13 @@ const DREEntry = () => {
                     <Grid container spacing={1.5}>
                       <Grid item xs={12}>
                         <Typography>
-                          <b>DRE ID:</b> {formData.dreId || '-'}
+                          <b>DRE Number:</b> {formData.dreNumber || '-'}
                         </Typography>
                       </Grid>
 
                       <Grid item xs={12}>
                         <Typography>
-                          <b>DRE Engineer:</b> {formData.dreName || '-'}
+                          <b>DRE Engineer:</b> {formData.dreEngineerName || '-'}
                         </Typography>
                       </Grid>
 
@@ -554,6 +533,7 @@ const DREEntry = () => {
                     </Button>
                   ) : (
                     <Button
+                      type="button"
                       variant="contained"
                       onClick={handleNext}
                     >

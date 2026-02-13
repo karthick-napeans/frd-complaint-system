@@ -29,41 +29,26 @@ import SaveAltIcon from "@mui/icons-material/SaveAlt";
 import { useSelector } from "react-redux";
 import { submitCustomerComplaint, getCustomerComplaints } from "../api/pageApi";
 
+
+
+
 const ComplaintForm = () => {
-  const { parts, models, repairCauses } = useSelector((state) => state.masters);
+  const { parts, models, repairCauses, customers } = useSelector((state) => state.masters);
+  const activeCustomers = customers.filter((p) => p.IsActive === true);
   const activeParts = parts.filter((p) => p.IsActive === true);
   const activeModels = models.filter((m) => m.IsActive === true);
   const activeRepairCauses = repairCauses.filter((c) => c.IsActive === true);
   const [expandedPanel, setExpandedPanel] = useState(null);
-
-
-  console.log("Parts from store:", parts);
-  console.log("Models from store:", models);
-  console.log("Repair Causes from store:", repairCauses);
+  const [customerSelected, setCustomerSelected] = useState("");
+  const [customerColumns, setCustomerColumns] = useState([]);
+  const [mappings, setMappings] = useState({});
   const SEVERITY_LEVELS = ["Low", "Medium", "High", "Critical"];
-
   const [activeStep, setActiveStep] = useState(0);
-  const [formData, setFormData] = useState({
-    complaintId: "",
-    customerName: "",
-    customerEmail: "",
-    complaintDate: "",
-    modelSelected: "",
-    partSelected: "",
-    problemStatement: "",
-    causeCode: "",
-    severityLevel: SEVERITY_LEVELS[0],
-    attachments: [],
-    status: "",
-  });
-
   const [message, setMessage] = useState("");
   const [complaints, setComplaints] = useState([]);
-  const [expanded, setExpanded] = useState(false);
   const [drafts, setDrafts] = useState([]);
   const [activeDraftId, setActiveDraftId] = useState(null);
   const [submitted, setSubmitted] = useState([]);
-
   const steps = [
     "Complaint Header",
     "Problem & Cause",
@@ -71,6 +56,21 @@ const ComplaintForm = () => {
     "Review & Submit",
   ];
 
+  const INITIAL_FORM_STATE = {
+    complaintId: "",
+    customerSelected: "",
+    customerEmail: "",
+    complaintDate: "",
+    modelSelected: "",
+    partSelected: "",
+    problemStatement: "",
+    causeCode: "",
+    severityLevel: SEVERITY_LEVELS[0], // default back to Low
+    attachments: [],
+    status: "",
+  };
+
+  const [formData, setFormData] = useState(INITIAL_FORM_STATE);
 
   const handleAccordionChange = (panel) => (event, isExpanded) => {
     setExpandedPanel(isExpanded ? panel : null);
@@ -105,27 +105,33 @@ const ComplaintForm = () => {
   };
 
   const handleDraftClick = (draft) => {
+    console.log("Draft clicked:", draft);
+
     setActiveDraftId(draft.ComplaintId);
 
     setFormData({
       complaintId: draft.ComplaintId || "",
-      customerName: draft.CustomerName || "",
+
+      customerSelected: draft.CustomerId || "",   // ✅ IMPORTANT
       customerEmail: draft.CustomerEmail || "",
-      complaintDate: draft.ComplaintDate?.split("T")[0] || "",
-      modelSelected: draft.Model || "",
-      partSelected: draft.Part || "",
+
+      complaintDate:
+        draft.ComplaintDate?.split("T")[0] || "",
+
+      modelSelected: draft.Model || "",           // ✅ must match Select value
+      partSelected: draft.Part || "",             // ✅ must match Select value
+
       problemStatement: draft.ProblemStatement || "",
       causeCode: draft.CauseCode || "",
-      severityLevel: draft.Severity || "Medium",
+
+      severityLevel: draft.Severity || SEVERITY_LEVELS[0],
+
       attachments: [],
       status: draft.Status || "DRAFT",
     });
 
-    // Optional UX: jump user to first step
     setActiveStep(0);
-
-    // Optional UX: auto-open draft accordion
-    setExpanded("drafts");
+    setExpandedPanel("drafts");
   };
 
   const handleInputChange = (e) => {
@@ -149,9 +155,7 @@ const ComplaintForm = () => {
   const handleNext = () => {
     if (activeStep === 0) {
       if (
-        !formData.customerName ||
-        !formData.complaintDate ||
-        !formData.modelSelected
+        !formData.complaintDate
       ) {
         setMessage("Please fill all required fields in Complaint Header");
         return;
@@ -173,8 +177,13 @@ const ComplaintForm = () => {
   const buildComplaintFormData = (status) => {
     const fd = new FormData();
 
+    // ✅ IMPORTANT: send complaintId if editing
+    if (formData.complaintId) {
+      fd.append("complaintId", formData.complaintId);
+    }
+
     fd.append("status", status);
-    fd.append("customerId", String(formData.customerId ?? "1"));
+    fd.append("customerId", String(formData.customerSelected));
     fd.append("customerEmail", formData.customerEmail);
     fd.append("complaintDate", formData.complaintDate);
     fd.append("model", formData.modelSelected);
@@ -190,18 +199,34 @@ const ComplaintForm = () => {
     return fd;
   };
 
+  const resetForm = () => {
+    setFormData({ ...INITIAL_FORM_STATE }); // safe copy
+    setActiveStep(0);
+    setActiveDraftId(null);
+    setMessage("");
+  };
+
   const handleSaveDraft = async () => {
     try {
       const fd = buildComplaintFormData("DRAFT");
-      for (const [k, v] of fd.entries()) {
-        console.log("DRAFT →", k, v);
-      }
-      console.log("Saving draft with FormData:", fd);
+
       await submitCustomerComplaint(fd);
-      setMessage("✓ Complaint draft saved");
+
+      if (formData.complaintId) {
+        setMessage("✓ Draft updated successfully");
+      } else {
+        setMessage("✓ Draft saved successfully");
+      }
+
+      await fetchComplaints();
+
+      if (!formData.complaintId) {
+        resetForm();
+      }
+
     } catch (err) {
       console.error("Draft failed", err.response?.data || err);
-      setMessage("❌ Draft save failed");
+      setMessage("Draft save failed");
     }
   };
 
@@ -214,30 +239,22 @@ const ComplaintForm = () => {
       }
 
       console.log("Submitting complaint with FormData:", fd);
-
       await submitCustomerComplaint(fd);
-
       setMessage("✓ Complaint submitted successfully!");
-
-      setFormData({
-        complaintId: "",
-        customerId: "",
-        customerEmail: "",
-        complaintDate: "",
-        modelSelected: "",
-        partSelected: "",
-        problemStatement: "",
-        causeCode: "",
-        severityLevel: "",
-        attachments: [],
-        status: "",
-      });
-
+      await fetchComplaints();
+      resetForm();
       setActiveStep(0);
     } catch (err) {
       console.error("Submit failed", err.response?.data || err);
       setMessage("❌ Complaint submit failed");
     }
+  };
+
+  const handleCustomerSelect = (customerId) => {
+    setCustomerSelected(customerId);
+    setCustomerColumns([]);
+    setMappings({});
+    // showPopup(`Selected customer ${customerId}. Upload Excel to continue.`);
   };
 
   return (
@@ -279,14 +296,22 @@ const ComplaintForm = () => {
               {/* Tab 1: Complaint Header */}
               {activeStep === 0 && (
                 <Box sx={{ gap: 2, display: "flex", flexDirection: "column" }}>
-                  <TextField
-                    label="Customer Name"
-                    fullWidth
-                    name="customerName"
-                    value={formData.customerName}
-                    onChange={handleInputChange}
-                    required
-                  />
+                  <FormControl fullWidth>
+                    <InputLabel>Select Customer</InputLabel>
+                    <Select
+                      name="customerSelected"
+                      value={formData.customerSelected}
+                      label="Select Customer"
+                      onChange={handleSelectChange}
+                    >
+
+                      {activeCustomers.map((c) => (
+                        <MenuItem key={c.CustomerId} value={c.CustomerId}>
+                          {c.CustomerName}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
                   <TextField
                     label="Customer Email"
                     fullWidth

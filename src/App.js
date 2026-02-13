@@ -29,7 +29,7 @@ import DREEntry from './components/DreEntry';
 import WarrantyAnalysis from './components/WarrantyAnalysis';
 import Sidebar from './components/Sidebar';
 import ComplaintAnalysis from './components/ComplaintAnalysis';
- import AuditLogs from './components/AuditLogs';
+     import AuditLogs from './components/AuditLogs';
 import { useReloadControl } from './reload/useReloadControl';
 import ImprovementBaselinePage from './components/ImprovementBaseline';
 

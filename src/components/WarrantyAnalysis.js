@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Box,
   Container,
@@ -11,120 +11,65 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Paper,
-  Dialog,
-  DialogTitle,
-  DialogContent, Chip,
-  DialogActions,
-  Button as MuiButton,
-} from '@mui/material';
+  Checkbox,
+  ListItemText,
+} from "@mui/material";
 import {
-  LineChart,
-  Line,
   BarChart,
   Bar,
-  PieChart,
-  Pie,
-  Cell,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   Legend,
   ResponsiveContainer,
-  ComposedChart,
-  ReferenceLine
-} from 'recharts';
-import SettingsIcon from '@mui/icons-material/Settings';
-import { getWrantyReport } from '../api/pageApi';
+  ComposedChart, ReferenceLine
+} from "recharts";
+import { getWrantyReport } from "../api/pageApi";
 import { useSelector } from "react-redux";
 
 const WarrantyAnalysis = () => {
   const { customers } = useSelector((state) => state.masters);
-  const activeCustomers = customers.filter((c) => c.IsActive === true);
+  const activeCustomers = customers.filter((c) => c.IsActive);
+
   const [customerSelected, setCustomerSelected] = useState("");
-  const [prodDateFrom, setProdDateFrom] = useState('2023-01-01');
-  const [prodDateTo, setProdDateTo] = useState('2025-12-31');
-  const [repairDateFrom, setRepairDateFrom] = useState('2023-01-01');
-  const [repairDateTo, setRepairDateTo] = useState('2025-12-31');
   const [rawData, setRawData] = useState([]);
-  const [loading, setLoading] = useState(false);
+
+  const [selectedModels, setSelectedModels] = useState([]);
+  const [selectedParts, setSelectedParts] = useState([]);
+  const [selectedRegions, setSelectedRegions] = useState([]);
+  const [prodDateFrom, setProdDateFrom] = useState("2024-01-01");
+  const [prodDateTo, setProdDateTo] = useState("2025-12-31");
+  const [repairFrom, setRepairFrom] = useState("2024-01-01");
+  const [repairTo, setRepairTo] = useState("2025-12-31");
+
+
 
   useEffect(() => {
     if (activeCustomers.length > 0 && !customerSelected) {
       setCustomerSelected(activeCustomers[0].CustomerId);
     }
-  }, [activeCustomers, customerSelected]);
-
-  const parseDate = (v) =>
-    v ? new Date(v.split('T')[0]) : null;
-
-  const normalizeWarrantyData = (apiData = []) =>
-    apiData.map(d => ({
-      rowNo: d.Row_No,
-      hk: d.HK?.trim(),
-      domesticExport: d.Domestic_Export,
-      systemCode: d.System_Code,
-      period: d.Period_Code,
-      sequenceNo: d.Sequence_No,
-
-      orderType: d.Order_Type?.trim(),
-      orderDescription: d.Order_Description,
-
-      vin: d.VIN,
-      plantCode: d.Plant_Code?.trim(),
-
-      modelCode: d.Model_Code,
-      modelName: d.Model_Name,
-
-      partNumber: d.Part_Number,
-      partName: d.Part_Name,
-      oldPartNumber: d.Old_Part_Number,
-
-      causeCode: d.Cause_Code,
-      natureCode: d.Nature_Code,
-
-      productionDate: parseDate(d.Production_Date),
-      repairDate: parseDate(d.Repair_Date),
-      salesDate: parseDate(d.Sales_Date),
-
-      usedMonths: d.Used_Month,
-      mileage: d.Mileage,
-
-      supplyRatio: d.Supply_Ratio,
-      burdenRatio: d.Burden_Ratio,
-      applyRatio: d.Apply_Ratio,
-
-      partCost: d.Part_Cost,
-      laborCost: d.Labor_Cost,
-      subletCost: d.Sublet_Cost,
-      totalCost: d.Total_Cost,
-    }));
-
+  }, [activeCustomers]);
 
   useEffect(() => {
+    if (!customerSelected || !prodDateFrom || !prodDateTo) return;
+
     fetchWarrantyReport();
   }, [customerSelected, prodDateFrom, prodDateTo]);
 
-  const toDate = (value) => {
-    if (!value) return null;
-    const d = new Date(value);
-    return isNaN(d.getTime()) ? null : d;
-  };
-
-
   const fetchWarrantyReport = async () => {
     try {
-      setLoading(true);
-
-
-      const response = await getWrantyReport({
-        CustomerId: customerSelected,
+      const payload = {
+        CustomerId: String(customerSelected),
         ProductionFromDate: prodDateFrom,
         ProductionToDate: prodDateTo,
-      });
+      };
 
-      console.log("Warranty report response:", response);
+      console.log("Sending Payload:", payload);
+
+      const response = await getWrantyReport(payload);
+      console.log("API RESPONSE:", response);
 
       const apiData = Array.isArray(response)
         ? response
@@ -132,330 +77,268 @@ const WarrantyAnalysis = () => {
           ? response.data
           : [];
 
-
-      // 🚨 NO FILTER HERE
       setRawData(apiData);
 
     } catch (error) {
-      console.error("Warranty report fetch failed:", error);
-      setRawData([]);
-    } finally {
-      setLoading(false);
+      console.error("API ERROR:", error?.response?.data || error);
     }
   };
 
 
+  const getRegionFromRO = (hk) => {
+    if (!hk) {
+      console.log("HK is undefined!");
+      return null;
+    }
+
+    const cleanHK = hk.trim();
+    console.log("Clean HK:", cleanHK);
+
+    if (cleanHK.length < 4) {
+      console.log("HK too short:", cleanHK);
+      return null;
+    }
+
+    const regionChar = cleanHK[3];   // INDEX 3 CORRECT
+
+    console.log("Region Char Picked:", regionChar);
+
+    const regionMap = {
+      W: "West",
+      E: "East",
+      S: "South",
+      N: "North"
+    };
+
+    return regionMap[regionChar] || null;
+  };
 
 
+
+
+  const parseDate = (v) => (v ? new Date(v.split("T")[0]) : null);
 
   const warrantyData = useMemo(() => {
-    return normalizeWarrantyData(rawData);
+    return rawData.map((d, index) => {
+
+      console.log("Row:", index, "HK value:", d.HK);
+
+      const regionValue = getRegionFromRO(d.HK);
+
+      console.log("Detected Region:", regionValue);
+
+      return {
+        ...d,
+        sec: d.Domestic_Export?.trim(),
+        hk: d.HK?.trim(),
+        region: regionValue,
+        productionDate: parseDate(d.Production_Date),
+        repairDate: parseDate(d.Repair_Date),
+      };
+    });
   }, [rawData]);
 
+  const baseData = warrantyData; 
+
+  const uiFilteredData = useMemo(() => {
+    return baseData.filter(d => {
+
+      if (selectedModels.length && !selectedModels.includes(d.Model_Name))
+        return false;
+
+      if (selectedParts.length && !selectedParts.includes(d.Part_Number))
+        return false;
+
+      if (selectedRegions.length && !selectedRegions.includes(d.region))
+        return false;
+
+      return true;
+    });
+  }, [baseData, selectedModels, selectedParts, selectedRegions]);
+
+
   const filteredData = useMemo(() => {
-    const prodFrom = new Date(prodDateFrom);
-    const prodTo = new Date(prodDateTo);
-    const repFrom = new Date(repairDateFrom);
-    const repTo = new Date(repairDateTo);
+    return warrantyData.filter((d) => {
 
-    return warrantyData.filter(d => {
-      if (!d.productionDate || !d.repairDate) return false;
+      if (d.sec !== "Domestic") return false;
 
-      return (
-        d.productionDate >= prodFrom &&
-        d.productionDate <= prodTo &&
-        d.repairDate >= repFrom &&
-        d.repairDate <= repTo
-      );
-    });
-  }, [warrantyData, prodDateFrom, prodDateTo, repairDateFrom, repairDateTo]);
+      if (repairFrom && repairTo) {
 
+        // If no repair date, exclude
+        if (!d.repairDate) return false;
 
+        const from = new Date(repairFrom);
+        const to = new Date(repairTo);
+        to.setHours(23, 59, 59, 999);
 
-
-
-  // Master Configuration - Last Improvement Date
-  const [masterConfig, setMasterConfig] = useState({
-    lastImprovementDate: '2024-02',
-    improvementDescription: 'Process Optimization Phase 1',
-  });
-
-  const [openConfigDialog, setOpenConfigDialog] = useState(false);
-  const [tempConfig, setTempConfig] = useState(masterConfig);
-
-
-
-
-
-
-
-  const modelAnalysis = useMemo(() => {
-    const map = {};
-    filteredData.forEach(d => {
-      if (!map[d.modelName]) {
-        map[d.modelName] = { name: d.modelName, production: 0, repairs: 0 };
+        if (d.repairDate < from || d.repairDate > to)
+          return false;
       }
-      map[d.modelName].production += 1;
-      map[d.modelName].repairs += 1; // each record = one repair
+
+      return true;
     });
-    return Object.values(map);
-  }, [filteredData]);
+  }, [warrantyData, repairFrom, repairTo]);
 
 
+  // const filteredData = warrantyData;
 
-  const mileageAnalysis = useMemo(() => {
-    const ranges = {
-      '0-10K': 0,
-      '10-20K': 0,
-      '20-30K': 0,
-      '30-40K': 0,
-      '40-50K': 0,
-      '50K+': 0,
-    };
 
-    filteredData.forEach(d => {
-      if (d.mileage < 10000) ranges['0-10K']++;
-      else if (d.mileage < 20000) ranges['10-20K']++;
-      else if (d.mileage < 30000) ranges['20-30K']++;
-      else if (d.mileage < 40000) ranges['30-40K']++;
-      else if (d.mileage < 50000) ranges['40-50K']++;
-      else ranges['50K+']++;
+  // 1️⃣ Production vs Repair
+  const prodRepairData = useMemo(() => {
+
+    const productionMap = {};
+    const repairMap = {};
+
+    const from = repairFrom ? new Date(repairFrom) : null;
+    const to = repairTo ? new Date(repairTo) : null;
+    if (to) to.setHours(23, 59, 59, 999);
+
+    // 🔵 Production from UI filtered data
+    uiFilteredData.forEach(d => {
+      if (!d.productionDate) return;
+
+      const key = d.productionDate.toISOString().slice(0, 7);
+      productionMap[key] = (productionMap[key] || 0) + 1;
     });
 
-    return Object.entries(ranges).map(([label, count]) => ({ label, count }));
-  }, [filteredData]);
+    // 🔴 Repair from UI filtered + repair date filter
+    uiFilteredData.forEach(d => {
+      if (!d.repairDate) return;
+
+      if (from && to) {
+        if (d.repairDate < from || d.repairDate > to)
+          return;
+      }
+
+      const key = d.repairDate.toISOString().slice(0, 7);
+      repairMap[key] = (repairMap[key] || 0) + 1;
+    });
+
+    const allMonths = new Set([
+      ...Object.keys(productionMap),
+      ...Object.keys(repairMap)
+    ]);
+
+    return Array.from(allMonths)
+      .sort()
+      .map(month => ({
+        month,
+        production: productionMap[month] || 0,
+        repair: repairMap[month] || 0
+      }));
+
+  }, [uiFilteredData, repairFrom, repairTo]);
 
 
-  const partAnalysis = useMemo(() => {
+
+  // 2️⃣ Used Month
+  const usedMonthData = useMemo(() => {
     const map = {};
-    filteredData.forEach(d => {
-      map[d.partName] = (map[d.partName] || 0) + 1;
-    });
-
-    return Object.entries(map)
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5);
-  }, [filteredData]);
-
-  const monthAnalysis = useMemo(() => {
-    const map = {};
-    filteredData.forEach(d => {
-      const key = d.repairDate.toLocaleString('en', {
-        month: 'short',
-        year: 'numeric',
-      });
+    uiFilteredData.forEach((d) => {
+      const key = d.Used_Month;
       map[key] = (map[key] || 0) + 1;
     });
+    return Object.entries(map).map(([label, count]) => ({
+      label,
+      count,
+    }));
+  }, [uiFilteredData]);
 
-    return Object.entries(map).map(([month, count]) => ({ month, count }));
-  }, [filteredData]);
-
-
-  const usedMonthsAnalysis = useMemo(() => {
+  // 3️⃣ Mileage
+  const mileageData = useMemo(() => {
     const ranges = {
-      '0-5': 0,
-      '5-10': 0,
-      '10-15': 0,
-      '15-20': 0,
-      '20+': 0,
+      "0-10K": 0,
+      "10-20K": 0,
+      "20-30K": 0,
+      "30-40K": 0,
+      "40K+": 0,
     };
 
-    filteredData.forEach(d => {
-      if (d.usedMonths < 5) ranges['0-5']++;
-      else if (d.usedMonths < 10) ranges['5-10']++;
-      else if (d.usedMonths < 15) ranges['10-15']++;
-      else if (d.usedMonths < 20) ranges['15-20']++;
-      else ranges['20+']++;
+    uiFilteredData.forEach((d) => {
+      if (d.Mileage < 10000) ranges["0-10K"]++;
+      else if (d.Mileage < 20000) ranges["10-20K"]++;
+      else if (d.Mileage < 30000) ranges["20-30K"]++;
+      else if (d.Mileage < 40000) ranges["30-40K"]++;
+      else ranges["40K+"]++;
     });
 
-    return Object.entries(ranges).map(([label, count]) => ({ label, count }));
-  }, [filteredData]);
+    return Object.entries(ranges).map(([label, count]) => ({
+      label,
+      count,
+    }));
+  }, [uiFilteredData]);
 
-
-  const causeCodeAnalysis = useMemo(() => {
+  // 4️⃣ Nature
+  const natureData = useMemo(() => {
     const map = {};
-    filteredData.forEach(d => {
-      map[d.causeCode] = (map[d.causeCode] || 0) + 1;
+    uiFilteredData.forEach((d) => {
+      map[d.Nature_Code] = (map[d.Nature_Code] || 0) + 1;
     });
-    return Object.entries(map).map(([code, count]) => ({ code, count }));
-  }, [filteredData]);
+    return Object.entries(map).map(([name, count]) => ({
+      name,
+      count,
+    }));
+  }, [uiFilteredData]);
 
-
-  const improvementTrendData = useMemo(() => {
-    const map = {};
-
-    filteredData.forEach(d => {
-      const year = d.productionDate.getFullYear();
-      const quarter = `Q${Math.ceil((d.productionDate.getMonth() + 1) / 3)}`;
-      const period = `${year} ${quarter}`;
-
-      if (!map[period]) {
-        map[period] = {
-          period,
-          production: 0,
-          repair: 0,
-          improvement: 0,
-        };
-      }
-
-      map[period].production += 1;
-      map[period].repair += 1;
-    });
-
-    return Object.values(map);
-  }, [filteredData]);
-
-
-  const qualityMetricsData = useMemo(() => {
+  // 5️⃣ Region
+  const regionData = useMemo(() => {
     const map = {};
 
-    filteredData.forEach(d => {
-      const key = d.repairDate.toLocaleString('en', {
-        month: 'short',
-        year: 'numeric',
-      });
-
-      if (!map[key]) {
-        map[key] = {
-          month: key,
-          defects: 0,
-          warranty: 0,
-          cost: 0,
-        };
-      }
-
-      map[key].defects += 1;
-      map[key].warranty += 1;
-      map[key].cost += d.totalCost;
+    uiFilteredData.forEach((d) => {
+      if (!d.region) return;   // skip null
+      map[d.region] = (map[d.region] || 0) + 1;
     });
 
-    return Object.values(map);
-  }, [filteredData]);
+    return ["North", "South", "East", "West"].map(r => ({
+      region: r,
+      count: map[r] || 0
+    }));
+  }, [uiFilteredData]);
 
+  const improvementBaseline = [
+    { month: "Sep 2024", description: "Initial target set" },
+    { month: "Nov 2024", description: "Process optimization phase 1" },
+    { month: "Jun 2025", description: "Tooling improvement completed" }
+  ];
 
-  const handleOpenConfigDialog = () => {
-    setTempConfig(masterConfig);
-    setOpenConfigDialog(true);
-  };
+  // Latest entry
+  const latestImprovement =
+    improvementBaseline[improvementBaseline.length - 1];
 
-  const handleSaveConfig = () => {
-    setMasterConfig(tempConfig);
-    setOpenConfigDialog(false);
-  };
+  const sortedData = [...prodRepairData].sort((a, b) => {
+    return new Date(a.month) - new Date(b.month);
+  });
 
-
-
-
-
-  const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7c7c', '#8dd1e1', '#d084d0'];
-
-  const ModernChartCard = ({ title, subtitle, children, height = 320 }) => (
-    <Card
-      sx={{
-        height: '100%',
-        borderRadius: 4,
-        background: 'linear-gradient(180deg, #ffffff 0%, #fafafa 100%)',
-        border: '1px solid #eef2f6',
-        boxShadow: '0 10px 30px rgba(0,0,0,0.06)',
-        transition: 'all .25s ease',
-        '&:hover': {
-          boxShadow: '0 14px 40px rgba(0,0,0,0.1)',
-          transform: 'translateY(-2px)',
-        },
-      }}
-    >
-      <CardContent>
-        <Typography fontWeight={600} fontSize={16}>
-          {title}
-        </Typography>
-        {subtitle && (
-          <Typography variant="caption" color="text.secondary">
-            {subtitle}
-          </Typography>
-        )}
-
-        <Box sx={{ mt: 2 }}>
-          <ResponsiveContainer width="100%" height={height}>
-            {children}
-          </ResponsiveContainer>
-        </Box>
-      </CardContent>
-    </Card>
-  );
-
-  const gridStyle = {
-    stroke: '#eaeef4',
-    strokeDasharray: '4 4',
-  };
-
-  const axisStyle = {
-    tick: { fill: '#6b7280', fontSize: 12 },
-    axisLine: false,
-    tickLine: false,
-  };
-
-  const tooltipStyle = {
-    contentStyle: {
-      borderRadius: 12,
-      border: 'none',
-      boxShadow: '0 12px 30px rgba(0,0,0,0.15)',
-    },
-  };
-
-  const summaryStats = useMemo(() => ([
-    {
-      label: 'Total Claims',
-      value: filteredData.length,
-      bg: '#e3f2fd',
-    },
-    {
-      label: 'Models',
-      value: new Set(filteredData.map(d => d.modelName)).size,
-      bg: '#f3e5f5',
-    },
-    {
-      label: 'Parts',
-      value: new Set(filteredData.map(d => d.partName)).size,
-      bg: '#e8f5e9',
-    },
-    {
-      label: 'Cause Codes',
-      value: new Set(filteredData.map(d => d.causeCode)).size,
-      bg: '#fff3e0',
-    },
-  ]), [filteredData]);
-
-
-
-
+  // ---------- UI ----------
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" fontWeight="bold">
-          Warranty Claims Analysis
-        </Typography>
-       
-      </Box>
-
-      {/* Master Configuration Dialog */}
-     
+    <Container maxWidth="xl" sx={{ py: 4 }}>
+      <Typography variant="h4" fontWeight="bold" mb={3}>
+        Warranty Analysis
+      </Typography>
 
       {/* Filters */}
       <Card sx={{ mb: 3 }}>
         <CardContent>
-          <Typography variant="h6" sx={{ mb: 2 }}>Filters</Typography>
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={6} md={2}>
-              <FormControl fullWidth size="small">
-                <InputLabel shrink>Select Customer</InputLabel>
+
+            {/* ROW 1 */}
+            <Grid item xs={12} md={3}>
+              <FormControl
+                fullWidth
+                size="small"
+                sx={{
+                  "& .MuiInputLabel-root": {
+                    backgroundColor: "#fff",
+                    px: 0.5,
+                  }
+                }}
+              >
+                <InputLabel shrink>Customer</InputLabel>
                 <Select
                   value={customerSelected}
-                  label="Select Customer"
-                  displayEmpty
                   onChange={(e) => setCustomerSelected(e.target.value)}
+                  label="Customer"
                 >
-
                   {activeCustomers.map((c) => (
                     <MenuItem key={c.CustomerId} value={c.CustomerId}>
                       {c.CustomerName}
@@ -466,239 +349,309 @@ const WarrantyAnalysis = () => {
 
             </Grid>
 
-            <Grid item xs={12} sm={6} md={2.5}>
-              <TextField type="date" label="Prod Date From" value={prodDateFrom} onChange={(e) => setProdDateFrom(e.target.value)} InputLabelProps={{ shrink: true }} fullWidth size="small" />
+            <Grid item xs={12} md={3}>
+              <FormControl
+                fullWidth
+                size="small"
+                sx={{
+                  "& .MuiInputLabel-root": {
+                    backgroundColor: "#fff",
+                    px: 0.5,
+                  }
+                }}
+              >
+                <InputLabel shrink>Model</InputLabel>
+                <Select
+                  multiple
+                  value={selectedModels}
+                  onChange={(e) => setSelectedModels(e.target.value)}
+                  renderValue={(selected) => selected.join(", ")}
+                >
+                  {[...new Set(warrantyData.map((d) => d.Model_Name))].map(
+                    (model) => (
+                      <MenuItem key={model} value={model}>
+                        <Checkbox checked={selectedModels.includes(model)} />
+                        <ListItemText primary={model} />
+                      </MenuItem>
+                    )
+                  )}
+                </Select>
+              </FormControl>
             </Grid>
 
-            <Grid item xs={12} sm={6} md={2.5}>
-              <TextField type="date" label="Prod Date To" value={prodDateTo} onChange={(e) => setProdDateTo(e.target.value)} InputLabelProps={{ shrink: true }} fullWidth size="small" />
+            <Grid item xs={12} md={3}>
+              <FormControl
+                fullWidth
+                size="small"
+                sx={{
+                  "& .MuiInputLabel-root": {
+                    backgroundColor: "#fff",
+                    px: 0.5,
+                  }
+                }}
+              >
+                <InputLabel shrink>Part No</InputLabel>
+                <Select
+                  multiple
+                  value={selectedParts}
+                  onChange={(e) => setSelectedParts(e.target.value)}
+                  renderValue={(selected) => selected.join(", ")}
+                >
+                  {[...new Set(warrantyData.map((d) => d.Part_Number))].map(
+                    (part) => (
+                      <MenuItem key={part} value={part}>
+                        <Checkbox checked={selectedParts.includes(part)} />
+                        <ListItemText primary={part} />
+                      </MenuItem>
+                    )
+                  )}
+                </Select>
+              </FormControl>
             </Grid>
 
-            <Grid item xs={12} sm={6} md={2.5}>
-              <TextField type="date" label="Repair Date From" value={repairDateFrom} onChange={(e) => setRepairDateFrom(e.target.value)} InputLabelProps={{ shrink: true }} fullWidth size="small" />
+            <Grid item xs={12} md={3}>
+              <FormControl
+                fullWidth
+                size="small"
+                sx={{
+                  "& .MuiInputLabel-root": {
+                    backgroundColor: "#fff",
+                    px: 0.5,
+                  }
+                }}
+              >
+                <InputLabel shrink>Region</InputLabel>
+                <Select
+                  multiple
+                  value={selectedRegions}
+                  onChange={(e) => setSelectedRegions(e.target.value)}
+                >
+                  {["North", "South", "East", "West"].map((r) => (
+                    <MenuItem key={r} value={r}>
+                      {r}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
             </Grid>
 
-            <Grid item xs={12} sm={6} md={2.5}>
-              <TextField type="date" label="Repair Date To" value={repairDateTo} onChange={(e) => setRepairDateTo(e.target.value)} InputLabelProps={{ shrink: true }} fullWidth size="small" />
+            {/* ROW 2 - 4 DATE PICKERS */}
+
+            <Grid item xs={12} md={3}>
+              <TextField
+                type="date"
+                label="Production From"
+                value={prodDateFrom}
+                onChange={(e) => setProdDateFrom(e.target.value)}
+                fullWidth
+                size="small"
+                variant="outlined"
+                InputLabelProps={{ shrink: true }}
+              />
             </Grid>
+
+            <Grid item xs={12} md={3}>
+              <TextField
+                type="date"
+                label="Production To"
+                value={prodDateTo}
+                onChange={(e) => setProdDateTo(e.target.value)}
+                fullWidth
+                size="small"
+                variant="outlined"
+                InputLabelProps={{ shrink: true }}
+              />
+            </Grid>
+
+            <Grid item xs={12} md={3}>
+              <TextField
+                type="date"
+                label="Repair From"
+                value={repairFrom}
+                onChange={(e) => setRepairFrom(e.target.value)}
+                fullWidth
+                size="small"
+                variant="outlined"
+                InputLabelProps={{ shrink: true }}
+              />
+            </Grid>
+
+            <Grid item xs={12} md={3}>
+              <TextField
+                type="date"
+                label="Repair To"
+                value={repairTo}
+                onChange={(e) => setRepairTo(e.target.value)}
+                fullWidth
+                size="small"
+                variant="outlined"
+                InputLabelProps={{ shrink: true }}
+              />
+            </Grid>
+
           </Grid>
         </CardContent>
       </Card>
 
-      {/* Summary Stats */}
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        {summaryStats.map((stat, index) => (
-          <Grid item xs={6} sm={3} key={index}>
-            <Paper
-              sx={{
-                p: 2,
-                textAlign: 'center',
-                backgroundColor: stat.bg,
-              }}
-            >
-              <Typography
-                variant="h6"
-                sx={{ fontWeight: 'bold', color: 'primary.main' }}
-              >
-                {stat.value}
-              </Typography>
-              <Typography variant="caption">
-                {stat.label}
-              </Typography>
-            </Paper>
-          </Grid>
-        ))}
-      </Grid>
 
-
-      {/* 6 Original Charts */}
+      {/* Charts */}
       <Grid container spacing={3}>
 
-        {/* 1️⃣ Model-wise Repairs */}
-        <Grid item xs={12} md={6}>
-          <ModernChartCard title="Model-wise Repairs" subtitle="Production vs Repairs">
-            <BarChart data={modelAnalysis} barGap={6}>
-              <CartesianGrid {...gridStyle} />
-              <XAxis dataKey="name" {...axisStyle} />
-              <YAxis {...axisStyle} />
-              <Tooltip {...tooltipStyle} />
-              <Legend iconType="circle" />
-
-              <Bar dataKey="repairs" fill="#6366f1" radius={[8, 8, 0, 0]} />
-              <Bar dataKey="production" fill="#22c55e" radius={[8, 8, 0, 0]} />
-            </BarChart>
-          </ModernChartCard>
-        </Grid>
-
-        {/* 2️⃣ Mileage-wise Distribution */}
-        <Grid item xs={12} md={6}>
-          <ModernChartCard title="Mileage-wise Distribution">
-            <BarChart data={mileageAnalysis}>
-              <CartesianGrid {...gridStyle} />
-              <XAxis dataKey="label" {...axisStyle} />
-              <YAxis {...axisStyle} />
-              <Tooltip {...tooltipStyle} />
-
-              <Bar dataKey="count" fill="#06b6d4" radius={[8, 8, 0, 0]} />
-            </BarChart>
-          </ModernChartCard>
-        </Grid>
-
-        {/* 3️⃣ Top 5 Parts */}
-        <Grid item xs={12} md={6}>
-          <ModernChartCard title="Top 5 Parts">
-            <BarChart data={partAnalysis}>
-              <CartesianGrid {...gridStyle} />
-              <XAxis dataKey="name" angle={-30} textAnchor="end" {...axisStyle} />
-              <YAxis {...axisStyle} />
-              <Tooltip {...tooltipStyle} />
-
-              <Bar dataKey="count" fill="#f59e0b" radius={[8, 8, 0, 0]} />
-            </BarChart>
-          </ModernChartCard>
-        </Grid>
-
-        {/* 4️⃣ Month-wise Trend */}
-        <Grid item xs={12} md={6}>
-          <ModernChartCard title="Month-wise Trend">
-            <LineChart data={monthAnalysis}>
-              <CartesianGrid {...gridStyle} />
-              <XAxis dataKey="month" angle={-30} textAnchor="end" {...axisStyle} />
-              <YAxis {...axisStyle} />
-              <Tooltip {...tooltipStyle} />
-
-              <Line
-                type="monotone"
-                dataKey="count"
-                stroke="#6366f1"
-                strokeWidth={3}
-                dot={false}
-                activeDot={{ r: 6 }}
-              />
-            </LineChart>
-          </ModernChartCard>
-        </Grid>
-
-        {/* 5️⃣ Used Months Distribution */}
-        <Grid item xs={12} md={6}>
-          <ModernChartCard title="Used Months Distribution">
-            <PieChart>
-              <Pie
-                data={usedMonthsAnalysis}
-                dataKey="count"
-                nameKey="label"
-                innerRadius={55}
-                outerRadius={90}
-                paddingAngle={4}
-              >
-                {usedMonthsAnalysis.map((_, i) => (
-                  <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip {...tooltipStyle} />
-              <Legend />
-            </PieChart>
-          </ModernChartCard>
-        </Grid>
-
-        {/* 6️⃣ By Cause Code */}
-        <Grid item xs={12} md={6}>
-          <ModernChartCard title="By Cause Code">
-            <PieChart>
-              <Pie
-                data={causeCodeAnalysis}
-                dataKey="count"
-                nameKey="code"
-                innerRadius={55}
-                outerRadius={90}
-                paddingAngle={4}
-              >
-                {causeCodeAnalysis.map((_, i) => (
-                  <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip {...tooltipStyle} />
-              <Legend />
-            </PieChart>
-          </ModernChartCard>
-        </Grid>
-
-      </Grid>
-
-
-      {/* 2 NEW BASELINE CHARTS WITH VERTICAL REFERENCE LINES */}
-      <Typography variant="h5" sx={{ mt: 4, mb: 2, fontWeight: 700 }}>
-        Quality Improvement Trends
-      </Typography>
-
-      <Grid container spacing={3}>
-
-        {/* 7️⃣ Production & Repair Improvement Trend */}
+        {/* ✅ ROW 1 — FULL WIDTH */}
         <Grid item xs={12}>
-          <ModernChartCard title="Production & Repair Improvement Trend" height={400}>
-            <ComposedChart data={improvementTrendData}>
-              <CartesianGrid {...gridStyle} />
-              <XAxis dataKey="period" angle={-30} textAnchor="end" {...axisStyle} />
-              <YAxis {...axisStyle} />
-              <Tooltip formatter={(v) => `${v}%`} {...tooltipStyle} />
-              <Legend />
+          <Card>
+            <CardContent>
+              <Typography fontWeight="bold">
+                Production vs Repair
+              </Typography>
 
-              {/* Bars FIRST */}
-              <Bar dataKey="production" fill="#06b6d4" radius={[6, 6, 0, 0]} />
+              <ResponsiveContainer width="100%" height={400}>
+                <ComposedChart
+                  data={sortedData}
+                  barCategoryGap="30%"   // space between months
+                  barGap={4}             // space inside category
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
 
-              {/* Lines */}
-              <Line dataKey="repair" stroke="#6366f1" strokeWidth={3} dot={false} />
-              <Line dataKey="improvement" stroke="#f59e0b" strokeWidth={3} dot={false} />
+                  {/* 🔥 Force categorical axis */}
+                  <XAxis
+                    dataKey="month"
+                    angle={-90}          // 🔥 rotate vertical
+                    textAnchor="end"     // align properly
+                    interval={0}         // show all months
+                    height={80}          // give space for rotated text
+                  />
 
-              {/* ✅ ReferenceLine LAST (on top layer) */}
-              <ReferenceLine
-                x="2024 Q2"
-                stroke="#000000"
-                strokeDasharray="6 6"
-                strokeWidth={3}
-                isFront
-                label={{
-                  value: ` ${masterConfig.lastImprovementDate}`,
-                  position: 'top',
-                  fill: '#000000',
-                  fontSize: 12,
-                  fontWeight: 600,
-                }}
-              />
-            </ComposedChart>
+                  <YAxis />
 
-          </ModernChartCard>
+                  <Tooltip
+                    formatter={(value, name, props) => {
+                      if (
+                        props?.payload?.month === latestImprovement.month
+                      ) {
+                        return [
+                          value,
+                          `${name} - Improvement: ${latestImprovement.description}`
+                        ];
+                      }
+                      return [value, name];
+                    }}
+                  />
+
+                  <Legend />
+
+                  {/* Production Bar */}
+                  <Bar
+                    dataKey="production"
+                    fill="#3b82f6"
+                    barSize={25}   // control column width
+                  />
+
+                  {/* Repair Line */}
+                  <Line
+                    type="monotone"
+                    dataKey="repair"
+                    stroke="#ef4444"
+                    strokeWidth={3}
+                    dot={{ r: 4 }}
+                  />
+
+                  {/* Vertical Dotted Improvement Line */}
+                  <ReferenceLine
+                    x={latestImprovement.month}
+                    stroke="black"
+                    strokeWidth={2}
+                    strokeDasharray="6 6"
+                    label={{
+                      value: "Improvement",
+                      position: "top",
+                      fill: "black",
+                      fontSize: 12
+                    }}
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
         </Grid>
 
-        {/* 8️⃣ Quality Metrics Over Time */}
-        <Grid item xs={12}>
-          <ModernChartCard title="Quality Metrics Over Time" height={400}>
-            <ComposedChart data={qualityMetricsData}>
-              <CartesianGrid {...gridStyle} />
-              <XAxis dataKey="month" angle={-30} textAnchor="end" {...axisStyle} />
-              <YAxis {...axisStyle} />
-              <Tooltip {...tooltipStyle} />
-              <Legend />
+        {/* ✅ ROW 2 — 50% + 50% */}
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Typography fontWeight="bold">
+                Used Months
+              </Typography>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={usedMonthData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="label" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="count" fill="#10b981" />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </Grid>
 
-              <ReferenceLine
-                x="Feb 2024"
-                stroke="#000000"
-                strokeDasharray="6 6"
-                strokeWidth={2}
-                label={{
-                  value: ` ${masterConfig.lastImprovementDate}`,
-                  fill: '#000000',
-                  // fill: '#16a34a',
-                  fontSize: 12,
-                  fontWeight: 600,
-                }}
-              />
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Typography fontWeight="bold">
+                Repair by Mileage
+              </Typography>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={mileageData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="label" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="count" fill="#f59e0b" />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </Grid>
 
-              <Line dataKey="defects" stroke="#ec4899" strokeWidth={3} dot={false} />
-              <Line dataKey="warranty" stroke="#06b6d4" strokeWidth={3} dot={false} />
-              <Line dataKey="cost" stroke="#f59e0b" strokeWidth={3} dot={false} />
-            </ComposedChart>
-          </ModernChartCard>
+        {/* ✅ ROW 3 — 50% + 50% */}
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Typography fontWeight="bold">
+                Nature
+              </Typography>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart layout="vertical" data={natureData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis type="number" />
+                  <YAxis dataKey="name" type="category" />
+                  <Tooltip />
+                  <Bar dataKey="count" fill="#6366f1" />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Typography fontWeight="bold">
+                Sales Region
+              </Typography>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={regionData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="region" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="count" fill="#8b5cf6" />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
         </Grid>
       </Grid>
     </Container>
