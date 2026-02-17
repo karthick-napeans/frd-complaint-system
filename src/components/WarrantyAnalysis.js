@@ -39,9 +39,9 @@ const WarrantyAnalysis = () => {
   const [selectedModels, setSelectedModels] = useState([]);
   const [selectedParts, setSelectedParts] = useState([]);
   const [selectedRegions, setSelectedRegions] = useState([]);
-  const [prodDateFrom, setProdDateFrom] = useState("2024-01-01");
+  const [prodDateFrom, setProdDateFrom] = useState("2023-01-01");
   const [prodDateTo, setProdDateTo] = useState("2025-12-31");
-  const [repairFrom, setRepairFrom] = useState("2024-01-01");
+  const [repairFrom, setRepairFrom] = useState("2023-01-01");
   const [repairTo, setRepairTo] = useState("2025-12-31");
 
 
@@ -87,19 +87,13 @@ const WarrantyAnalysis = () => {
 
   const getRegionFromRO = (hk) => {
     if (!hk) {
-      console.log("HK is undefined!");
       return null;
-    }
-
-    const cleanHK = hk.trim();
-    console.log("Clean HK:", cleanHK);
-
+    } 
+    const cleanHK = hk.trim(); 
     if (cleanHK.length < 4) {
-      console.log("HK too short:", cleanHK);
       return null;
-    }
-
-    const regionChar = cleanHK[3];   // INDEX 3 CORRECT
+    } 
+    const regionChar = cleanHK[5];   // INDEX 3 CORRECT
 
     console.log("Region Char Picked:", regionChar);
 
@@ -120,13 +114,7 @@ const WarrantyAnalysis = () => {
 
   const warrantyData = useMemo(() => {
     return rawData.map((d, index) => {
-
-      console.log("Row:", index, "HK value:", d.HK);
-
       const regionValue = getRegionFromRO(d.HK);
-
-      console.log("Detected Region:", regionValue);
-
       return {
         ...d,
         sec: d.Domestic_Export?.trim(),
@@ -138,7 +126,7 @@ const WarrantyAnalysis = () => {
     });
   }, [rawData]);
 
-  const baseData = warrantyData; 
+  const baseData = warrantyData;
 
   const uiFilteredData = useMemo(() => {
     return baseData.filter(d => {
@@ -156,33 +144,6 @@ const WarrantyAnalysis = () => {
     });
   }, [baseData, selectedModels, selectedParts, selectedRegions]);
 
-
-  const filteredData = useMemo(() => {
-    return warrantyData.filter((d) => {
-
-      if (d.sec !== "Domestic") return false;
-
-      if (repairFrom && repairTo) {
-
-        // If no repair date, exclude
-        if (!d.repairDate) return false;
-
-        const from = new Date(repairFrom);
-        const to = new Date(repairTo);
-        to.setHours(23, 59, 59, 999);
-
-        if (d.repairDate < from || d.repairDate > to)
-          return false;
-      }
-
-      return true;
-    });
-  }, [warrantyData, repairFrom, repairTo]);
-
-
-  // const filteredData = warrantyData;
-
-
   // 1️⃣ Production vs Repair
   const prodRepairData = useMemo(() => {
 
@@ -193,15 +154,14 @@ const WarrantyAnalysis = () => {
     const to = repairTo ? new Date(repairTo) : null;
     if (to) to.setHours(23, 59, 59, 999);
 
-    // 🔵 Production from UI filtered data
     uiFilteredData.forEach(d => {
       if (!d.productionDate) return;
 
       const key = d.productionDate.toISOString().slice(0, 7);
+
       productionMap[key] = (productionMap[key] || 0) + 1;
     });
 
-    // 🔴 Repair from UI filtered + repair date filter
     uiFilteredData.forEach(d => {
       if (!d.repairDate) return;
 
@@ -228,8 +188,6 @@ const WarrantyAnalysis = () => {
       }));
 
   }, [uiFilteredData, repairFrom, repairTo]);
-
-
 
   // 2️⃣ Used Month
   const usedMonthData = useMemo(() => {
@@ -285,7 +243,7 @@ const WarrantyAnalysis = () => {
     const map = {};
 
     uiFilteredData.forEach((d) => {
-      if (!d.region) return;   // skip null
+      if (!d.region) return;
       map[d.region] = (map[d.region] || 0) + 1;
     });
 

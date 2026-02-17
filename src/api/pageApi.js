@@ -37,12 +37,17 @@ export const getMstColumns = () => {
 
 export const getUploadHistory = () => {
     return getRequest("/warranty-claims/upload/history");
-}  
+}
 
 export const getDreList = () => {
     return getRequest("/dre/list");
 }
 
+export const getComplaintsList = () => {
+    return getRequest("/complaints/list");
+}
+
+ 
 //postRequest
 export const loginApi = (payload) => {
     return postRequest("/auth/login", payload);

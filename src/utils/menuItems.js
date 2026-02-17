@@ -8,12 +8,13 @@ import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import PostAddIcon from '@mui/icons-material/PostAdd';
 import TimelineIcon from '@mui/icons-material/Timeline';
 import FactCheckIcon from '@mui/icons-material/FactCheck';
-import ReportProblemIcon from '@mui/icons-material/ReportProblem';
+import SummarizeIcon from '@mui/icons-material/Summarize';
 import EngineeringIcon from '@mui/icons-material/Engineering';
 import StorageIcon from '@mui/icons-material/Storage';
 import PeopleIcon from '@mui/icons-material/People';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import PersonAddAltIcon from '@mui/icons-material/PersonAddAlt';
+import { AccordionSummary } from '@mui/material';
 
 
 // ============================================
@@ -93,6 +94,13 @@ const menuItems = [
         roles: ['Super_Admin', 'QC Admin', 'QC User'],
       },
       {
+        id: 'complaints-summary',
+        label: 'Summary',
+        icon: <SummarizeIcon />,
+        path: '/complaints/summary',
+        roles: ['Super_Admin', 'QC Admin', 'QC User'],
+      },
+      {
         id: 'complaints-analysis',
         label: 'Analysis',
         icon: <FactCheckIcon />,
@@ -109,25 +117,25 @@ const menuItems = [
     id: 'dre-entry',
     label: 'DRE-Entry',
     icon: <EngineeringIcon />,
-    path: '/dre/entry',
+    path: '/dre',
     roles: ['Super_Admin', 'QC Admin'],
     collapsible: true,
-    // submenu: [
-    //   {
-    //     id: 'dre-entry',
-    //     label: 'Entry',
-    //     icon: <PostAddIcon />,
-    //     path: '/dre/entry',
-    //     roles: ['Super_Admin', 'QC Admin'],
-    //   },
-    //   {
-    //     id: 'dre-analysis',
-    //     label: 'Analysis',
-    //     icon: <FactCheckIcon />,
-    //     path: '/dre/analysis',
-    //     roles: ['Super_Admin', 'QC Admin'],
-    //   },
-    // ],
+    submenu: [
+      {
+        id: 'dre-entry',
+        label: 'Entry',
+        icon: <PostAddIcon />,
+        path: '/dre/entry',
+        roles: ['Super_Admin', 'QC Admin'],
+      },
+      {
+        id: 'dre-analysis',
+        label: 'Summary',
+        icon: <SummarizeIcon />,
+        path: '/dre/summary',
+        roles: ['Super_Admin', 'QC Admin'],
+      },
+    ],
   },
 
   // =====================

@@ -36,6 +36,8 @@ import ImprovementBaselinePage from './components/ImprovementBaseline';
 
 //API
 import { healthCheck } from './api/pageApi';
+import CustomerSummary from './components/CustomerSummary';
+import DreSummary from './components/DreSummary';
 
 
 const drawerWidth = 280;
@@ -154,11 +156,13 @@ const AppLayout = ({ userRole, username, onLogout }) => {
 
           {/* DRE */}
           <Route path="/dre/entry" element={<DREEntry />} />
+          <Route path="/dre/summary" element={<DreSummary />} />
           {/* <Route path="/dre/analysis" element={<DREAnalysis />} /> */}
 
           {/* Complaints */}
           <Route path="/complaints/entry" element={<ComplaintForm />} />
-          <Route path="/complaints/analysis" element={<ComplaintAnalysis />} />
+          <Route path="/complaints/summary" element={<CustomerSummary />} />
+           <Route path="/complaints/analysis" element={<ComplaintAnalysis />} />
 
           {/* Admin */}
           <Route path="/users" element={<UserManagement />} />

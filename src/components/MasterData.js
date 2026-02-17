@@ -14,10 +14,10 @@ import {
   DialogActions,
   TextField,
   Chip,
-  IconButton,
+  IconButton, DialogContentText
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
-
+import CircularProgress from '@mui/material/CircularProgress';
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -83,7 +83,9 @@ const MasterData = ({ userRole = "Admin" }) => {
   const [editingRow, setEditingRow] = useState(null);
   const [formData, setFormData] = useState({});
   const [loading, setLoading] = useState(false);
-
+  const [saveLoading, setSaveLoading] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [rowToDelete, setRowToDelete] = useState(null);
 
   /* ================= FETCH ================= */
 
@@ -104,9 +106,6 @@ const MasterData = ({ userRole = "Admin" }) => {
     }
   };
 
-
-
-
   const handleOpenAdd = () => {
     setEditingRow(null);
     setFormData({});
@@ -120,17 +119,16 @@ const MasterData = ({ userRole = "Admin" }) => {
   };
 
   const handleSave = async () => {
+    setSaveLoading(true);
+
     try {
       if (editingRow) {
         const payload = { ...editingRow, ...formData };
-
         await updateMaster(masterType, payload);
         await fetchMasterData();
-        console.log("✅ Update success");
       } else {
         await createMaster(masterType, formData);
         await fetchMasterData();
-        console.log("✅ Create success");
       }
 
       await dispatch(loadMasters());
@@ -140,25 +138,40 @@ const MasterData = ({ userRole = "Admin" }) => {
       setFormData({});
     } catch (err) {
       console.error("❌ Save failed:", err);
+    } finally {
+      setSaveLoading(false);
     }
   };
 
-  const handleDelete = async (row) => {
+
+  const handleDelete = (row) => {
+    setRowToDelete(row);
+    setConfirmOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!rowToDelete) return;
+
     try {
       const idField = MASTER_ID_FIELD[masterType];
 
-      await deleteMaster(masterType, row[idField]);
-      await fetchMasterData(); // 🔥 REFRESH LOCAL STATE
+      await deleteMaster(masterType, rowToDelete[idField]);
+      await fetchMasterData();
+      await dispatch(loadMasters());
 
       console.log("✅ Delete success");
-
-      // 🔥 refresh Redux
-      await dispatch(loadMasters());
     } catch (err) {
       console.error("❌ Delete failed:", err);
+    } finally {
+      setConfirmOpen(false);
+      setRowToDelete(null);
     }
   };
 
+  const handleCancelDelete = () => {
+    setConfirmOpen(false);
+    setRowToDelete(null);
+  };
 
   const StatusChip = ({ value }) => (
     <Chip
@@ -384,6 +397,30 @@ const MasterData = ({ userRole = "Admin" }) => {
 
 
           </Box>
+
+          <Dialog open={confirmOpen} onClose={handleCancelDelete}>
+            <DialogTitle>Delete Record</DialogTitle>
+
+            <DialogContent>
+              <DialogContentText>
+                Are you sure you want to delete this record? This action cannot be undone.
+              </DialogContentText>
+            </DialogContent>
+
+            <DialogActions>
+              <Button onClick={handleCancelDelete} color="inherit">
+                Cancel
+              </Button>
+              <Button
+                onClick={handleConfirmDelete}
+                color="error"
+                variant="contained"
+              >
+                Delete
+              </Button>
+            </DialogActions>
+          </Dialog>
+
         </CardContent>
       </Card>
 
@@ -419,10 +456,22 @@ const MasterData = ({ userRole = "Admin" }) => {
 
         <DialogActions>
           <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handleSave}>
-            {editingRow ? "Update" : "Add"}
+          <Button
+            variant="contained"
+            onClick={handleSave}
+            disabled={saveLoading}
+            startIcon={
+              saveLoading ? <CircularProgress size={18} color="inherit" /> : null
+            }
+          >
+            {saveLoading
+              ? (editingRow ? "Updating..." : "Saving...")
+              : (editingRow ? "Update" : "Add")}
           </Button>
+
         </DialogActions>
+
+
       </Dialog>
     </Container>
   );

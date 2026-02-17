@@ -20,13 +20,14 @@ import {
   MenuItem,
   Accordion,
   AccordionSummary,
-  AccordionDetails,
+  AccordionDetails, Checkbox
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import SaveIcon from "@mui/icons-material/Save";
 import SaveAltIcon from "@mui/icons-material/SaveAlt";
 import { useSelector } from "react-redux";
+import CircularProgress from "@mui/material/CircularProgress";
 import { submitCustomerComplaint, getCustomerComplaints } from "../api/pageApi";
 
 
@@ -55,7 +56,21 @@ const ComplaintForm = () => {
     "Attachments",
     "Review & Submit",
   ];
-
+  const sampleAttachmentList = [
+    { id: 1, listName: "Counter Measure", isMandatory: true },
+    { id: 2, listName: "PAN Copy", isMandatory: true },
+    { id: 3, listName: "Address Proof", isMandatory: false },
+    { id: 4, listName: "Invoice Copy", isMandatory: false },
+    { id: 5, listName: "Photograph", isMandatory: true }
+  ];
+  const [attachmentRows, setAttachmentRows] = useState(
+    sampleAttachmentList.map(item => ({
+      ...item,
+      checked: item.isMandatory,
+      file: null,
+      expiryDate: ""
+    }))
+  );
   const INITIAL_FORM_STATE = {
     complaintId: "",
     customerSelected: "",
@@ -69,9 +84,9 @@ const ComplaintForm = () => {
     attachments: [],
     status: "",
   };
-
   const [formData, setFormData] = useState(INITIAL_FORM_STATE);
-
+  const [submitLoading, setSubmitLoading] = useState(false);
+  const [draftLoading, setDraftLoading] = useState(false);
   const handleAccordionChange = (panel) => (event, isExpanded) => {
     setExpandedPanel(isExpanded ? panel : null);
   };
@@ -208,6 +223,7 @@ const ComplaintForm = () => {
 
   const handleSaveDraft = async () => {
     try {
+      setDraftLoading(true);
       const fd = buildComplaintFormData("DRAFT");
 
       await submitCustomerComplaint(fd);
@@ -219,7 +235,7 @@ const ComplaintForm = () => {
       }
 
       await fetchComplaints();
-
+      setDraftLoading(false)
       if (!formData.complaintId) {
         resetForm();
       }
@@ -232,16 +248,12 @@ const ComplaintForm = () => {
 
   const handleSubmit = async () => {
     try {
+      setSubmitLoading(true);
       const fd = buildComplaintFormData("SUBMITTED");
-
-      for (const [k, v] of fd.entries()) {
-        console.log("SUBMIT →", k, v);
-      }
-
-      console.log("Submitting complaint with FormData:", fd);
       await submitCustomerComplaint(fd);
       setMessage("✓ Complaint submitted successfully!");
       await fetchComplaints();
+      setSubmitLoading(false)
       resetForm();
       setActiveStep(0);
     } catch (err) {
@@ -255,6 +267,36 @@ const ComplaintForm = () => {
     setCustomerColumns([]);
     setMappings({});
     // showPopup(`Selected customer ${customerId}. Upload Excel to continue.`);
+  };
+
+  const handleCheckboxChange = (id) => {
+    setAttachmentRows(prev =>
+      prev.map(row =>
+        row.id === id
+          ? { ...row, checked: !row.checked }
+          : row
+      )
+    );
+  };
+
+  const handleFileChange = (id, file) => {
+    setAttachmentRows(prev =>
+      prev.map(row =>
+        row.id === id
+          ? { ...row, file }
+          : row
+      )
+    );
+  };
+
+  const handleDateChange = (id, date) => {
+    setAttachmentRows(prev =>
+      prev.map(row =>
+        row.id === id
+          ? { ...row, expiryDate: date }
+          : row
+      )
+    );
   };
 
   return (
@@ -430,43 +472,74 @@ const ComplaintForm = () => {
 
               {/* Tab 3: Attachments */}
               {activeStep === 2 && (
-                <Box sx={{ gap: 2, display: "flex", flexDirection: "column" }}>
-                  <Typography variant="body1">
-                    Upload Attachments (PDF, Images)
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                  <Typography variant="h6">
+                    Upload Required Documents
                   </Typography>
-                  <Button
-                    component="label"
-                    variant="outlined"
-                    startIcon={<CloudUploadIcon />}
-                    fullWidth
-                  >
-                    Select Files
-                    <input
-                      type="file"
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      multiple
-                      hidden
-                      onChange={handleFileUpload}
-                    />
-                  </Button>
 
-                  {formData.attachments?.length > 0 && (
-                    <Box>
-                      <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                        Attached Files:
-                      </Typography>
-                      {formData.attachments.map((file, idx) => (
-                        <Chip
-                          key={idx}
-                          label={file.name}
-                          variant="outlined"
-                          sx={{ m: 0.5 }}
+                  {attachmentRows.map((row) => (
+                    <Grid
+                      container
+                      spacing={2}
+                      alignItems="center"
+                      key={row.id}
+                    >
+                      {/* Checkbox */}
+                      <Grid item xs={1}>
+                        <Checkbox
+                          checked={row.checked}
+                          disabled={row.isMandatory}
+                          onChange={() => handleCheckboxChange(row.id)}
                         />
-                      ))}
-                    </Box>
-                  )}
+                      </Grid>
+
+                      {/* List Name */}
+                      <Grid item xs={3}>
+                        <Typography>
+                          {row.listName}
+                          {row.isMandatory && (
+                            <span style={{ color: "red" }}> *</span>
+                          )}
+                        </Typography>
+                      </Grid>
+
+
+                      <Grid item xs={4}>
+                        <Button
+                          component="label"
+                          variant="outlined"
+                          startIcon={<CloudUploadIcon />}
+                          fullWidth
+                        >
+                          {row.file ? row.file.name : "Upload File"}
+                          <input
+                            type="file"
+                            hidden
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            onChange={(e) =>
+                              handleFileChange(row.id, e.target.files[0])
+                            }
+                          />
+                        </Button>
+                      </Grid>
+
+                      {/* Expiry Date */}
+                      <Grid item xs={4}>
+                        <TextField
+                          type="date"
+                          fullWidth
+                          value={row.expiryDate}
+                          onChange={(e) =>
+                            handleDateChange(row.id, e.target.value)
+                          }
+                          InputLabelProps={{ shrink: true }}
+                        />
+                      </Grid>
+                    </Grid>
+                  ))}
                 </Box>
               )}
+
 
               {/* Tab 4: Review & Submit */}
               {activeStep === 3 && (
@@ -520,23 +593,39 @@ const ComplaintForm = () => {
                 <Box sx={{ gap: 1, display: "flex" }}>
                   <Button
                     variant="outlined"
-                    startIcon={<SaveAltIcon />}
+                    startIcon={
+                      draftLoading ? (
+                        <CircularProgress size={18} />
+                      ) : (
+                        <SaveIcon />
+                      )
+                    }
                     onClick={handleSaveDraft}
+                    disabled={draftLoading}
                   >
-                    Save Draft
+                    {draftLoading ? "Saving..." : "Save Draft"}
                   </Button>
 
                   {activeStep === steps.length - 1 ? (
                     <Button
                       variant="contained"
                       color="success"
-                      startIcon={<SaveIcon />}
                       onClick={handleSubmit}
+                      disabled={submitLoading}
+                      startIcon={
+                        submitLoading ? (
+                          <CircularProgress size={18} color="inherit" />
+                        ) : null
+                      }
                     >
-                      Submit Complaint
+                      {submitLoading ? "Submitting..." : "Submit Complaint"}
                     </Button>
                   ) : (
-                    <Button variant="contained" onClick={handleNext}>
+                    <Button
+                      type="button"
+                      variant="contained"
+                      onClick={handleNext}
+                    >
                       Next
                     </Button>
                   )}

@@ -24,6 +24,7 @@ import {
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import SaveIcon from '@mui/icons-material/Save';
 import { useSelector } from "react-redux";
+import CircularProgress from "@mui/material/CircularProgress";
 import { saveDreDraft, saveDreWithFiles, getDreList } from "../api/pageApi"
 
 const DREEntry = () => {
@@ -40,6 +41,9 @@ const DREEntry = () => {
   const [dreList, setDreList] = useState([]);
   const drafts = dreList.filter(d => d.Status === "DRAFT");
   const submitted = dreList.filter(d => d.Status === "OPEN");
+  const [submitLoading, setSubmitLoading] = useState(false);
+  const [draftLoading, setDraftLoading] = useState(false);
+
 
   const handleAccordionChange = (panel) => (event, isExpanded) => {
     setExpandedPanel(isExpanded ? panel : null);
@@ -163,17 +167,12 @@ const DREEntry = () => {
 
   const handleSaveDraft = async () => {
     try {
-      // 👇 build FormData with DRAFT status
-      const fd = buildDreFormData("DRAFT", attachments);
+      setDraftLoading(true);   // 🔥 Start loader
 
-      // optional debug
-      for (const [k, v] of fd.entries()) {
-        console.log("DRAFT FD →", k, v);
-      }
+      const fd = buildDreFormData("DRAFT", attachments);
 
       const res = await saveDreWithFiles(fd);
 
-      // 👇 update local state with dreId + status
       setFormData((prev) => ({
         ...prev,
         dreId: res?.data?.dreId || prev.dreId,
@@ -181,22 +180,27 @@ const DREEntry = () => {
       }));
 
       setMessage("✓ DRE draft saved.");
-      await loadDreList(); // refresh list to show new draft
+      await loadDreList();
       resetForm();
+
     } catch (err) {
       console.error("Draft save failed", err.response?.data || err);
       setMessage("❌ Failed to save draft");
+    } finally {
+      setDraftLoading(false);  // 🔥 Stop loader
     }
   };
 
+
   const handleSubmitDRE = async () => {
     try {
+      setSubmitLoading(true);   // 🔥 start loader
+
       const fd = buildDreFormData("OPEN", attachments);
       const res = await saveDreWithFiles(fd);
 
       setMessage("✓ DRE submitted successfully");
 
-      // 🔄 Update local list
       setDreList(prev =>
         prev.map(d =>
           d.DreId === formData.dreId
@@ -204,11 +208,15 @@ const DREEntry = () => {
             : d
         )
       );
+
       await loadDreList();
       resetForm();
+
     } catch (err) {
       console.error(err);
       setMessage("❌ DRE submit failed");
+    } finally {
+      setSubmitLoading(false);  // 🔥 stop loader
     }
   };
 
@@ -281,7 +289,7 @@ const DREEntry = () => {
                   <Grid item xs={12}>
                     <TextField
                       type="date"
-                      label="DRE Date *"
+                      label="Entry Date *"
                       name="date"
                       InputLabelProps={{ shrink: true }}
                       fullWidth
@@ -517,19 +525,33 @@ const DREEntry = () => {
                 <Box sx={{ display: 'flex', gap: 1 }}>
                   <Button
                     variant="outlined"
-                    startIcon={<SaveIcon />}
+                    startIcon={
+                      draftLoading ? (
+                        <CircularProgress size={18} />
+                      ) : (
+                        <SaveIcon />
+                      )
+                    }
                     onClick={handleSaveDraft}
+                    disabled={draftLoading}
                   >
-                    Save Draft
+                    {draftLoading ? "Saving..." : "Save Draft"}
                   </Button>
+
 
                   {activeStep === 3 ? (
                     <Button
                       variant="contained"
                       color="success"
                       onClick={handleSubmitDRE}
+                      disabled={submitLoading}
+                      startIcon={
+                        submitLoading ? (
+                          <CircularProgress size={18} color="inherit" />
+                        ) : null
+                      }
                     >
-                      Submit DRE
+                      {submitLoading ? "Submitting..." : "Submit DRE"}
                     </Button>
                   ) : (
                     <Button

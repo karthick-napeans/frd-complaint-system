@@ -44,7 +44,7 @@ const WarrantyEntry = () => {
     name: c.CustomerName,
   }));
 
-    const fetchUploadHistory = async () => {
+  const fetchUploadHistory = async () => {
     try {
       const response = await getUploadHistory(); // already response.data because interceptor
       const rows = response.map((item) => ({
@@ -116,28 +116,25 @@ const WarrantyEntry = () => {
 
       const response = await uploadWarrantyClaims(formData);
       await fetchUploadHistory();
-      console.log('Upload response:', response);
-
       setMessage(
         `✓ Successfully uploaded ${response?.RecordsInserted ?? 0} warranty claim records!`
       );
-
-      // ✅ RESET EVERYTHING
       setUploadedFile(null);
       setPreviewData([]);
       setCustomerSelected('');
 
-      // ✅ THIS IS THE KEY LINE
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
     } catch (error) {
-      console.error('Upload failed:', error.response?.data || error);
+      console.error("Upload failed:", error.response?.data || error);
 
-      setMessage(
-        error.response?.data?.message ||
-        '❌ Upload failed. Please check the file and try again.'
-      );
+      const apiMessage =
+        error?.response?.data?.Message ||
+        error?.response?.data?.message;
+
+      setMessage(apiMessage || "Upload failed. Please try again.");  
+ 
     }
   };
 

@@ -13,12 +13,13 @@ import {
   TextField,
   Chip,
   IconButton,
-  Alert
+  Alert, DialogContentText
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import CircularProgress from '@mui/material/CircularProgress';
 import { getAllUsers, createUser, updateUser, deleteUser } from '../api/pageApi';
 
 const UserManagement = () => {
@@ -26,7 +27,10 @@ const UserManagement = () => {
   const [editingUser, setEditingUser] = useState(null);
   const [submitError, setSubmitError] = useState("");
   const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(false);        // For table loading
+  const [submitLoading, setSubmitLoading] = useState(false);
   const [formData, setFormData] = useState({
+    employeeId: "",
     userId: null,
     username: '',
     email: '',
@@ -36,6 +40,9 @@ const UserManagement = () => {
     isActive: true,
     password: '',
   });
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [userIdToDelete, setUserIdToDelete] = useState(null);
+
 
   useEffect(() => {
     fetchUsers();
@@ -60,6 +67,8 @@ const UserManagement = () => {
 
   const fetchUsers = async () => {
     try {
+      setLoading(true);
+
       const users = await getAllUsers();
 
       const userList = Array.isArray(users)
@@ -67,11 +76,15 @@ const UserManagement = () => {
         : Array.isArray(users?.Data)
           ? users.Data
           : [];
+
       setUsers(userList);
     } catch (error) {
       console.error("Error fetching users:", error);
+    } finally {
+      setLoading(false);
     }
   };
+
 
   const handleOpenAdd = () => {
     setEditingUser(null);
@@ -93,15 +106,31 @@ const UserManagement = () => {
     setOpenDialog(true);
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = (id) => {
+    setUserIdToDelete(id);
+    setConfirmOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!userIdToDelete) return;
+
     try {
-      console.log("Deleting user with ID:", id);
-      await deleteUser(id);
-      // setUsers((prev) => prev.filter((u) => u.UserId !== id));
+      console.log("Deleting user with ID:", userIdToDelete);
+
+      await deleteUser(userIdToDelete);
       await fetchUsers();
+
     } catch (error) {
       console.error("Error deleting user:", error);
+    } finally {
+      setConfirmOpen(false);
+      setUserIdToDelete(null);
     }
+  };
+
+  const handleCancelDelete = () => {
+    setConfirmOpen(false);
+    setUserIdToDelete(null);
   };
 
   const buildUpdatePayload = (formData, editingUser) => {
@@ -125,7 +154,8 @@ const UserManagement = () => {
   };
 
   const handleCreateEditUser = async () => {
-    setSubmitError(""); // clear old error
+    setSubmitError("");
+    setSubmitLoading(true);
 
     try {
       if (editingUser) {
@@ -153,7 +183,8 @@ const UserManagement = () => {
     } catch (error) {
       const message = getErrorMessage(error);
       setSubmitError(message);
-      console.error("Error creating/editing user:", error);
+    } finally {
+      setSubmitLoading(false);
     }
   };
 
@@ -193,6 +224,13 @@ const UserManagement = () => {
       filterable: false,
       renderCell: (params) =>
         params.api.getRowIndexRelativeToVisibleRows(params.id) + 1,
+    },
+    {
+      field: 'EmployeeId',
+      headerName: 'Employee Id',
+      flex: 1,
+      align: 'center',
+      headerAlign: 'center',
     },
     {
       field: 'UserName',
@@ -254,8 +292,8 @@ const UserManagement = () => {
         </Box>
       ),
     },
-  ];
-
+  ]; 
+  
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
@@ -275,6 +313,7 @@ const UserManagement = () => {
               rows={users}
               columns={columns}
               getRowId={(row) => row.UserId}
+              loading={loading}   // 🔥 Add this line
 
               pagination
               autoHeight              // 🔥 KEY LINE
@@ -312,6 +351,30 @@ const UserManagement = () => {
 
           </Box>
         </CardContent>
+
+        <Dialog open={confirmOpen} onClose={handleCancelDelete}>
+          <DialogTitle>Delete Record</DialogTitle>
+
+          <DialogContent>
+            <DialogContentText>
+              Are you sure you want to delete this record? This action cannot be undone.
+            </DialogContentText>
+          </DialogContent>
+
+          <DialogActions>
+            <Button onClick={handleCancelDelete} color="inherit">
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmDelete}
+              color="error"
+              variant="contained"
+            >
+              Delete
+            </Button>
+          </DialogActions>
+        </Dialog>
+
       </Card>
 
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
@@ -319,10 +382,10 @@ const UserManagement = () => {
 
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
           <TextField
-            label="Username"
+            label="Employee ID"
             fullWidth
-            value={formData.username}
-            onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+            value={formData.employeeId}
+            onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
           />
 
           <TextField
@@ -372,7 +435,7 @@ const UserManagement = () => {
             onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
           />
 
-          {editingUser && (
+          {/* {editingUser && (
             <TextField
               select
               label="Status"
@@ -389,7 +452,7 @@ const UserManagement = () => {
               <option value="Inactive">Inactive</option>
             </TextField>
 
-          )}
+          )} */}
 
           {submitError && (
             <Alert severity="error" sx={{ mb: 2 }}>
@@ -402,8 +465,17 @@ const UserManagement = () => {
 
         <DialogActions>
           <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handleCreateEditUser}>
-            {editingUser ? 'Update User' : 'Add User'}
+          <Button
+            variant="contained"
+            onClick={handleCreateEditUser}
+            disabled={submitLoading}
+            startIcon={
+              submitLoading ? <CircularProgress size={18} color="inherit" /> : null
+            }
+          >
+            {submitLoading
+              ? (editingUser ? "Updating..." : "Creating...")
+              : (editingUser ? "Update User" : "Add User")}
           </Button>
         </DialogActions>
       </Dialog>
