@@ -170,8 +170,8 @@ const AuditLogs = () => {
   ];
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }}>
-      <Typography fontSize={28} fontWeight={700} sx={{ mb: 3 }}>
+    <Box>
+      <Typography  variant='h5' fontWeight={700} sx={{ mb: 2 }}>
         Audit Logs
       </Typography>
 
@@ -254,7 +254,7 @@ const AuditLogs = () => {
           </Box>
         </CardContent>
       </Card>
-    </Container>
+    </Box>
   );
 };
 

@@ -5,7 +5,7 @@ import {
     Card,
     CardContent,
     Typography,
-    Chip, Button, TextField, MenuItem, Grid 
+    Chip, Button, TextField, MenuItem, Grid
 
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
@@ -16,14 +16,14 @@ import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import ClearIcon from '@mui/icons-material/Clear';
 
 
-const CustomerSummary = () => { 
+const CustomerSummary = () => {
     const [rows, setRows] = useState([]);
     const [loading, setLoading] = useState(false);
     const [filterPart, setFilterPart] = useState('');
     const [filterStatus, setFilterStatus] = useState('');
     const [filterSeverity, setFilterSeverity] = useState('');
     const [fromDate, setFromDate] = useState('');
-    const [toDate, setToDate] = useState(''); 
+    const [toDate, setToDate] = useState('');
     const filteredRows = rows.filter((row) => {
 
         const matchPart =
@@ -175,18 +175,17 @@ const CustomerSummary = () => {
     ];
 
     return (
-        <Container maxWidth="lg" sx={{ py: 4 }}>
-
+        <Box>
             {/* Header */}
             <Box
                 sx={{
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    mb: 4
+                   
                 }}
             >
-                <Typography variant="h4" fontWeight={700}>
+                <Typography variant="h5" fontWeight={700}>
                     Customer Complaint Summary
                 </Typography>
 
@@ -374,7 +373,8 @@ const CustomerSummary = () => {
                 </CardContent>
             </Card>
 
-        </Container>
+        </Box>
+
     );
 
 };

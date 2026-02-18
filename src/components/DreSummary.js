@@ -125,11 +125,11 @@ const DreSummary = () => {
     ];
 
     return (
-        <Container maxWidth="lg" sx={{ py: 4 }}>
+        < Box>
 
             {/* Header */}
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 4 }}>
-                <Typography variant="h4" fontWeight={700}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                <Typography variant="h5" fontWeight={700} >
                     DRE Summary
                 </Typography>
 
@@ -255,7 +255,7 @@ const DreSummary = () => {
                 </CardContent>
             </Card>
 
-        </Container>
+        </Box>
     );
 };
 

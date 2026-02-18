@@ -27,18 +27,18 @@ import {
   InputLabel,
 } from "@mui/material";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
+import IconButton from "@mui/material/IconButton";
+import CloseIcon from "@mui/icons-material/Close";
 import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 import SaveIcon from "@mui/icons-material/Save";
 import * as XLSX from "xlsx";
 import { useSelector } from "react-redux";
-import { getMstColumns, submitColumnMapping } from "../api/pageApi";
+import { getMstColumns, submitColumnMapping, getCustomerColumnMapping } from "../api/pageApi";
 import Snackbar from "@mui/material/Snackbar";
 
 const WarrantyColumnMapper = () => {
   const { customers } = useSelector((state) => state.masters);
-  console.log("Customers from store:", customers);
   const activeCustomers = customers.filter((c) => c.IsActive === true);
-  console.log("Active Customers:", activeCustomers);
   const ROW_HEIGHT = 56;
   const [customerSelected, setCustomerSelected] = useState("");
   const [customerColumns, setCustomerColumns] = useState([]);
@@ -46,6 +46,7 @@ const WarrantyColumnMapper = () => {
   const [mappings, setMappings] = useState({});
   const [draggedColumn, setDraggedColumn] = useState(null);
   const [selectedMaster, setSelectedMaster] = useState(null);
+  const [existingMappings, setExistingMappings] = useState([]);
   const [openDialog, setOpenDialog] = useState(false);
   const [popup, setPopup] = useState({
     open: false,
@@ -79,12 +80,29 @@ const WarrantyColumnMapper = () => {
     fetchMasterColumns();
   }, []);
 
-  const handleCustomerSelect = (customerId) => {
+  const handleCustomerSelect = async (customerId) => {
     setCustomerSelected(customerId);
     setCustomerColumns([]);
     setMappings({});
-    // showPopup(`Selected customer ${customerId}. Upload Excel to continue.`);
+    setUploadedFile(null);
+
+    if (!customerId) return;
+
+    try {
+      const res = await getCustomerColumnMapping(customerId);
+      const data = Array.isArray(res)
+        ? res
+        : Array.isArray(res?.data)
+          ? res.data
+          : [res];
+
+      setExistingMappings(data.filter(x => x.IsActive));
+    } catch (error) {
+      console.error(error);
+      setExistingMappings([]);
+    }
   };
+
 
   const handleUploadClick = () => fileInputRef.current.click();
 
@@ -222,15 +240,15 @@ const WarrantyColumnMapper = () => {
   /* -------- UI (UNCHANGED) -------- */
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Typography variant="h4" fontWeight="bold" mb={3}>
+    <Box >
+      <Typography variant="h5" fontWeight="bold" mb={3}>
         Master Excel Template Mapper
       </Typography>
 
       {/* ================= CONFIGURATION ================= */}
       <Card sx={{ mb: 3 }}>
         <CardContent>
-          <Grid container spacing={2}>
+          <Grid container spacing={2} alignItems="stretch">
             <Grid item xs={12} md={6}>
               <FormControl fullWidth>
                 <InputLabel>Select Customer</InputLabel>
@@ -248,38 +266,81 @@ const WarrantyColumnMapper = () => {
               </FormControl>
             </Grid>
 
-            <Grid item xs={12} md={6}>
-              <Button
-                fullWidth
-                variant="outlined"
-                startIcon={<UploadFileIcon />}
-                onClick={handleUploadClick}
-                disabled={!customerSelected}
+            <Grid item xs={12} md={6} sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+
+              {/* Upload Box */}
+              <Box
+                sx={{
+                  flex: 1,
+                  height: 56,
+                  border: "1px solid #1976d2",
+                  borderRadius: 2,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 1.5,
+                  cursor: customerSelected ? "pointer" : "not-allowed",
+                  background: customerSelected
+                    ? "linear-gradient(135deg, #e3f2fd 0%, #ffffff 100%)"
+                    : "#f5f5f5",
+                  transition: "0.3s",
+                  "&:hover": {
+                    background: customerSelected
+                      ? "linear-gradient(135deg, #bbdefb 0%, #ffffff 100%)"
+                      : "#f5f5f5",
+                  },
+                }}
+                onClick={customerSelected ? handleUploadClick : undefined}
               >
-                Upload Excel
-              </Button>
-              <input
-                type="file"
-                ref={fileInputRef}
-                hidden
-                accept=".xlsx,.xls,.csv"
-                onChange={handleFileChange}
-              />
-              {uploadedFile && (
-                <Typography
-                  variant="body2"
+                <UploadFileIcon
                   sx={{
-                    mt: 1,
-                    color: "text.secondary",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 0.5,
+                    fontSize: 20,
+                    color: customerSelected ? "#1976d2" : "#9e9e9e",
+                  }}
+                />
+
+                <Typography fontWeight={600} fontSize={14}>
+                  {uploadedFile ? uploadedFile.name : "Upload Excel Template"}
+                </Typography>
+
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  hidden
+                  accept=".xlsx,.xls,.csv"
+                  onChange={handleFileChange}
+                />
+              </Box>
+
+              {/* Remove Button */}
+              {/* Remove Icon */}
+              {uploadedFile && (
+                <IconButton
+                  size="small"
+                  color="error"
+                  sx={{
+                    height: 32,
+                    width: 32,
+                    border: "1px solid #f44336",
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation(); // 👈 prevent triggering upload click
+                    setUploadedFile(null);
+                    setCustomerColumns([]);
+                    setMappings({});
+                    if (fileInputRef.current) {
+                      fileInputRef.current.value = "";
+                    }
                   }}
                 >
-                  📄 {uploadedFile.name}
-                </Typography>
+                  <CloseIcon sx={{ fontSize: 18 }} />
+                </IconButton>
               )}
+
+
             </Grid>
+
+
           </Grid>
         </CardContent>
       </Card>
@@ -387,6 +448,9 @@ const WarrantyColumnMapper = () => {
         </Grid>
       )}
 
+
+
+
       {/* ================= MAPPING SUMMARY ================= */}
       {Object.keys(mappings).length > 0 && (
         <Card sx={{ mt: 4 }}>
@@ -460,15 +524,40 @@ const WarrantyColumnMapper = () => {
         </Box>
       )}
 
-      {/* ================= MESSAGE ================= */}
-      {/* {message && (
-        <Alert
-          sx={{ mt: 3 }}
-          severity={message.includes('✓') ? 'success' : 'info'}
-        >
-          {message}
-        </Alert>
-      )} */}
+      {/* ================= EXISTING MAPPED COLUMNS ================= */}
+      {existingMappings.length > 0 && (
+        <Card sx={{ mt: 3 }}>
+          <CardContent>
+            <Typography variant="h6" fontWeight="bold" mb={2}>
+              Mapped Columns
+            </Typography>
+
+            <TableContainer component={Paper} variant="outlined">
+              <Table size="small">
+                <TableHead>
+                  <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
+                    <TableCell><b>S.No</b></TableCell>
+                    <TableCell><b>Customer Column Name</b></TableCell>
+                    <TableCell><b>Master Column Name</b></TableCell>
+                  </TableRow>
+                </TableHead>
+
+                <TableBody>
+                  {existingMappings.map((row, index) => (
+                    <TableRow key={row.MappingId}>
+                      <TableCell>{index + 1}</TableCell>
+                      <TableCell>{row.CustomerColumnName}</TableCell>
+                      <TableCell>{row.MasterColumnName}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </CardContent>
+        </Card>
+      )}
+
+
 
       {/* ================= DIALOG ================= */}
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)} fullWidth>
@@ -517,7 +606,7 @@ const WarrantyColumnMapper = () => {
           {popup.message}
         </Alert>
       </Snackbar>
-    </Container>
+    </Box>
   );
 };
 

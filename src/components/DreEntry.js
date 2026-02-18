@@ -243,8 +243,8 @@ const DREEntry = () => {
 
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }}>
-      <Typography fontSize={28} fontWeight={700} sx={{ mb: 3 }}>
+    <Box> 
+      <Typography variant="h5" fontWeight={700} sx={{ mb: 2}}>
         DRE Entry
       </Typography>
 
@@ -690,7 +690,7 @@ const DREEntry = () => {
         </Grid>
 
       </Grid>
-    </Container>
+    </Box>
   );
 };
 

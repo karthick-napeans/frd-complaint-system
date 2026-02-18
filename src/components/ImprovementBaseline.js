@@ -29,8 +29,8 @@ const ImprovementBaselinePage = () => {
         },
     ]);
     return (
-        <Box sx={{ p: 3 }}>
-            {/* PAGE HEADER */}
+        <Box >
+
             <Typography variant="h5" fontWeight={700} mb={2}>
                 Improvement Baseline Configuration
             </Typography>

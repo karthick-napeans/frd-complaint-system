@@ -1,5 +1,5 @@
 import React from 'react';
-import { useEffect } from "react"; 
+import { useEffect } from "react";
 import {
   Box,
   Container,
@@ -86,14 +86,10 @@ const Dashboard = () => {
 
   return (
     <Box
-      sx={{
-        width: '100%',
-        background: 'linear-gradient(180deg, #f8fafc, #eef2f7)',
-      }}
     >
 
-      <Box sx={{ px: 3, py: 4, width: '100%' }}>
-        <Typography variant="h4" fontWeight={700} sx={{ mb: 4 }}>
+      <Box >
+        <Typography variant="h5" fontWeight={700} sx={{ mb: 2 }}>
           Complaint Management Dashboard
         </Typography>
 

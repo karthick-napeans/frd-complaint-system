@@ -29,7 +29,7 @@ import DREEntry from './components/DreEntry';
 import WarrantyAnalysis from './components/WarrantyAnalysis';
 import Sidebar from './components/Sidebar';
 import ComplaintAnalysis from './components/ComplaintAnalysis';
-     import AuditLogs from './components/AuditLogs';
+import AuditLogs from './components/AuditLogs';
 import { useReloadControl } from './reload/useReloadControl';
 import ImprovementBaselinePage from './components/ImprovementBaseline';
 
@@ -80,7 +80,7 @@ const AppLayout = ({ userRole, username, onLogout }) => {
           </IconButton>
 
           <Typography variant="h6" sx={{ flexGrow: 1 }}>
-            QC Complaint Management System
+            QA/QC Dashboard
           </Typography>
 
           <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} sx={{ p: 0 }}>
@@ -162,7 +162,7 @@ const AppLayout = ({ userRole, username, onLogout }) => {
           {/* Complaints */}
           <Route path="/complaints/entry" element={<ComplaintForm />} />
           <Route path="/complaints/summary" element={<CustomerSummary />} />
-           <Route path="/complaints/analysis" element={<ComplaintAnalysis />} />
+          <Route path="/complaints/analysis" element={<ComplaintAnalysis />} />
 
           {/* Admin */}
           <Route path="/users" element={<UserManagement />} />

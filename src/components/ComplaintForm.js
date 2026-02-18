@@ -56,6 +56,7 @@ const ComplaintForm = () => {
     "Attachments",
     "Review & Submit",
   ];
+  
   const sampleAttachmentList = [
     { id: 1, listName: "Counter Measure", isMandatory: true },
     { id: 2, listName: "PAN Copy", isMandatory: true },
@@ -159,31 +160,58 @@ const ComplaintForm = () => {
     setFormData({ ...formData, [name]: value });
   };
 
-  const handleFileUpload = (e) => {
-    const files = Array.from(e.target.files);
-    setFormData((prev) => ({
-      ...prev,
-      attachments: [...prev.attachments, ...files],
-    }));
+  const isStep2Valid = () => {
+    return !attachmentRows.some(
+      (row) =>
+        row.isMandatory &&
+        (!row.file || !row.expiryDate)
+    );
   };
 
   const handleNext = () => {
+
+    /* ================= STEP 0 ================= */
     if (activeStep === 0) {
       if (
-        !formData.complaintDate
+        !formData.customerSelected ||
+        !formData.customerEmail ||
+        !formData.complaintDate ||
+        !formData.modelSelected
       ) {
         setMessage("Please fill all required fields in Complaint Header");
         return;
       }
     }
+
+    /* ================= STEP 1 ================= */
     if (activeStep === 1) {
       if (!formData.problemStatement || !formData.causeCode) {
         setMessage("Please fill Problem Statement and Cause Code");
         return;
       }
     }
-    setActiveStep(activeStep + 1);
+
+    /* ================= STEP 2 ================= */
+    if (activeStep === 2) {
+      const invalidRow = attachmentRows.find(
+        (row) =>
+          row.isMandatory &&
+          (!row.file || !row.expiryDate)
+      );
+
+      if (invalidRow) {
+        setMessage(
+          `Please upload file and select expiry date for "${invalidRow.listName}"`
+        );
+        return;
+      }
+    }
+
+    setMessage("");
+    setActiveStep((prev) => prev + 1);
   };
+
+
 
   const handleBack = () => {
     setActiveStep(activeStep - 1);
@@ -287,7 +315,15 @@ const ComplaintForm = () => {
           : row
       )
     );
+
+    // 🔥 Clear message only if valid now
+    setTimeout(() => {
+      if (isStep2Valid()) {
+        setMessage("");
+      }
+    }, 0);
   };
+
 
   const handleDateChange = (id, date) => {
     setAttachmentRows(prev =>
@@ -297,19 +333,17 @@ const ComplaintForm = () => {
           : row
       )
     );
+
+    setTimeout(() => {
+      if (isStep2Valid()) {
+        setMessage("");
+      }
+    }, 0);
   };
 
+
   return (
-    <Container
-      maxWidth="lg"
-      sx={{
-        py: 2,
-        flex: 1,
-        overflow: "hidden", // 🚫 container scroll
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
+    <Box>
       <Typography variant="h5" fontWeight={700} sx={{ mb: 2 }}>
         Customer Complaint Entry
       </Typography>
@@ -354,14 +388,18 @@ const ComplaintForm = () => {
                       ))}
                     </Select>
                   </FormControl>
+
                   <TextField
                     label="Customer Email"
                     fullWidth
-                    type="email"
                     name="customerEmail"
                     value={formData.customerEmail}
                     onChange={handleInputChange}
+                    placeholder="example1@mail.com, example2@mail.com"
+                  // helperText="Enter multiple emails separated by comma"
                   />
+
+
                   <TextField
                     label="Complaint Date"
                     type="date"
@@ -507,6 +545,7 @@ const ComplaintForm = () => {
                       <Grid item xs={4}>
                         <Button
                           component="label"
+
                           variant="outlined"
                           startIcon={<CloudUploadIcon />}
                           fullWidth
@@ -528,6 +567,8 @@ const ComplaintForm = () => {
                         <TextField
                           type="date"
                           fullWidth
+                          size="small"          // 👈 same size
+
                           value={row.expiryDate}
                           onChange={(e) =>
                             handleDateChange(row.id, e.target.value)
@@ -755,7 +796,7 @@ const ComplaintForm = () => {
         </Grid>
 
       </Grid>
-    </Container>
+    </Box>
   );
 };
 

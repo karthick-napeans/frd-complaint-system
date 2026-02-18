@@ -47,7 +47,11 @@ export const getComplaintsList = () => {
     return getRequest("/complaints/list");
 }
 
- 
+export const getCustomerColumnMapping = (customerId) => {
+    return getRequest(`/customer-excel-mappings/${customerId}`);
+};
+
+
 //postRequest
 export const loginApi = (payload) => {
     return postRequest("/auth/login", payload);

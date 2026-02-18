@@ -1,351 +1,243 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo, useState } from "react";
 import {
     Box,
-    Container,
-    Card,
-    CardContent,
-    Grid,
     Typography,
-    TextField,
-    FormControl,
-    InputLabel,
-    Select,
-    MenuItem,
+    Grid,
     Paper,
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    Chip,
-    DialogActions,
-    Button as MuiButton,
-} from '@mui/material';
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
+    FormControl,
+    Select,
+    MenuItem
+} from "@mui/material";
 import {
-    LineChart,
-    Line,
+    ResponsiveContainer,
     BarChart,
     Bar,
-    PieChart,
-    Pie,
-    Cell,
+    LineChart,
+    Line,
     XAxis,
     YAxis,
     CartesianGrid,
     Tooltip,
-    Legend,
-    ResponsiveContainer,
-    ComposedChart,
-    ReferenceLine,
-} from 'recharts';
-import SettingsIcon from '@mui/icons-material/Settings';
+    Legend
+} from "recharts";
 
-/* ================= COLORS & STYLES ================= */
-const COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#ec4899', '#06b6d4'];
+const MONTHS = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+];
 
-const gridStyle = {
-    stroke: '#eaeef4',
-    strokeDasharray: '4 4',
-};
+// 🔵 Replace with real sales API later
+const SALES_PER_MONTH = 10000;
 
-const axisStyle = {
-    tick: { fill: '#6b7280', fontSize: 12 },
-    axisLine: false,
-    tickLine: false,
-};
+const ComplaintAnalysis = ({ apiData }) => {
 
-const tooltipStyle = {
-    contentStyle: {
-        borderRadius: 12,
-        border: 'none',
-        boxShadow: '0 12px 30px rgba(0,0,0,0.15)',
-    },
-};
+    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
-/* ================= CARD ================= */
-const ModernChartCard = ({ title, subtitle, children, height = 320 }) => (
-    <Card
-        sx={{
-            height: '100%',
-            borderRadius: 4,
-            background: 'linear-gradient(180deg, #ffffff 0%, #fafafa 100%)',
-            border: '1px solid #eef2f6',
-            boxShadow: '0 10px 30px rgba(0,0,0,0.06)',
-        }}
-    >
-        <CardContent>
-            <Typography fontWeight={600} fontSize={16}>
-                {title}
-            </Typography>
-            {subtitle && (
-                <Typography variant="caption" color="text.secondary">
-                    {subtitle}
-                </Typography>
-            )}
-            <Box sx={{ mt: 2 }}>
-                <ResponsiveContainer width="100%" height={height}>
-                    {children}
-                </ResponsiveContainer>
-            </Box>
-        </CardContent>
-    </Card>
-);
-
-/* ================= MAIN COMPONENT ================= */
-const ComplaintAnalysis = () => {
-    const [customer, setCustomer] = useState('Customer A');
-    const [fromDate, setFromDate] = useState('2023-01-01');
-    const [toDate, setToDate] = useState('2025-12-31');
-
-    /* -------- BASELINE CONFIG -------- */
-    const [masterConfig, setMasterConfig] = useState({
-        lastImprovementDate: '2024-02',
-        improvementDescription: 'Complaint handling process optimization',
-    });
-
-    const [openConfigDialog, setOpenConfigDialog] = useState(false);
-    const [tempConfig, setTempConfig] = useState(masterConfig);
-
-    const complaintData = [
-        // ===================== 2023 (BEFORE IMPROVEMENT) =====================
-        { id: 1, customer: 'Customer A', category: 'Product Quality', severity: 'High', date: '2023-01-12', resolution_days: 10 },
-        { id: 2, customer: 'Customer B', category: 'Service Delay', severity: 'High', date: '2023-02-08', resolution_days: 9 },
-        { id: 3, customer: 'Customer C', category: 'Billing Issue', severity: 'Medium', date: '2023-02-25', resolution_days: 6 },
-        { id: 4, customer: 'Customer A', category: 'Dealer Issue', severity: 'Medium', date: '2023-03-18', resolution_days: 7 },
-        { id: 5, customer: 'Customer B', category: 'Product Quality', severity: 'High', date: '2023-04-22', resolution_days: 11 },
-
-        { id: 6, customer: 'Customer C', category: 'Service Delay', severity: 'Medium', date: '2023-05-10', resolution_days: 8 },
-        { id: 7, customer: 'Customer A', category: 'Billing Issue', severity: 'Low', date: '2023-06-01', resolution_days: 4 },
-        { id: 8, customer: 'Customer B', category: 'Dealer Issue', severity: 'Medium', date: '2023-06-19', resolution_days: 6 },
-        { id: 9, customer: 'Customer C', category: 'Product Quality', severity: 'High', date: '2023-07-14', resolution_days: 10 },
-        { id: 10, customer: 'Customer A', category: 'Service Delay', severity: 'Medium', date: '2023-08-03', resolution_days: 7 },
-
-        { id: 11, customer: 'Customer B', category: 'Billing Issue', severity: 'Low', date: '2023-09-09', resolution_days: 3 },
-        { id: 12, customer: 'Customer C', category: 'Product Quality', severity: 'High', date: '2023-10-21', resolution_days: 9 },
-        { id: 13, customer: 'Customer A', category: 'Dealer Issue', severity: 'Medium', date: '2023-11-11', resolution_days: 6 },
-        { id: 14, customer: 'Customer B', category: 'Service Delay', severity: 'Medium', date: '2023-12-02', resolution_days: 7 },
-
-        // ===================== 2024 (IMPROVEMENT APPLIED FEB) =====================
-        { id: 15, customer: 'Customer C', category: 'Product Quality', severity: 'High', date: '2024-01-15', resolution_days: 8 },
-
-        // 🔹 Improvement starts here
-        { id: 16, customer: 'Customer A', category: 'Product Quality', severity: 'Medium', date: '2024-02-18', resolution_days: 6 },
-        { id: 17, customer: 'Customer B', category: 'Service Delay', severity: 'Medium', date: '2024-03-12', resolution_days: 5 },
-        { id: 18, customer: 'Customer C', category: 'Billing Issue', severity: 'Low', date: '2024-04-05', resolution_days: 3 },
-        { id: 19, customer: 'Customer A', category: 'Dealer Issue', severity: 'Low', date: '2024-05-20', resolution_days: 3 },
-        { id: 20, customer: 'Customer B', category: 'Product Quality', severity: 'Medium', date: '2024-06-30', resolution_days: 5 },
-
-        // ===================== LATE 2024 (POST IMPROVEMENT STABLE) =====================
-        { id: 21, customer: 'Customer C', category: 'Service Delay', severity: 'Low', date: '2024-07-22', resolution_days: 2 },
-        { id: 22, customer: 'Customer A', category: 'Billing Issue', severity: 'Low', date: '2024-08-18', resolution_days: 2 },
-        { id: 23, customer: 'Customer B', category: 'Dealer Issue', severity: 'Low', date: '2024-09-14', resolution_days: 3 },
-        { id: 24, customer: 'Customer C', category: 'Product Quality', severity: 'Medium', date: '2024-10-06', resolution_days: 4 },
-        { id: 25, customer: 'Customer A', category: 'Service Delay', severity: 'Low', date: '2024-11-19', resolution_days: 2 },
-
-        // ===================== 2025 (CONTROLLED & OPTIMIZED) =====================
-        { id: 26, customer: 'Customer B', category: 'Billing Issue', severity: 'Low', date: '2025-01-10', resolution_days: 1 },
-        { id: 27, customer: 'Customer C', category: 'Service Delay', severity: 'Low', date: '2025-02-08', resolution_days: 2 },
-        { id: 28, customer: 'Customer A', category: 'Product Quality', severity: 'Medium', date: '2025-03-05', resolution_days: 4 },
-        { id: 29, customer: 'Customer B', category: 'Dealer Issue', severity: 'Low', date: '2025-04-12', resolution_days: 2 },
-        { id: 30, customer: 'Customer C', category: 'Billing Issue', severity: 'Low', date: '2025-05-18', resolution_days: 1 },
-    ];
+    /* ================= FILTER BY YEAR ================= */
 
     const filteredData = useMemo(() => {
-        return complaintData.filter((c) => {
-            const d = new Date(c.date);
-            return (
-                d >= new Date(fromDate) &&
-                d <= new Date(toDate) &&
-                (customer === 'All' || c.customer === customer)
-            );
-        });
-    }, [customer, fromDate, toDate]);
+        if (!apiData || !Array.isArray(apiData)) return [];
 
-    const categoryAnalysis = useMemo(() => {
-        const map = {};
-        filteredData.forEach((c) => {
-            map[c.category] = (map[c.category] || 0) + 1;
+        return apiData.filter(item => {
+            if (!item?.ComplaintDate) return false;
+            const year = new Date(item.ComplaintDate).getFullYear();
+            return year === selectedYear;
         });
-        return Object.entries(map).map(([name, count]) => ({ name, count }));
+    }, [apiData, selectedYear]);
+
+    /* ================= MODEL WISE PPM ================= */
+
+    const ppmData = useMemo(() => {
+        const map = {};
+
+        filteredData.forEach(item => {
+            const date = new Date(item.ComplaintDate);
+            const month = date.getMonth();
+            const model = item.Model || "Unknown";
+
+            if (!map[model]) {
+                map[model] = {
+                    model,
+                    complaints: Array(12).fill(0),
+                    totalComplaints: 0
+                };
+            }
+
+            map[model].complaints[month] += 1;
+            map[model].totalComplaints += 1;
+        });
+
+        return Object.values(map).map(row => ({
+            ...row,
+            ppmMonths: row.complaints.map(qty =>
+                Math.round((qty * 1000000) / SALES_PER_MONTH)
+            ),
+            totalPPM: Math.round(
+                (row.totalComplaints * 1000000) /
+                (SALES_PER_MONTH * 12)
+            )
+        }));
     }, [filteredData]);
 
-    const severityAnalysis = useMemo(() => {
-        const map = {};
-        filteredData.forEach((c) => {
-            map[c.severity] = (map[c.severity] || 0) + 1;
-        });
-        return Object.entries(map).map(([label, count]) => ({ label, count }));
-    }, [filteredData]);
+    /* ================= MONTHLY TOTAL PPM ================= */
 
     const monthlyTrend = useMemo(() => {
-        const map = {};
-        filteredData.forEach((c) => {
-            const m = new Date(c.date).toLocaleString('default', { month: 'short', year: 'numeric' });
-            map[m] = (map[m] || 0) + 1;
-        });
-        return Object.entries(map).map(([month, count]) => ({ month, count }));
-    }, [filteredData]);
+        const monthlyTotals = Array(12).fill(0);
 
-    const resolutionBuckets = useMemo(() => {
-        const buckets = { '0-2 Days': 0, '3-5 Days': 0, '6-10 Days': 0, '10+ Days': 0 };
-        filteredData.forEach((c) => {
-            if (c.resolution_days <= 2) buckets['0-2 Days']++;
-            else if (c.resolution_days <= 5) buckets['3-5 Days']++;
-            else if (c.resolution_days <= 10) buckets['6-10 Days']++;
-            else buckets['10+ Days']++;
+        ppmData.forEach(row => {
+            row.complaints.forEach((qty, i) => {
+                monthlyTotals[i] += qty;
+            });
         });
-        return Object.entries(buckets).map(([label, count]) => ({ label, count }));
-    }, [filteredData]);
 
-    const improvementTrendData = [
-        { period: '2023 Q1', complaints: 85 },
-        { period: '2023 Q2', complaints: 78 },
-        { period: '2023 Q3', complaints: 70 },
-        { period: '2023 Q4', complaints: 64 },
-        { period: '2024 Q1', complaints: 55 },
-        { period: '2024 Q2', complaints: 42 },
-        { period: '2024 Q3', complaints: 35 },
-        { period: '2024 Q4', complaints: 28 },
-    ];
+        return MONTHS.map((m, i) => ({
+            month: m,
+            actual: Math.round(
+                (monthlyTotals[i] * 1000000) / SALES_PER_MONTH
+            )
+        }));
+    }, [ppmData]);
+
+    /* ================= TOTAL ROW ================= */
+
+    const totalRow = useMemo(() => {
+        const monthlyTotals = Array(12).fill(0);
+        let grandTotal = 0;
+
+        ppmData.forEach(row => {
+            row.complaints.forEach((qty, i) => {
+                monthlyTotals[i] += qty;
+            });
+            grandTotal += row.totalComplaints;
+        });
+
+        return {
+            monthPPM: monthlyTotals.map(qty =>
+                Math.round((qty * 1000000) / SALES_PER_MONTH)
+            ),
+            totalPPM: Math.round(
+                (grandTotal * 1000000) /
+                (SALES_PER_MONTH * 12)
+            )
+        };
+    }, [ppmData]);
+
+    /* ================= YEARLY AVERAGE ================= */
+
+    const yearlyAveragePPM =
+        monthlyTrend.reduce((a, b) => a + b.actual, 0) / 12;
+
+    /* ================= UI ================= */
 
     return (
-        <Container maxWidth="lg" sx={{ py: 4 }}>
+        <Box sx={{ p: 3, backgroundColor: "#fff" }}>
 
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-                <Typography variant="h4" fontWeight="bold">
-                    Customer Complaint Analysis
-                </Typography>
+            <Typography align="center" fontWeight="bold" fontSize={20}>
+                CUSTOMER COMPLAINT PPM TREND - {selectedYear}
+            </Typography>
 
+            {/* YEAR SELECTOR */}
+            <Box mt={2} mb={2} width={200}>
+                <FormControl fullWidth size="small">
+                    <Select
+                        value={selectedYear}
+                        onChange={(e) => setSelectedYear(e.target.value)}
+                    >
+                        {[2023, 2024, 2025, 2026].map(year => (
+                            <MenuItem key={year} value={year}>
+                                {year}
+                            </MenuItem>
+                        ))}
+                    </Select>
+                </FormControl>
             </Box>
 
+            {/* CHART SECTION */}
+            <Grid container spacing={2}>
 
-            <Card sx={{ mb: 3 }}>
-                <CardContent>
-                    <Grid container spacing={2}>
-                        <Grid item xs={12} md={3}>
-                            <FormControl fullWidth size="small">
-                                <InputLabel>Customer</InputLabel>
-                                <Select value={customer} label="Customer" onChange={(e) => setCustomer(e.target.value)}>
-                                    <MenuItem value="All">All</MenuItem>
-                                    <MenuItem value="Customer A">Customer A</MenuItem>
-                                    <MenuItem value="Customer B">Customer B</MenuItem>
-                                    <MenuItem value="Customer C">Customer C</MenuItem>
-                                </Select>
-                            </FormControl>
-                        </Grid>
-                        <Grid item xs={12} md={3}>
-                            <TextField type="date" label="From" value={fromDate} onChange={(e) => setFromDate(e.target.value)} InputLabelProps={{ shrink: true }} fullWidth size="small" />
-                        </Grid>
-                        <Grid item xs={12} md={3}>
-                            <TextField type="date" label="To" value={toDate} onChange={(e) => setToDate(e.target.value)} InputLabelProps={{ shrink: true }} fullWidth size="small" />
-                        </Grid>
-                    </Grid>
-                </CardContent>
-            </Card>
-
-            <Grid container spacing={2} sx={{ mb: 3 }}>
-                <Grid item xs={6} sm={3}>
-                    <Paper sx={{ p: 2, textAlign: 'center', backgroundColor: '#e3f2fd' }}>
-                        <Typography fontWeight={700}>{filteredData.length}</Typography>
-                        <Typography variant="caption">Total Complaints</Typography>
-                    </Paper>
-                </Grid>
-                <Grid item xs={6} sm={3}>
-                    <Paper sx={{ p: 2, textAlign: 'center', backgroundColor: '#f3e5f5' }}>
-                        <Typography fontWeight={700}>{categoryAnalysis.length}</Typography>
-                        <Typography variant="caption">Categories</Typography>
-                    </Paper>
-                </Grid>
-                <Grid item xs={6} sm={3}>
-                    <Paper sx={{ p: 2, textAlign: 'center', backgroundColor: '#e8f5e9' }}>
-                        <Typography fontWeight={700}>{severityAnalysis.length}</Typography>
-                        <Typography variant="caption">Severity Levels</Typography>
-                    </Paper>
-                </Grid>
-                <Grid item xs={6} sm={3}>
-                    <Paper sx={{ p: 2, textAlign: 'center', backgroundColor: '#fff3e0' }}>
-                        <Typography fontWeight={700}>
-                            {Math.round(filteredData.reduce((a, b) => a + b.resolution_days, 0) / Math.max(filteredData.length, 1))}
+                {/* Monthly Trend */}
+                <Grid item xs={12}>
+                    <Paper sx={{ p: 2 }}>
+                        <Typography fontWeight="bold" mb={1}>
+                            Monthly PPM Trend
                         </Typography>
-                        <Typography variant="caption">Avg Resolution Days</Typography>
+
+                        <ResponsiveContainer width="100%" height={250}>
+                            <LineChart data={monthlyTrend}>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="month" />
+                                <YAxis />
+                                <Tooltip />
+                                <Legend />
+                                <Line
+                                    type="monotone"
+                                    dataKey="actual"
+                                    stroke="#d32f2f"
+                                    strokeWidth={3}
+                                />
+                            </LineChart>
+                        </ResponsiveContainer>
                     </Paper>
                 </Grid>
             </Grid>
 
-            <Grid container spacing={3}>
-                <Grid item xs={12} md={6}>
-                    <ModernChartCard title="Complaints by Category">
-                        <BarChart data={categoryAnalysis}>
-                            <CartesianGrid {...gridStyle} />
-                            <XAxis dataKey="name" {...axisStyle} />
-                            <YAxis {...axisStyle} />
-                            <Tooltip {...tooltipStyle} />
-                            <Bar dataKey="count" fill="#6366f1" radius={[8, 8, 0, 0]} />
-                        </BarChart>
-                    </ModernChartCard>
-                </Grid>
+            {/* TABLE */}
+            <TableContainer component={Paper} sx={{ mt: 3 }}>
+                <Table size="small">
+                    <TableHead>
+                        <TableRow>
+                            <TableCell><b>Model</b></TableCell>
+                            {MONTHS.map(m => (
+                                <TableCell key={m} align="center">
+                                    <b>{m}</b>
+                                </TableCell>
+                            ))}
+                            <TableCell align="center"><b>TOTAL</b></TableCell>
+                        </TableRow>
+                    </TableHead>
 
-                <Grid item xs={12} md={6}>
-                    <ModernChartCard title="Severity Distribution">
-                        <PieChart>
-                            <Pie data={severityAnalysis} dataKey="count" nameKey="label" innerRadius={55} outerRadius={90}>
-                                {severityAnalysis.map((_, i) => (
-                                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                    <TableBody>
+                        {ppmData.map(row => (
+                            <TableRow key={row.model}>
+                                <TableCell>{row.model}</TableCell>
+                                {row.ppmMonths.map((ppm, i) => (
+                                    <TableCell key={i} align="center">{ppm}</TableCell>
                                 ))}
-                            </Pie>
-                            <Tooltip {...tooltipStyle} />
-                            <Legend />
-                        </PieChart>
-                    </ModernChartCard>
-                </Grid>
+                                <TableCell align="center">{row.totalPPM}</TableCell>
+                            </TableRow>
+                        ))}
 
-                <Grid item xs={12} md={6}>
-                    <ModernChartCard title="Monthly Complaint Trend">
-                        <LineChart data={monthlyTrend}>
-                            <CartesianGrid {...gridStyle} />
-                            <XAxis dataKey="month" {...axisStyle} />
-                            <YAxis {...axisStyle} />
-                            <Tooltip {...tooltipStyle} />
-                            <Line dataKey="count" stroke="#22c55e" strokeWidth={3} dot={false} />
-                        </LineChart>
-                    </ModernChartCard>
-                </Grid>
+                        {/* TOTAL ROW */}
+                        <TableRow sx={{ backgroundColor: "#f2f2f2" }}>
+                            <TableCell><b>TOTAL</b></TableCell>
+                            {totalRow.monthPPM.map((val, i) => (
+                                <TableCell key={i} align="center">
+                                    <b>{val}</b>
+                                </TableCell>
+                            ))}
+                            <TableCell align="center">
+                                <b>{totalRow.totalPPM}</b>
+                            </TableCell>
+                        </TableRow>
 
-                <Grid item xs={12} md={6}>
-                    <ModernChartCard title="Resolution Time Distribution">
-                        <BarChart data={resolutionBuckets}>
-                            <CartesianGrid {...gridStyle} />
-                            <XAxis dataKey="label" {...axisStyle} />
-                            <YAxis {...axisStyle} />
-                            <Tooltip {...tooltipStyle} />
-                            <Bar dataKey="count" fill="#06b6d4" radius={[8, 8, 0, 0]} />
-                        </BarChart>
-                    </ModernChartCard>
-                </Grid>
-            </Grid>
+                    </TableBody>
+                </Table>
+            </TableContainer>
 
-            <Box sx={{ mt: 4 }}>
-                <ModernChartCard title="Complaint Reduction After Improvement" height={420}>
-                    <ComposedChart data={improvementTrendData}>
-                        <CartesianGrid {...gridStyle} />
-                        <XAxis dataKey="period" {...axisStyle} />
-                        <YAxis {...axisStyle} />
-                        <Tooltip {...tooltipStyle} />
-                        <Bar dataKey="complaints" fill="#6366f1" radius={[6, 6, 0, 0]} />
-                        <ReferenceLine
-                            x="2024 Q2"
-                            stroke="#000"
-                            strokeDasharray="6 6"
-                            strokeWidth={3}
-                            label={{
-                                value: masterConfig.lastImprovementDate,
-                                fill: '#000',
-                                fontWeight: 600,
-                            }}
-                        />
-                    </ComposedChart>
-                </ModernChartCard>
+            {/* YEARLY SUMMARY */}
+            <Box mt={3}>
+                <Typography fontWeight="bold">
+                    Yearly Average PPM : {Math.round(yearlyAveragePPM)}
+                </Typography>
             </Box>
 
-        </Container>
+        </Box>
     );
 };
 

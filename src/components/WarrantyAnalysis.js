@@ -12,7 +12,7 @@ import {
   Select,
   MenuItem,
   Checkbox,
-  ListItemText,
+  ListItemText, IconButton
 } from "@mui/material";
 import {
   BarChart,
@@ -24,10 +24,12 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-  ComposedChart, ReferenceLine
+  ComposedChart, ReferenceLine, LabelList
 } from "recharts";
 import { getWrantyReport } from "../api/pageApi";
 import { useSelector } from "react-redux";
+import html2canvas from "html2canvas";
+import DownloadIcon from "@mui/icons-material/Download";
 
 const WarrantyAnalysis = () => {
   const { customers } = useSelector((state) => state.masters);
@@ -86,25 +88,36 @@ const WarrantyAnalysis = () => {
 
 
   const getRegionFromRO = (hk) => {
-    if (!hk) {
-      return null;
-    } 
-    const cleanHK = hk.trim(); 
-    if (cleanHK.length < 4) {
-      return null;
-    } 
-    const regionChar = cleanHK[5];   // INDEX 3 CORRECT
-
-    console.log("Region Char Picked:", regionChar);
-
+    if (!hk) return null;
+    const cleanHK = hk.trim().toUpperCase();
     const regionMap = {
       W: "West",
       E: "East",
       S: "South",
       N: "North"
     };
+    // Find first matching region character anywhere in string
+    for (let char of cleanHK) {
+      if (regionMap[char]) {
+        return regionMap[char];
+      }
+    }
+    return null;
+  };
 
-    return regionMap[regionChar] || null;
+  const downloadChart = async (id, fileName) => {
+    const element = document.getElementById(id);
+    if (!element) return;
+
+    const canvas = await html2canvas(element, {
+      backgroundColor: "#ffffff",
+      scale: 2,
+    });
+
+    const link = document.createElement("a");
+    link.download = `${fileName}.jpeg`;
+    link.href = canvas.toDataURL("image/jpeg", 1.0);
+    link.click();
   };
 
 
@@ -269,8 +282,8 @@ const WarrantyAnalysis = () => {
 
   // ---------- UI ----------
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }}>
-      <Typography variant="h4" fontWeight="bold" mb={3}>
+    <Box>
+      <Typography variant="h5" fontWeight="bold" mb={2}>
         Warranty Analysis
       </Typography>
 
@@ -458,162 +471,268 @@ const WarrantyAnalysis = () => {
         {/* ✅ ROW 1 — FULL WIDTH */}
         <Grid item xs={12}>
           <Card>
-            <CardContent>
-              <Typography fontWeight="bold">
-                Production vs Repair
-              </Typography>
+            <div id="prodRepairDiv">
 
-              <ResponsiveContainer width="100%" height={400}>
-                <ComposedChart
-                  data={sortedData}
-                  barCategoryGap="30%"   // space between months
-                  barGap={4}             // space inside category
-                >
-                  <CartesianGrid strokeDasharray="3 3" />
+              <CardContent>
 
-                  {/* 🔥 Force categorical axis */}
-                  <XAxis
-                    dataKey="month"
-                    angle={-90}          // 🔥 rotate vertical
-                    textAnchor="end"     // align properly
-                    interval={0}         // show all months
-                    height={80}          // give space for rotated text
-                  />
+                <Box display="flex" justifyContent="space-between" alignItems="center">
+                  <Typography fontWeight="bold">
+                    Production vs Repair
+                  </Typography>
 
-                  <YAxis />
+                  <IconButton
+                    size="small"
+                    onClick={() => downloadChart("prodRepairDiv", "production_vs_repair")}
+                  >
+                    <DownloadIcon />
+                  </IconButton>
+                </Box>
 
-                  <Tooltip
-                    formatter={(value, name, props) => {
-                      if (
-                        props?.payload?.month === latestImprovement.month
-                      ) {
-                        return [
-                          value,
-                          `${name} - Improvement: ${latestImprovement.description}`
-                        ];
-                      }
-                      return [value, name];
-                    }}
-                  />
+                <ResponsiveContainer width="100%" height={400}>
+                  <ComposedChart data={sortedData}>
+                    <CartesianGrid strokeDasharray="3 3" />
 
-                  <Legend />
+                    <XAxis
+                      dataKey="month"
+                      angle={-50}
+                      textAnchor="end"
+                      interval={0}
+                      height={80}
+                    />
 
-                  {/* Production Bar */}
-                  <Bar
-                    dataKey="production"
-                    fill="#3b82f6"
-                    barSize={25}   // control column width
-                  />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
 
-                  {/* Repair Line */}
-                  <Line
-                    type="monotone"
-                    dataKey="repair"
-                    stroke="#ef4444"
-                    strokeWidth={3}
-                    dot={{ r: 4 }}
-                  />
+                    <Bar dataKey="production" fill="#3b82f6" barSize={25} />
 
-                  {/* Vertical Dotted Improvement Line */}
-                  <ReferenceLine
-                    x={latestImprovement.month}
-                    stroke="black"
-                    strokeWidth={2}
-                    strokeDasharray="6 6"
-                    label={{
-                      value: "Improvement",
-                      position: "top",
-                      fill: "black",
-                      fontSize: 12
-                    }}
-                  />
-                </ComposedChart>
-              </ResponsiveContainer>
-            </CardContent>
+                    <Line
+                      type="monotone"
+                      dataKey="repair"
+                      stroke="#ef4444"
+                      strokeWidth={3}
+                      dot={{ r: 4 }}
+                    >
+                      <LabelList
+                        dataKey="repair"
+                        position="top"
+                        fill="#000000"
+                        fontSize={12}
+                        offset={9}
+
+                      />
+                    </Line>
+
+                    <ReferenceLine
+                      x={latestImprovement.month}
+                      stroke="black"
+                      strokeWidth={2}
+                      strokeDasharray="6 6"
+                    />
+
+                  </ComposedChart>
+                </ResponsiveContainer>
+
+              </CardContent>
+            </div>
           </Card>
-
         </Grid>
 
         {/* ✅ ROW 2 — 50% + 50% */}
         <Grid item xs={12} md={6}>
           <Card>
-            <CardContent>
-              <Typography fontWeight="bold">
-                Used Months
-              </Typography>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={usedMonthData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="label" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="count" fill="#10b981" />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
+            <div id="usedMonthDiv">
+
+              <CardContent>
+
+                <Box display="flex" justifyContent="space-between">
+                  <Typography fontWeight="bold">
+                    Used Months
+                  </Typography>
+
+                  <IconButton
+                    size="small"
+                    onClick={() => downloadChart("usedMonthDiv", "used_months")}
+                  >
+                    <DownloadIcon />
+                  </IconButton>
+                </Box>
+
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={usedMonthData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="label" />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey="count" fill="#10b981">
+                      <LabelList
+                        dataKey="count"
+                        position="center"     // 👈 center inside bar
+                        fill="#070707"        // white text for visibility
+                        fontSize={14}
+                      />
+                    </Bar>
+
+                  </BarChart>
+                </ResponsiveContainer>
+
+              </CardContent>
+            </div>
+
           </Card>
         </Grid>
 
         <Grid item xs={12} md={6}>
           <Card>
-            <CardContent>
-              <Typography fontWeight="bold">
-                Repair by Mileage
-              </Typography>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={mileageData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="label" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="count" fill="#f59e0b" />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
+            <div id="mileageDiv">
+
+              <CardContent>
+
+                <Box display="flex" justifyContent="space-between">
+                  <Typography fontWeight="bold">
+                    Repair by Mileage
+                  </Typography>
+
+                  <IconButton
+                    size="small"
+                    onClick={() => downloadChart("mileageDiv", "repair_by_mileage")}
+                  >
+                    <DownloadIcon />
+                  </IconButton>
+                </Box>
+
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={mileageData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="label" />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey="count" fill="#f59e0b">
+                      <LabelList
+                        dataKey="count"
+                        position="center"
+                        fill="#000000"
+                        fontSize={14}
+                      />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+
+
+
+              </CardContent>
+            </div>
+
           </Card>
         </Grid>
 
         {/* ✅ ROW 3 — 50% + 50% */}
         <Grid item xs={12} md={6}>
           <Card>
-            <CardContent>
-              <Typography fontWeight="bold">
-                Nature
-              </Typography>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart layout="vertical" data={natureData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" />
-                  <YAxis dataKey="name" type="category" />
-                  <Tooltip />
-                  <Bar dataKey="count" fill="#6366f1" />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
+            <div id="natureDiv">
+              <CardContent>
+                <Box display="flex" justifyContent="space-between">
+                  <Typography fontWeight="bold">
+                    Nature
+                  </Typography>
+
+                  <IconButton
+                    size="small"
+                    onClick={() => downloadChart("natureDiv", "nature")}
+                  >
+                    <DownloadIcon />
+                  </IconButton>
+                </Box>
+
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart layout="vertical" data={natureData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis
+                      type="number"
+                      domain={[0, 'dataMax + 1']}   // 👈 adds spacing dynamically
+                    />                    <YAxis dataKey="name" type="category" interval={0} />
+                    <Tooltip />
+                    <Bar dataKey="count" fill="#6366f1">
+                      <LabelList
+                        dataKey="count"
+                        position="right"   // 👈 outside above bar
+                        fill="#000000"
+                        fontSize={14}
+                      />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+
+              </CardContent>
+            </div>
+
           </Card>
         </Grid>
 
+
         <Grid item xs={12} md={6}>
           <Card>
-            <CardContent>
-              <Typography fontWeight="bold">
-                Sales Region
-              </Typography>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={regionData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="region" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="count" fill="#8b5cf6" />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
+            <div id="regionDiv">
+
+              <CardContent>
+
+                <Box display="flex" justifyContent="space-between">
+                  <Typography fontWeight="bold">
+                    Sales Region
+                  </Typography>
+
+                  <IconButton
+                    size="small"
+                    onClick={() => downloadChart("regionDiv", "sales_region")}
+                  >
+                    <DownloadIcon />
+                  </IconButton>
+                </Box>
+
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart
+                    layout="vertical"          // 👈 important
+                    data={regionData}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+
+                    <XAxis
+                      type="number"            // 👈 numeric axis
+                      domain={[0, dataMax => dataMax * 2]}
+                    />
+
+                    <YAxis
+                      dataKey="region"         // 👈 category axis
+                      type="category"
+                    />
+
+                    <Tooltip />
+
+                    <Bar
+                      dataKey="count"
+                      fill="#8b5cf6"
+                      barSize={25}
+                    >
+                      <LabelList
+                        dataKey="count"
+                        position="right"       // 👈 outside right
+                        offset={6}
+                        fill="#000"
+                        fontSize={14}
+                      />
+                    </Bar>
+
+                  </BarChart>
+                </ResponsiveContainer>
+
+              </CardContent>
+            </div>
           </Card>
         </Grid>
+
+
       </Grid>
-    </Container>
-  );
+    </Box>);
 };
 
 export default WarrantyAnalysis;

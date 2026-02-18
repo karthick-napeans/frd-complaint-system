@@ -133,8 +133,8 @@ const WarrantyEntry = () => {
         error?.response?.data?.Message ||
         error?.response?.data?.message;
 
-      setMessage(apiMessage || "Upload failed. Please try again.");  
- 
+      setMessage(apiMessage || "Upload failed. Please try again.");
+
     }
   };
 
@@ -187,8 +187,8 @@ const WarrantyEntry = () => {
 
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Typography variant="h4" fontWeight="bold" sx={{ mb: 3 }}>
+    <Box >
+      <Typography variant="h5" fontWeight="bold" sx={{ mb: 2 }}>
         Warranty Claim Entry - Excel Upload
       </Typography>
 
@@ -493,7 +493,7 @@ const WarrantyEntry = () => {
 
 
       </Box>
-    </Container>
+    </Box>
   );
 };
 

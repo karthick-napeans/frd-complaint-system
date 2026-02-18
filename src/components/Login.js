@@ -70,7 +70,7 @@ const Login = ({ onLogin }) => {
                 }}
               />
               <Typography variant="h5" fontWeight="bold">
-                QA-QC Dashboard
+                QA/QC Dashboard
               </Typography>
               {/* <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
                 Warranty Claim Management System

@@ -141,8 +141,7 @@ const MasterData = ({ userRole = "Admin" }) => {
     } finally {
       setSaveLoading(false);
     }
-  };
-
+  }; 
 
   const handleDelete = (row) => {
     setRowToDelete(row);
@@ -268,9 +267,9 @@ const MasterData = ({ userRole = "Admin" }) => {
   }, [masterType]);
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
-        <Typography variant="h4" fontWeight={700}>
+    <Box>
+      <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
+        <Typography variant="h5" fontWeight={700}>
           Master Data Management
         </Typography>
 
@@ -473,7 +472,7 @@ const MasterData = ({ userRole = "Admin" }) => {
 
 
       </Dialog>
-    </Container>
+    </Box>
   );
 };
 

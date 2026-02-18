@@ -292,12 +292,12 @@ const UserManagement = () => {
         </Box>
       ),
     },
-  ]; 
-  
+  ];
+
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-        <Typography variant="h4" fontWeight={700}>
+    < Box>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+        <Typography variant="h5" fontWeight={700}>
           User Management
         </Typography>
 
@@ -479,7 +479,7 @@ const UserManagement = () => {
           </Button>
         </DialogActions>
       </Dialog>
-    </Container>
+    </Box>
   );
 };
 
