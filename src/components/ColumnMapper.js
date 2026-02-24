@@ -38,7 +38,9 @@ import Snackbar from "@mui/material/Snackbar";
 
 const WarrantyColumnMapper = () => {
   const { customers } = useSelector((state) => state.masters);
+  console.log("Raw Customers",customers)
   const activeCustomers = customers.filter((c) => c.IsActive === true);
+  console.log("Active Customers",activeCustomers)
   const ROW_HEIGHT = 56;
   const [customerSelected, setCustomerSelected] = useState("");
   const [customerColumns, setCustomerColumns] = useState([]);
@@ -51,12 +53,10 @@ const WarrantyColumnMapper = () => {
   const [popup, setPopup] = useState({
     open: false,
     message: "",
-    severity: "success", // success | error | info | warning
+    severity: "success", 
   });
   const [uploadedFile, setUploadedFile] = useState(null);
-  const fileInputRef = useRef(null);
-
-  /* -------- Fetch master columns -------- */
+  const fileInputRef = useRef(null); 
 
   useEffect(() => {
     const fetchMasterColumns = async () => {
@@ -101,8 +101,7 @@ const WarrantyColumnMapper = () => {
       console.error(error);
       setExistingMappings([]);
     }
-  };
-
+  }; 
 
   const handleUploadClick = () => fileInputRef.current.click();
 

@@ -22,8 +22,10 @@ import {
   Chip, Alert,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import SaveIcon from '@mui/icons-material/Save';
 import { useSelector } from "react-redux";
+import ClearIcon from "@mui/icons-material/Clear";
 import CircularProgress from "@mui/material/CircularProgress";
 import { saveDreDraft, saveDreWithFiles, getDreList } from "../api/pageApi"
 
@@ -95,7 +97,7 @@ const DREEntry = () => {
     setFormData(EMPTY_FORM);
     setAttachments([]);
     setActiveStep(0);
-    setMessage(""); 
+    setMessage("");
     setShowHeaderError(false);
   };
 
@@ -291,6 +293,18 @@ const DREEntry = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+
+    if (name === "dreEngineerName") {
+      if (!/^[A-Za-z\s]*$/.test(value)) {
+        return;
+      }
+    }
+
+    if (name === "dreNumber") {
+      if (!/^[0-9]*$/.test(value)) {
+        return; 
+      }
+    }
 
     setFormData((prev) => ({
       ...prev,
@@ -603,9 +617,8 @@ const DREEntry = () => {
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
-                  
-                 
                   borderTop: '1px solid #e5e7eb',
+                  pt: 2
                 }}
               >
                 <Button
@@ -616,6 +629,18 @@ const DREEntry = () => {
                 </Button>
 
                 <Box sx={{ display: 'flex', gap: 1 }}>
+
+                  {/* 🔴 Reset Button */}
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    startIcon={<ClearIcon />}
+                    onClick={resetForm}
+                  >
+                    Reset
+                  </Button>
+
+                  {/* Save Draft */}
                   <Button
                     variant="outlined"
                     startIcon={
@@ -631,7 +656,7 @@ const DREEntry = () => {
                     {draftLoading ? "Saving..." : "Save Draft"}
                   </Button>
 
-
+                  {/* Next / Submit */}
                   {activeStep === 3 ? (
                     <Button
                       variant="contained"
@@ -715,7 +740,7 @@ const DREEntry = () => {
                       {draft.Model || "—"} • {draft.Part || "—"}
                     </Typography>
 
-                    <Chip label="Draft" size="small" sx={{ mt: 0.5 }} />
+                    <Chip label="Draft" size="small" sx={{ marginLeft:2}} />
                   </Paper>
                 ))
               )}
@@ -772,7 +797,7 @@ const DREEntry = () => {
                       label="Submitted"
                       color="success"
                       size="small"
-                      sx={{ mt: 0.5 }}
+                      sx={{ marginLeft:2}}
                     />
                   </Paper>
                 ))

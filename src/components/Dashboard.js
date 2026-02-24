@@ -32,7 +32,10 @@ const Dashboard = () => {
   const loaded = useSelector(state => state.masters.loaded);
 
   useEffect(() => {
+    console.log("Dashboard useEffect triggered");
+
     if (!loaded) {
+      console.log("Dispatching loadMasters...");
       dispatch(loadMasters());
     }
   }, [loaded, dispatch]);

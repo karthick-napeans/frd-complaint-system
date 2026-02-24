@@ -37,7 +37,7 @@ const WarrantyAnalysis = () => {
 
   const [customerSelected, setCustomerSelected] = useState("");
   const [rawData, setRawData] = useState([]);
-
+  const today = new Date().toISOString().split("T")[0];
   const [selectedModels, setSelectedModels] = useState([]);
   const [selectedParts, setSelectedParts] = useState([]);
   const [selectedRegions, setSelectedRegions] = useState([]);
@@ -45,8 +45,38 @@ const WarrantyAnalysis = () => {
   const [prodDateTo, setProdDateTo] = useState("2025-12-31");
   const [repairFrom, setRepairFrom] = useState("2023-01-01");
   const [repairTo, setRepairTo] = useState("2025-12-31");
+  const [errors, setErrors] = useState({});
+  const validateDates = () => {
+    const errors = {};
 
+    // Future date validation
+    if (prodDateFrom && prodDateFrom > today) {
+      errors.prodDateFrom = "Future date not allowed";
+    }
 
+    if (prodDateTo && prodDateTo > today) {
+      errors.prodDateTo = "Future date not allowed";
+    }
+
+    if (repairFrom && repairFrom > today) {
+      errors.repairFrom = "Future date not allowed";
+    }
+
+    if (repairTo && repairTo > today) {
+      errors.repairTo = "Future date not allowed";
+    }
+
+    // From <= To validation
+    if (prodDateFrom && prodDateTo && prodDateFrom > prodDateTo) {
+      errors.prodDateTo = "Production To must be greater than From date";
+    }
+
+    if (repairFrom && repairTo && repairFrom > repairTo) {
+      errors.repairTo = "Repair To must be greater than From date";
+    }
+
+    return errors;
+  };
 
   useEffect(() => {
     if (activeCustomers.length > 0 && !customerSelected) {
@@ -119,9 +149,6 @@ const WarrantyAnalysis = () => {
     link.href = canvas.toDataURL("image/jpeg", 1.0);
     link.click();
   };
-
-
-
 
   const parseDate = (v) => (v ? new Date(v.split("T")[0]) : null);
 
@@ -413,11 +440,17 @@ const WarrantyAnalysis = () => {
                 type="date"
                 label="Production From"
                 value={prodDateFrom}
-                onChange={(e) => setProdDateFrom(e.target.value)}
+                onChange={(e) => {
+                  setProdDateFrom(e.target.value);
+                  setErrors(validateDates());
+                }}
                 fullWidth
                 size="small"
                 variant="outlined"
                 InputLabelProps={{ shrink: true }}
+                inputProps={{ max: today }}
+                error={!!errors.prodDateFrom}
+                helperText={errors.prodDateFrom}
               />
             </Grid>
 
@@ -426,11 +459,17 @@ const WarrantyAnalysis = () => {
                 type="date"
                 label="Production To"
                 value={prodDateTo}
-                onChange={(e) => setProdDateTo(e.target.value)}
+                onChange={(e) => {
+                  setProdDateTo(e.target.value);
+                  setErrors(validateDates());
+                }}
                 fullWidth
                 size="small"
                 variant="outlined"
                 InputLabelProps={{ shrink: true }}
+                inputProps={{ max: today }}
+                error={!!errors.prodDateTo}
+                helperText={errors.prodDateTo}
               />
             </Grid>
 
@@ -439,11 +478,17 @@ const WarrantyAnalysis = () => {
                 type="date"
                 label="Repair From"
                 value={repairFrom}
-                onChange={(e) => setRepairFrom(e.target.value)}
+                onChange={(e) => {
+                  setRepairFrom(e.target.value);
+                  setErrors(validateDates());
+                }}
                 fullWidth
                 size="small"
                 variant="outlined"
                 InputLabelProps={{ shrink: true }}
+                inputProps={{ max: today }}
+                error={!!errors.repairFrom}
+                helperText={errors.repairFrom}
               />
             </Grid>
 
@@ -452,11 +497,17 @@ const WarrantyAnalysis = () => {
                 type="date"
                 label="Repair To"
                 value={repairTo}
-                onChange={(e) => setRepairTo(e.target.value)}
+                onChange={(e) => {
+                  setRepairTo(e.target.value);
+                  setErrors(validateDates());
+                }}
                 fullWidth
                 size="small"
                 variant="outlined"
                 InputLabelProps={{ shrink: true }}
+                inputProps={{ max: today }}
+                error={!!errors.repairTo}
+                helperText={errors.repairTo}
               />
             </Grid>
 

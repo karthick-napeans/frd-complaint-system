@@ -20,8 +20,9 @@ import {
   MenuItem,
   Accordion,
   AccordionSummary,
-  AccordionDetails, Checkbox
+  AccordionDetails, Checkbox,
 } from "@mui/material";
+import ClearIcon from "@mui/icons-material/Clear";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import SaveIcon from "@mui/icons-material/Save";
@@ -55,6 +56,7 @@ const ComplaintForm = () => {
     "Attachments",
     "Review & Submit",
   ];
+  const today = new Date().toISOString().split("T")[0];
   const sampleAttachmentList = [
     { id: 1, listName: "Counter Measure", isMandatory: true },
     { id: 2, listName: "PAN Copy", isMandatory: true },
@@ -152,17 +154,46 @@ const ComplaintForm = () => {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
 
+    if (name === "customerEmail") {
+
+      // Allow only valid typing characters
+      if (!/^[a-zA-Z0-9@._,\s-]*$/.test(value)) {
+        return; // block invalid characters
+      }
+
+      const emails = value.split(",").map((email) => email.trim());
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+      const hasInvalid = emails.some(
+        (email) => email !== "" && !emailRegex.test(email)
+      );
+
+      if (hasInvalid) {
+        setErrors((prev) => ({
+          ...prev,
+          customerEmail: "Invalid Email",
+        }));
+      } else {
+        setErrors((prev) => ({
+          ...prev,
+          customerEmail: "",
+        }));
+      }
+    }
+
     setFormData({
       ...formData,
       [name]: value,
     });
 
-    if (value) {
+    if (name !== "customerEmail" && value) {
       setErrors((prev) => ({
         ...prev,
         [name]: "",
       }));
     }
+
+
   };
 
   const handleSelectChange = (e) => {
@@ -483,6 +514,7 @@ const ComplaintForm = () => {
                     value={formData.complaintDate}
                     onChange={handleInputChange}
                     InputLabelProps={{ shrink: true }}
+                    inputProps={{ max: today }}   // ✅ blocks future selection
                     error={!!errors.complaintDate}
                     helperText={errors.complaintDate}
                   />
@@ -594,12 +626,20 @@ const ComplaintForm = () => {
                     <Grid
                       container
                       spacing={3}
-                      alignItems="center"
+                      alignItems="flex-start"   // 🔥 important change
                       key={row.id}
                       sx={{ mb: 1 }}
                     >
                       {/* Checkbox */}
-                      <Grid item xs={1} sx={{ display: "flex", justifyContent: "center" }}>
+                      <Grid
+                        item
+                        xs={1}
+                        sx={{
+                          display: "flex",
+                          justifyContent: "center",
+                          alignItems: "center",
+                        }}
+                      >
                         <Checkbox
                           checked={row.checked}
                           disabled={row.isMandatory}
@@ -608,7 +648,16 @@ const ComplaintForm = () => {
                       </Grid>
 
                       {/* Document Name */}
-                      <Grid item xs={3}>
+                      <Grid
+                        item
+                        xs={3}
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          height: 40,
+                          mt: 1.5
+                        }}
+                      >
                         <Typography fontWeight={500}>
                           {row.listName}
                           {row.isMandatory && (
@@ -626,10 +675,26 @@ const ComplaintForm = () => {
                           fullWidth
                           sx={{
                             height: 40,
-                            borderColor: errors[`file_${row.id}`] ? "red" : undefined,
+                            justifyContent: "flex-start",
+                            textTransform: "none",
+                            borderColor: errors[`file_${row.id}`]
+                              ? "error.main"
+                              : undefined,
+                            overflow: "hidden",
                           }}
                         >
-                          {row.file ? row.file.name : "Upload File"}
+                          <Box
+                            sx={{
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                              width: "100%",
+                              textAlign: "left",
+                            }}
+                          >
+                            {row.file ? row.file.name : "Upload File"}
+                          </Box>
+
                           <input
                             type="file"
                             hidden
@@ -640,12 +705,12 @@ const ComplaintForm = () => {
                           />
                         </Button>
 
-                        {/* Reserve space for error (prevents jumping) */}
+                        {/* Fixed space for error */}
                         <Typography
                           variant="caption"
                           sx={{
-                            color: "red",
-                            minHeight: 18,
+                            color: "error.main",
+                            minHeight: 20,
                             display: "block",
                           }}
                         >
@@ -732,6 +797,18 @@ const ComplaintForm = () => {
                 </Button>
 
                 <Box sx={{ gap: 1, display: "flex" }}>
+
+                  {/* 🔴 Reset Button */}
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    startIcon={<ClearIcon />}
+                    onClick={resetForm}
+                  >
+                    Reset
+                  </Button>
+
+                  {/* Save Draft */}
                   <Button
                     variant="outlined"
                     startIcon={
@@ -747,6 +824,7 @@ const ComplaintForm = () => {
                     {draftLoading ? "Saving..." : "Save Draft"}
                   </Button>
 
+                  {/* Next / Submit */}
                   {activeStep === steps.length - 1 ? (
                     <Button
                       variant="contained"
@@ -828,7 +906,7 @@ const ComplaintForm = () => {
                       {draft.Model || "—"} • {draft.Part || "—"}
                     </Typography>
 
-                    <Chip label="Draft" size="small" sx={{ mt: 0.5 }} />
+                    <Chip label="Draft" size="small" sx={{marginLeft:2 }} />
                   </Paper>
                 ))
               )}
@@ -885,7 +963,7 @@ const ComplaintForm = () => {
                       label="Submitted"
                       color="success"
                       size="small"
-                      sx={{ mt: 0.5 }}
+                      sx={{ marginLeft:2 }}
                     />
                   </Paper>
                 ))

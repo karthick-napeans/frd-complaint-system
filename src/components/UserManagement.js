@@ -27,7 +27,7 @@ const UserManagement = () => {
   const [editingUser, setEditingUser] = useState(null);
   const [submitError, setSubmitError] = useState("");
   const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(false);       
+  const [loading, setLoading] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [formData, setFormData] = useState({
     employeeId: "",
@@ -421,7 +421,7 @@ const UserManagement = () => {
             value={formData.employeeId}
             error={!!errors.employeeId}
             helperText={errors.employeeId || " "}
-            sx={{mt:2}}
+            sx={{ mt: 2 }}
             onChange={(e) => {
               const value = e.target.value;
               setFormData({ ...formData, employeeId: value });
@@ -556,8 +556,8 @@ const UserManagement = () => {
                 });
               }
             }}
-          /> 
-         
+          />
+
           {submitError && (
             <Alert severity="error" sx={{ mb: 2 }}>
               {submitError}
@@ -567,20 +567,43 @@ const UserManagement = () => {
 
         </DialogContent>
 
-        <DialogActions>
-          <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
+        <DialogActions
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            px: 3,
+            pb: 2,
+          }}
+        >
+          {/* 🔴 Bottom Left Reset */}
           <Button
-            variant="contained"
-            onClick={handleCreateEditUser}
-            disabled={submitLoading}
-            startIcon={
-              submitLoading ? <CircularProgress size={18} color="inherit" /> : null
-            }
+            variant="outlined"
+            color="error"
           >
-            {submitLoading
-              ? (editingUser ? "Updating..." : "Creating...")
-              : (editingUser ? "Update User" : "Add User")}
+            Reset
           </Button>
+
+          {/* Right Side Buttons */}
+          <Box sx={{ display: "flex", gap: 1 }}>
+            <Button onClick={() => setOpenDialog(false)}>
+              Cancel
+            </Button>
+
+            <Button
+              variant="contained"
+              onClick={handleCreateEditUser}
+              disabled={submitLoading}
+              startIcon={
+                submitLoading ? (
+                  <CircularProgress size={18} color="inherit" />
+                ) : null
+              }
+            >
+              {submitLoading
+                ? (editingUser ? "Updating..." : "Creating...")
+                : (editingUser ? "Update User" : "Add User")}
+            </Button>
+          </Box>
         </DialogActions>
       </Dialog>
     </Box>

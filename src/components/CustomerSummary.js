@@ -23,7 +23,12 @@ const CustomerSummary = () => {
     const [filterStatus, setFilterStatus] = useState('');
     const [filterSeverity, setFilterSeverity] = useState('');
     const [fromDate, setFromDate] = useState('');
+    const today = new Date().toISOString().split("T")[0];
     const [toDate, setToDate] = useState('');
+    const [dateErrors, setDateErrors] = useState({
+        fromDate: "",
+        toDate: "",
+    });
     const filteredRows = rows.filter((row) => {
 
         const matchPart =
@@ -52,7 +57,33 @@ const CustomerSummary = () => {
         );
     });
 
+    const validateDates = (from, to) => {
+        const errors = {
+            fromDate: "",
+            toDate: "",
+        };
 
+        const today = new Date().toISOString().split("T")[0];
+
+        // ✅ If both empty → no error
+        if (!from && !to) return errors;
+
+        // Future date check
+        if (from && from > today) {
+            errors.fromDate = "Invalid Date";
+        }
+
+        if (to && to > today) {
+            errors.toDate = "Invalid Date";
+        }
+
+        // From <= To check
+        if (from && to && from > to) {
+            errors.toDate = "Invalid Date";
+        }
+
+        return errors;
+    };
 
     useEffect(() => {
         fetchComplaints();
@@ -102,42 +133,84 @@ const CustomerSummary = () => {
         {
             field: 'serialNo',
             headerName: 'S.No',
-            width: 80,
+            width: 60,
+            resizable: false,
+            headerAlign: 'center',
+            align: 'center',
         },
         {
             field: 'ComplaintNo',
             headerName: 'Complaint No',
-            flex: 1,
+            width: 170,
+            resizable: false,
+            headerAlign: 'center',
+            align: 'center',
         },
         {
             field: 'CustomerEmail',
             headerName: 'Customer Email',
-            flex: 1,
+            width: 230,
+            resizable: false,
+            headerAlign: 'center',
+            align: 'center',
+            renderCell: (params) => {
+                const emails = params.value ? params.value.split(',') : [];
+
+                return (
+                    <div
+                        style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            justifyContent: "center",
+                            alignItems: "center",
+                            textAlign: "center",
+                            width: "100%",
+                            height: "100%",
+                            lineHeight: "1.6",
+                        }}
+                    >
+                        {emails.map((email, index) => (
+                            <div key={index}>{email.trim()}</div>
+                        ))}
+                    </div>
+                );
+            },
         },
         {
             field: 'ComplaintDate',
             headerName: 'Complaint Date',
-            flex: 1,
-            renderCell: (params) => {
-                if (!params.value) return '';
-                return new Date(params.value).toLocaleDateString();
-            },
+            width: 120,
+            resizable: false,
+            headerAlign: 'center',
+            align: 'center',
+            renderCell: (params) =>
+                params.value
+                    ? new Date(params.value).toLocaleDateString()
+                    : '',
         },
-
         {
             field: 'Model',
             headerName: 'Model',
-            flex: 1,
+            width: 100,
+            resizable: false,
+            headerAlign: 'center',
+            align: 'center',
         },
         {
             field: 'Part',
             headerName: 'Part',
-            flex: 1,
+            width: 100,
+            resizable: false,
+            headerAlign: 'center',
+            align: 'center',
         },
         {
             field: 'Severity',
             headerName: 'Severity',
-            flex: 1,
+            width: 100,
+            resizable: false,
+            headerAlign: 'center',
+            align: 'center',
             renderCell: (params) => (
                 <Chip
                     label={params.value}
@@ -149,13 +222,17 @@ const CustomerSummary = () => {
                                 : 'success'
                     }
                     size="small"
+                    sx={{ margin: '0 auto' }}
                 />
             ),
         },
         {
             field: 'Status',
             headerName: 'Status',
-            flex: 1,
+            width: 100,
+            resizable: false,
+            headerAlign: 'center',
+            align: 'center',
             renderCell: (params) => (
                 <Chip
                     label={params.value}
@@ -169,6 +246,7 @@ const CustomerSummary = () => {
                                     : 'warning'
                     }
                     size="small"
+                    sx={{ margin: '0 auto' }}
                 />
             ),
         },
@@ -182,8 +260,8 @@ const CustomerSummary = () => {
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    mb:2
-                   
+                    mb: 2
+
                 }}
             >
                 <Typography variant="h5" fontWeight={700}>
@@ -223,7 +301,6 @@ const CustomerSummary = () => {
                                 value={filterPart}
                                 onChange={(e) => setFilterPart(e.target.value)}
                             >
-                                <MenuItem value="All">All</MenuItem>
 
                                 {[...new Set(
                                     rows
@@ -248,7 +325,6 @@ const CustomerSummary = () => {
                                 value={filterStatus}
                                 onChange={(e) => setFilterStatus(e.target.value)}
                             >
-                                <MenuItem value="All">All</MenuItem>
 
                                 {[...new Set(
                                     rows
@@ -273,7 +349,6 @@ const CustomerSummary = () => {
                                 value={filterSeverity}
                                 onChange={(e) => setFilterSeverity(e.target.value)}
                             >
-                                <MenuItem value="All">All</MenuItem>
 
                                 {[...new Set(
                                     rows
@@ -296,8 +371,15 @@ const CustomerSummary = () => {
                                 label="From Date"
                                 fullWidth
                                 value={fromDate || ""}
-                                onChange={(e) => setFromDate(e.target.value)}
+                                onChange={(e) => {
+                                    const value = e.target.value;
+                                    setFromDate(value);
+                                    setDateErrors(validateDates(value, toDate));
+                                }}
                                 InputLabelProps={{ shrink: true }}
+                                inputProps={{ max: today }}
+                                error={!!dateErrors.fromDate}
+                                helperText={dateErrors.fromDate}
                             />
                         </Grid>
 
@@ -308,8 +390,15 @@ const CustomerSummary = () => {
                                 label="To Date"
                                 fullWidth
                                 value={toDate || ""}
-                                onChange={(e) => setToDate(e.target.value)}
+                                onChange={(e) => {
+                                    const value = e.target.value;
+                                    setToDate(value);
+                                    setDateErrors(validateDates(fromDate, value));
+                                }}
                                 InputLabelProps={{ shrink: true }}
+                                inputProps={{ max: today }}
+                                error={!!dateErrors.toDate}
+                                helperText={dateErrors.toDate}
                             />
                         </Grid>
 
@@ -327,6 +416,10 @@ const CustomerSummary = () => {
                                     setFilterSeverity("");
                                     setFromDate("");
                                     setToDate("");
+                                    setDateErrors({
+                                        fromDate: "",
+                                        toDate: "",
+                                    });
                                 }}
                             >
                                 Clear
@@ -356,7 +449,11 @@ const CustomerSummary = () => {
                                 },
                             },
                         }}
-                        disableRowSelectionOnClick
+                        disableSelectionOnClick
+                        disableColumnMenu
+                        disableColumnFilter
+                        disableColumnSorting   // ✅ disables sorting
+                        hideFooterSelectedRowCount
                         sx={{
                             border: 'none',
                             '& .MuiDataGrid-columnHeaders': {

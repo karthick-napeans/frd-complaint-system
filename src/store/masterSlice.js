@@ -4,6 +4,8 @@ import * as api from '../api/pageApi';
 export const loadMasters = createAsyncThunk(
   'masters/loadAll',
   async () => {
+    const customers1 = await api.getMstCustomers();
+    console.log("CUSTOMERS FROM API:", customers1);
     const [
       customers,
       parts,

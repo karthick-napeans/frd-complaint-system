@@ -18,13 +18,46 @@ import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import ClearIcon from '@mui/icons-material/Clear';
 
-const DreSummary = () => { 
+const DreSummary = () => {
     const [rows, setRows] = useState([]);
-    const [loading, setLoading] = useState(false); 
+    const [loading, setLoading] = useState(false);
     const [filterPart, setFilterPart] = useState("All");
     const [filterStatus, setFilterStatus] = useState("All");
     const [fromDate, setFromDate] = useState("");
+    const today = new Date().toISOString().split("T")[0];
     const [toDate, setToDate] = useState("");
+    const [dateErrors, setDateErrors] = useState({
+        fromDate: "",
+        toDate: "",
+    });
+
+    const validateDates = (from, to) => {
+        const errors = {
+            fromDate: "",
+            toDate: "",
+        };
+
+        const today = new Date().toISOString().split("T")[0];
+
+        // ✅ If both empty → no error
+        if (!from && !to) return errors;
+
+        // Future date check
+        if (from && from > today) {
+            errors.fromDate = "Invalid Date";
+        }
+
+        if (to && to > today) {
+            errors.toDate = "Invalid Date";
+        }
+
+        // From <= To check
+        if (from && to && from > to) {
+            errors.toDate = "Invalid Date";
+        }
+
+        return errors;
+    };
 
     useEffect(() => {
         fetchDreList();
@@ -89,23 +122,57 @@ const DreSummary = () => {
 
     // 📊 Columns
     const columns = [
-        { field: 'serialNo', headerName: 'S.No', width: 80 },
-        { field: 'DreNumber', headerName: 'DRE Number', flex: 1 },
+        {
+            field: 'serialNo',
+            headerName: 'S.No',
+            width: 80,
+            resizable: false,
+            headerAlign: 'center',
+            align: 'center',
+        },
+        {
+            field: 'DreNumber',
+            headerName: 'DRE Number',
+            flex: 1,
+            resizable: false,
+            headerAlign: 'center',
+            align: 'center',
+        },
         {
             field: 'DreDate',
             headerName: 'DRE Date',
             flex: 1,
+            resizable: false,
+            headerAlign: 'center',
+            align: 'center',
             renderCell: (params) =>
                 params.value
                     ? new Date(params.value).toLocaleDateString()
-                    : ''
+                    : '',
         },
-        { field: 'Model', headerName: 'Model', flex: 1 },
-        { field: 'Part', headerName: 'Part', flex: 1 },
+        {
+            field: 'Model',
+            headerName: 'Model',
+            flex: 1,
+            resizable: false,
+            headerAlign: 'center',
+            align: 'center',
+        },
+        {
+            field: 'Part',
+            headerName: 'Part',
+            flex: 1,
+            resizable: false,
+            headerAlign: 'center',
+            align: 'center',
+        },
         {
             field: 'Status',
             headerName: 'Status',
             flex: 1,
+            resizable: false,
+            headerAlign: 'center',
+            align: 'center',
             renderCell: (params) => (
                 <Chip
                     label={params.value}
@@ -117,6 +184,7 @@ const DreSummary = () => {
                                 : 'default'
                     }
                     size="small"
+                    sx={{ margin: "0 auto" }} // ensure chip stays centered
                 />
             ),
         },
@@ -160,7 +228,6 @@ const DreSummary = () => {
                                 value={filterPart}
                                 onChange={(e) => setFilterPart(e.target.value)}
                             >
-                                <MenuItem value="All">All</MenuItem>
                                 {[...new Set(rows.map(r => r.Part))]
                                     .filter(val => val)
                                     .map((part) => (
@@ -180,7 +247,6 @@ const DreSummary = () => {
                                 value={filterStatus}
                                 onChange={(e) => setFilterStatus(e.target.value)}
                             >
-                                <MenuItem value="All">All</MenuItem>
                                 {[...new Set(rows.map(r => r.Status))]
                                     .filter(val => val)
                                     .map((status) => (
@@ -198,8 +264,15 @@ const DreSummary = () => {
                                 label="From Date"
                                 fullWidth
                                 value={fromDate || ""}
-                                onChange={(e) => setFromDate(e.target.value)}
+                                onChange={(e) => {
+                                    const value = e.target.value;
+                                    setFromDate(value);
+                                    setDateErrors(validateDates(value, toDate));
+                                }}
                                 InputLabelProps={{ shrink: true }}
+                                inputProps={{ max: today }}
+                                error={!!dateErrors.fromDate}
+                                helperText={dateErrors.fromDate}
                             />
                         </Grid>
 
@@ -210,8 +283,15 @@ const DreSummary = () => {
                                 label="To Date"
                                 fullWidth
                                 value={toDate || ""}
-                                onChange={(e) => setToDate(e.target.value)}
+                                onChange={(e) => {
+                                    const value = e.target.value;
+                                    setToDate(value);
+                                    setDateErrors(validateDates(fromDate, value));
+                                }}
                                 InputLabelProps={{ shrink: true }}
+                                inputProps={{ max: today }}
+                                error={!!dateErrors.toDate}
+                                helperText={dateErrors.toDate}
                             />
                         </Grid>
 
@@ -228,6 +308,10 @@ const DreSummary = () => {
                                     setFilterStatus("All");
                                     setFromDate("");
                                     setToDate("");
+                                    setDateErrors({
+                                        fromDate: "",
+                                        toDate: "",
+                                    });
                                 }}
                             >
                                 Clear
@@ -248,8 +332,33 @@ const DreSummary = () => {
                         loading={loading}
                         autoHeight
                         pageSizeOptions={[10, 20, 50]}
-                        disableRowSelectionOnClick
-                    />k
+                        initialState={{
+                            pagination: {
+                                paginationModel: {
+                                    page: 0,
+                                    pageSize: 10,
+                                },
+                            },
+                        }}
+                        disableSelectionOnClick
+                        disableColumnMenu
+                        disableColumnFilter
+                        disableColumnSorting   // ✅ disables sorting
+                        hideFooterSelectedRowCount
+                        sx={{
+                            border: 'none',
+                            '& .MuiDataGrid-columnHeaders': {
+                                backgroundColor: '#f1f5f9',
+                                fontWeight: 700,
+                            },
+                            '& .MuiDataGrid-row:hover': {
+                                backgroundColor: '#f8fafc',
+                            },
+                            '& .MuiDataGrid-cell': {
+                                alignItems: 'center',
+                            },
+                        }}
+                    />
                 </CardContent>
             </Card>
 

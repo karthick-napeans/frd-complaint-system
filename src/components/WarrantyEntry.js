@@ -63,7 +63,6 @@ const WarrantyEntry = () => {
     }
   };
 
-
   React.useEffect(() => {
     fetchUploadHistory();
   }, []);
@@ -75,23 +74,34 @@ const WarrantyEntry = () => {
     setMessage(`Selected customer: ${customer?.name}`);
   };
 
-
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
+
+    // Allowed extensions
+    const allowedExtensions = ["xlsx", "xls"];
+    const fileExtension = file.name.split(".").pop().toLowerCase();
+
+    if (!allowedExtensions.includes(fileExtension)) {
+      setMessage("Please select an appropriate file (.xlsx or .xls only).");
+      setUploadedFile(null);
+      setPreviewData([]);
+      e.target.value = ""; // Reset input
+      return;
+    }
 
     setUploadedFile(file);
     const reader = new FileReader();
 
     reader.onload = (event) => {
       try {
-        const workbook = XLSX.read(event.target.result, { type: 'binary' });
+        const workbook = XLSX.read(event.target.result, { type: "binary" });
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         const data = XLSX.utils.sheet_to_json(sheet).slice(0, 10); // First 10 rows
         setPreviewData(data);
         setMessage(`File loaded successfully. Preview shows ${data.length} rows.`);
       } catch (err) {
-        setMessage('Error reading file: ' + err.message);
+        setMessage("Error reading file: " + err.message);
       }
     };
 
@@ -138,27 +148,65 @@ const WarrantyEntry = () => {
     }
   };
 
-
   const columns = [
-    { field: 'id', headerName: 'ID', width: 70 },
+    {
+      field: 'id',
+      headerName: 'ID',
+      width: 70,
+      resizable: false,
+      headerAlign: 'center',
+      align: 'center',
+    },
 
-    { field: 'customer', headerName: 'Customer', width: 150 },
+    {
+      field: 'customer',
+      headerName: 'Customer',
+      width: 150,
+      resizable: false,
+      headerAlign: 'center',
+      align: 'center',
+    },
 
-    { field: 'filename', headerName: 'Filename', width: 280 },
+    {
+      field: 'filename',
+      headerName: 'Filename',
+      width: 280,
+      resizable: false,
+      headerAlign: 'center',
+      align: 'center',
+    },
 
-    { field: 'uploadDate', headerName: 'Upload Date', width: 140 },
+    {
+      field: 'uploadDate',
+      headerName: 'Upload Date',
+      width: 140,
+      resizable: false,
+      headerAlign: 'center',
+      align: 'center',
+    },
 
-    { field: 'recordsProcessed', headerName: 'Records', width: 100 },
+    {
+      field: 'recordsProcessed',
+      headerName: 'Records',
+      width: 100,
+      resizable: false,
+      headerAlign: 'center',
+      align: 'center',
+    },
 
     {
       field: 'status',
       headerName: 'Status',
       width: 110,
+      resizable: false,
+      headerAlign: 'center',
+      align: 'center',
       renderCell: (params) => (
         <Chip
           label={params.value}
           color={params.value === 'Success' ? 'success' : 'error'}
           size="small"
+          sx={{ margin: '0 auto' }}   // keep chip centered
         />
       ),
     },
@@ -168,23 +216,27 @@ const WarrantyEntry = () => {
       headerName: 'Download',
       width: 120,
       sortable: false,
+      resizable: false,
+      headerAlign: 'center',
+      align: 'center',
       renderCell: (params) => (
-        <a
-          href={params.row.downloadUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{
-            textDecoration: 'none',
-            color: '#1976d2',
-            fontWeight: 500,
-          }}
-        >
-          Download
-        </a>
+        <div style={{ width: '100%', textAlign: 'center' }}>
+          <a
+            href={params.row.downloadUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              textDecoration: 'none',
+              color: '#1976d2',
+              fontWeight: 500,
+            }}
+          >
+            Download
+          </a>
+        </div>
       ),
     },
   ];
-
 
   return (
     <Box >
@@ -309,11 +361,6 @@ const WarrantyEntry = () => {
                   Data Preview
                 </Typography>
 
-                {/* <Chip
-                  label="First 10 rows"
-                  size="small"
-                  color="info"
-                /> */}
               </Box>
 
               {previewData.length > 0 ? (
@@ -433,7 +480,7 @@ const WarrantyEntry = () => {
           columns={columns}
 
           pagination
-          pageSizeOptions={[10]}   // 👈 only 10 rows allowed
+          pageSizeOptions={[10]}
 
           initialState={{
             pagination: {
@@ -447,6 +494,7 @@ const WarrantyEntry = () => {
           disableSelectionOnClick
           disableColumnMenu
           disableColumnFilter
+          disableColumnSorting   // ✅ disables sorting
           hideFooterSelectedRowCount
 
           rowHeight={52}
@@ -490,7 +538,6 @@ const WarrantyEntry = () => {
             },
           }}
         />
-
 
       </Box>
     </Box>
