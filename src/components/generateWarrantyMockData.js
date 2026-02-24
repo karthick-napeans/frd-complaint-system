@@ -1,5 +1,4 @@
-// src/mock/generateWarrantyMockData.js
-
+ 
 const models = [
   { code: "MDL1", name: "Model Alpha" },
   { code: "MDL2", name: "Model Beta" },

@@ -47,30 +47,32 @@ const MASTER_LABEL = {
 
 const MASTER_FORM_CONFIG = {
   customer: [
-    { name: "CustomerName", label: "Customer Name" },
-    { name: "CustomerCode", label: "Customer Code" },
+    { name: "CustomerName", label: "Customer Name", required: true },
+    { name: "CustomerCode", label: "Customer Code", required: true },
   ],
   model: [
-    { name: "ModelCode", label: "Model Code" },
-    { name: "ModelName", label: "Model Name" },
+    { name: "ModelCode", label: "Model Code", required: true },
+    { name: "ModelName", label: "Model Name", required: true },
   ],
   part: [
-    { name: "PartNumber", label: "Part Number" },
-    { name: "PartName", label: "Part Name" },
+    { name: "PartNumber", label: "Part Number", required: true },
+    { name: "PartName", label: "Part Name", required: true },
     {
       name: "PartDescription",
       label: "Description",
       multiline: true,
-    },],
+      required: true,
+    },
+  ],
   cause: [
-    { name: "Code", label: "Cause Code" },
+    { name: "Code", label: "Cause Code", required: true },
     {
       name: "CodeDescription",
       label: "Description",
       multiline: true,
+      required: true,
     },
   ],
-
 };
 
 /* ================= COMPONENT ================= */
@@ -86,8 +88,7 @@ const MasterData = ({ userRole = "Admin" }) => {
   const [saveLoading, setSaveLoading] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [rowToDelete, setRowToDelete] = useState(null);
-
-  /* ================= FETCH ================= */
+  const [errors, setErrors] = useState({});
 
   useEffect(() => {
     fetchMasterData();
@@ -112,6 +113,20 @@ const MasterData = ({ userRole = "Admin" }) => {
     setOpenDialog(true);
   };
 
+  const validateMasterForm = () => {
+    let tempErrors = {};
+
+    MASTER_FORM_CONFIG[masterType].forEach((field) => {
+      if (field.required && !formData[field.name]?.trim()) {
+        tempErrors[field.name] = `Required`;
+      }
+    });
+
+    setErrors(tempErrors);
+
+    return Object.keys(tempErrors).length === 0;
+  };
+
   const handleEdit = (row) => {
     setEditingRow(row);
     setFormData(row);
@@ -119,29 +134,32 @@ const MasterData = ({ userRole = "Admin" }) => {
   };
 
   const handleSave = async () => {
+    const isValid = validateMasterForm();
+    if (!isValid) return;
+
     setSaveLoading(true);
 
     try {
       if (editingRow) {
         const payload = { ...editingRow, ...formData };
         await updateMaster(masterType, payload);
-        await fetchMasterData();
       } else {
         await createMaster(masterType, formData);
-        await fetchMasterData();
       }
 
+      await fetchMasterData();
       await dispatch(loadMasters());
 
       setOpenDialog(false);
       setEditingRow(null);
       setFormData({});
+      setErrors({});
     } catch (err) {
       console.error("❌ Save failed:", err);
     } finally {
       setSaveLoading(false);
     }
-  }; 
+  };
 
   const handleDelete = (row) => {
     setRowToDelete(row);
@@ -438,16 +456,31 @@ const MasterData = ({ userRole = "Admin" }) => {
           {MASTER_FORM_CONFIG[masterType].map((field) => (
             <TextField
               key={field.name}
-              label={field.label}
+              label={`${field.label}${field.required ? "*" : ""}`}
               fullWidth
+              size="small"
               multiline={field.multiline}
               rows={field.multiline ? 3 : 1}
+              sx={{ mt: 1 }}
               value={formData[field.name] || ""}
+              error={!!errors[field.name]}
+              helperText={errors[field.name] || " "}
               onChange={(e) => {
+                const value = e.target.value;
+
                 setFormData({
                   ...formData,
-                  [field.name]: e.target.value,
+                  [field.name]: value,
                 });
+
+                // 🔥 auto clear error
+                if (value) {
+                  setErrors((prev) => {
+                    const newErrors = { ...prev };
+                    delete newErrors[field.name];
+                    return newErrors;
+                  });
+                }
               }}
             />
           ))}

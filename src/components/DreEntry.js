@@ -11,7 +11,7 @@ import {
   StepLabel,
   Card,
   CardContent,
-  FormControl,
+  FormControl, FormHelperText,
   InputLabel,
   Select,
   MenuItem,
@@ -19,7 +19,7 @@ import {
   AccordionSummary,
   AccordionDetails,
   Paper,
-  Chip
+  Chip, Alert,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import SaveIcon from '@mui/icons-material/Save';
@@ -43,7 +43,7 @@ const DREEntry = () => {
   const submitted = dreList.filter(d => d.Status === "OPEN");
   const [submitLoading, setSubmitLoading] = useState(false);
   const [draftLoading, setDraftLoading] = useState(false);
-
+  const [errors, setErrors] = useState({});
 
   const handleAccordionChange = (panel) => (event, isExpanded) => {
     setExpandedPanel(isExpanded ? panel : null);
@@ -95,6 +95,7 @@ const DREEntry = () => {
     setFormData(EMPTY_FORM);
     setAttachments([]);
     setActiveStep(0);
+    setMessage(""); 
     setShowHeaderError(false);
   };
 
@@ -144,33 +145,76 @@ const DREEntry = () => {
   };
 
   const handleNext = () => {
-    console.log("Clicked Next");
-    console.log("Active Step:", activeStep);
-    console.log("Form Data:", formData);
+    let tempErrors = {};
 
     if (activeStep === 0) {
-      console.log(
-        formData.dreNumber,
-        formData.dreEngineerName,
-        formData.date,
-        formData.model,
-        formData.part
-      );
+      if (!formData.dreNumber)
+        tempErrors.dreNumber = "Required";
+
+      if (!formData.dreEngineerName)
+        tempErrors.dreEngineerName = "Required";
+
+      if (!formData.date)
+        tempErrors.date = "Required";
+
+      if (!formData.model)
+        tempErrors.model = "Required";
+
+      if (!formData.part)
+        tempErrors.part = "Required";
+    }
+
+    if (activeStep === 1) {
+      if (!formData.problem?.trim())
+        tempErrors.problem = "Required";
+    }
+
+    if (Object.keys(tempErrors).length > 0) {
+      setErrors(tempErrors);
+      return;
     }
 
     setActiveStep((prev) => prev + 1);
+    setMessage("");
   };
 
   const handleBack = () => {
     setActiveStep((prev) => Math.max(prev - 1, 0));
   };
 
+  const validateStep0 = () => {
+    let tempErrors = {};
+
+
+    if (!formData.dreNumber)
+      tempErrors.dreNumber = "Required";
+
+    if (!formData.date)
+      tempErrors.date = "Required";
+
+    if (!formData.model)
+      tempErrors.model = "Required";
+
+    if (!formData.part)
+      tempErrors.part = "Required";
+
+    setErrors(tempErrors);
+
+    return Object.keys(tempErrors).length === 0;
+  };
+
   const handleSaveDraft = async () => {
+    // 🔥 Validate required draft fields
+    const isValid = validateStep0();
+
+    if (!isValid) {
+      return; // stop saving
+    }
+
     try {
-      setDraftLoading(true);   // 🔥 Start loader
+      setDraftLoading(true);
 
       const fd = buildDreFormData("DRAFT", attachments);
-
       const res = await saveDreWithFiles(fd);
 
       setFormData((prev) => ({
@@ -184,13 +228,13 @@ const DREEntry = () => {
       resetForm();
 
     } catch (err) {
-      console.error("Draft save failed", err.response?.data || err);
-      setMessage("❌ Failed to save draft");
+      console.log("Full error response:", err.response);
+      console.log("Error data:", err.response?.data);
+      setMessage("Failed to save draft");
     } finally {
-      setDraftLoading(false);  // 🔥 Stop loader
+      setDraftLoading(false);
     }
   };
-
 
   const handleSubmitDRE = async () => {
     try {
@@ -229,7 +273,20 @@ const DREEntry = () => {
 
   const handleSelectChange = (e) => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+
+    // 🔥 remove error if value selected
+    if (value) {
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
+    }
   };
 
   const handleChange = (e) => {
@@ -239,12 +296,19 @@ const DREEntry = () => {
       ...prev,
       [name]: value,
     }));
+
+    if (value) {
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
+    }
   };
 
-
   return (
-    <Box> 
-      <Typography variant="h5" fontWeight={700} sx={{ mb: 2}}>
+    <Box>
+      <Typography variant="h5" fontWeight={700} sx={{ mb: 2 }}>
         DRE Entry
       </Typography>
 
@@ -262,8 +326,19 @@ const DREEntry = () => {
                 ))}
               </Stepper>
 
+              {message && (
+                <Alert
+                  severity={message.includes("✓") ? "success" : "error"}
+                  sx={{ mb: 2 }}
+                >
+                  {message}
+                </Alert>
+              )}
+
               {activeStep === 0 && (
-                <Grid container spacing={3}>
+                <Grid container spacing={0.5}>
+
+                  {/* DRE Number */}
                   <Grid item xs={12}>
                     <TextField
                       label="DRE Number *"
@@ -271,10 +346,12 @@ const DREEntry = () => {
                       fullWidth
                       value={formData.dreNumber}
                       onChange={handleChange}
+                      error={!!errors.dreNumber}
+                      helperText={errors.dreNumber || " "}
                     />
-
                   </Grid>
 
+                  {/* Engineer Name */}
                   <Grid item xs={12}>
                     <TextField
                       label="DRE Engineer Name *"
@@ -282,10 +359,12 @@ const DREEntry = () => {
                       fullWidth
                       value={formData.dreEngineerName}
                       onChange={handleChange}
+                      error={!!errors.dreEngineerName}
+                      helperText={errors.dreEngineerName || " "}
                     />
-
                   </Grid>
 
+                  {/* Entry Date */}
                   <Grid item xs={12}>
                     <TextField
                       type="date"
@@ -296,50 +375,62 @@ const DREEntry = () => {
                       value={formData.date}
                       onChange={handleChange}
                       inputProps={{
-                        max: new Date().toISOString().split('T')[0],
+                        max: new Date().toISOString().split("T")[0],
                       }}
+                      error={!!errors.date}
+                      helperText={errors.date || " "}
                     />
                   </Grid>
 
                   <Grid item xs={12}>
-                    <FormControl fullWidth required>
-                      <InputLabel shrink>Model</InputLabel>
+                    <FormControl fullWidth error={!!errors.model}>
+                      <InputLabel id="model-label">
+                        Model
+                      </InputLabel>
+
                       <Select
+                        labelId="model-label"
                         name="model"
                         value={formData.model}
                         onChange={handleSelectChange}
-                        displayEmpty
-                        label="Model"
+                        label="Model *"
                       >
-
-
                         {activeModels.map((m) => (
                           <MenuItem key={m.ModelId} value={m.ModelCode}>
                             {m.ModelCode}
                           </MenuItem>
                         ))}
                       </Select>
+
+                      <FormHelperText>
+                        {errors.model || " "}
+                      </FormHelperText>
                     </FormControl>
                   </Grid>
 
                   <Grid item xs={12}>
-                    <FormControl fullWidth>
-                      <InputLabel shrink>Part</InputLabel>
+                    <FormControl fullWidth error={!!errors.part}>
+                      <InputLabel id="part-label">
+                        Part
+                      </InputLabel>
+
                       <Select
+                        labelId="part-label"
                         name="part"
                         value={formData.part}
                         onChange={handleSelectChange}
-                        displayEmpty
-                        label="Part"
+                        label="Part *"
                       >
-
-
                         {activeParts.map((p) => (
                           <MenuItem key={p.PartId} value={p.PartNumber}>
                             {p.PartName}
                           </MenuItem>
                         ))}
                       </Select>
+
+                      <FormHelperText>
+                        {errors.part || " "}
+                      </FormHelperText>
                     </FormControl>
                   </Grid>
                 </Grid>
@@ -354,6 +445,8 @@ const DREEntry = () => {
                   fullWidth
                   value={formData.problem}
                   onChange={handleChange}
+                  error={!!errors.problem}
+                  helperText={errors.problem || " "}
                 />
               )}
 
@@ -510,8 +603,8 @@ const DREEntry = () => {
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
-                  mt: 4,
-                  pt: 2,
+                  
+                 
                   borderTop: '1px solid #e5e7eb',
                 }}
               >

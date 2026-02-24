@@ -182,6 +182,7 @@ const CustomerSummary = () => {
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
+                    mb:2
                    
                 }}
             >

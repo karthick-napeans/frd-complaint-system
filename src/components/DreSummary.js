@@ -18,11 +18,9 @@ import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import ClearIcon from '@mui/icons-material/Clear';
 
-const DreSummary = () => {
-
+const DreSummary = () => { 
     const [rows, setRows] = useState([]);
-    const [loading, setLoading] = useState(false);
-
+    const [loading, setLoading] = useState(false); 
     const [filterPart, setFilterPart] = useState("All");
     const [filterStatus, setFilterStatus] = useState("All");
     const [fromDate, setFromDate] = useState("");
@@ -251,7 +249,7 @@ const DreSummary = () => {
                         autoHeight
                         pageSizeOptions={[10, 20, 50]}
                         disableRowSelectionOnClick
-                    />
+                    />k
                 </CardContent>
             </Card>
 

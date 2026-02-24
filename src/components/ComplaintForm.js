@@ -25,7 +25,6 @@ import {
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import SaveIcon from "@mui/icons-material/Save";
-import SaveAltIcon from "@mui/icons-material/SaveAlt";
 import { useSelector } from "react-redux";
 import CircularProgress from "@mui/material/CircularProgress";
 import { submitCustomerComplaint, getCustomerComplaints } from "../api/pageApi";
@@ -56,7 +55,6 @@ const ComplaintForm = () => {
     "Attachments",
     "Review & Submit",
   ];
-  
   const sampleAttachmentList = [
     { id: 1, listName: "Counter Measure", isMandatory: true },
     { id: 2, listName: "PAN Copy", isMandatory: true },
@@ -88,6 +86,7 @@ const ComplaintForm = () => {
   const [formData, setFormData] = useState(INITIAL_FORM_STATE);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [draftLoading, setDraftLoading] = useState(false);
+  const [errors, setErrors] = useState({});
   const handleAccordionChange = (panel) => (event, isExpanded) => {
     setExpandedPanel(isExpanded ? panel : null);
   };
@@ -152,12 +151,35 @@ const ComplaintForm = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+
+    setFormData({
+      ...formData,
+      [name]: value,
+    });
+
+    if (value) {
+      setErrors((prev) => ({
+        ...prev,
+        [name]: "",
+      }));
+    }
   };
 
   const handleSelectChange = (e) => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+
+    // 🔥 CLEAR ERROR WHEN VALUE IS SELECTED
+    if (value) {
+      setErrors((prev) => ({
+        ...prev,
+        [name]: "",
+      }));
+    }
   };
 
   const isStep2Valid = () => {
@@ -169,15 +191,24 @@ const ComplaintForm = () => {
   };
 
   const handleNext = () => {
+    let tempErrors = {};
 
     /* ================= STEP 0 ================= */
     if (activeStep === 0) {
-      if (
-        !formData.customerSelected ||
-        !formData.customerEmail ||
-        !formData.complaintDate ||
-        !formData.modelSelected
-      ) {
+      if (!formData.customerSelected)
+        tempErrors.customerSelected = "Customer is required";
+
+      if (!formData.customerEmail)
+        tempErrors.customerEmail = "Email is required";
+
+      if (!formData.complaintDate)
+        tempErrors.complaintDate = "Complaint date is required";
+
+      if (!formData.modelSelected)
+        tempErrors.modelSelected = "Model is required";
+
+      if (Object.keys(tempErrors).length > 0) {
+        setErrors(tempErrors);
         setMessage("Please fill all required fields in Complaint Header");
         return;
       }
@@ -185,7 +216,14 @@ const ComplaintForm = () => {
 
     /* ================= STEP 1 ================= */
     if (activeStep === 1) {
-      if (!formData.problemStatement || !formData.causeCode) {
+      if (!formData.problemStatement)
+        tempErrors.problemStatement = "Problem Statement is required";
+
+      if (!formData.causeCode)
+        tempErrors.causeCode = "Cause Code is required";
+
+      if (Object.keys(tempErrors).length > 0) {
+        setErrors(tempErrors);
         setMessage("Please fill Problem Statement and Cause Code");
         return;
       }
@@ -193,25 +231,30 @@ const ComplaintForm = () => {
 
     /* ================= STEP 2 ================= */
     if (activeStep === 2) {
-      const invalidRow = attachmentRows.find(
-        (row) =>
-          row.isMandatory &&
-          (!row.file || !row.expiryDate)
-      );
+      const newAttachmentErrors = {};
 
-      if (invalidRow) {
-        setMessage(
-          `Please upload file and select expiry date for "${invalidRow.listName}"`
-        );
+      attachmentRows.forEach((row) => {
+        if (row.isMandatory) {
+          if (!row.file)
+            newAttachmentErrors[`file_${row.id}`] = "File required";
+
+          if (!row.expiryDate)
+            newAttachmentErrors[`expiry_${row.id}`] =
+              "Expiry date required";
+        }
+      });
+
+      if (Object.keys(newAttachmentErrors).length > 0) {
+        setErrors(newAttachmentErrors);
+        setMessage("Please upload all mandatory documents");
         return;
       }
     }
 
+    setErrors({});
     setMessage("");
     setActiveStep((prev) => prev + 1);
   };
-
-
 
   const handleBack = () => {
     setActiveStep(activeStep - 1);
@@ -220,13 +263,9 @@ const ComplaintForm = () => {
   const buildComplaintFormData = (status) => {
     const fd = new FormData();
 
-    // ✅ IMPORTANT: send complaintId if editing
-    if (formData.complaintId) {
-      fd.append("complaintId", formData.complaintId);
-    }
-
-    fd.append("status", status);
-    fd.append("customerId", String(formData.customerSelected));
+    // 🔹 Normal fields
+    fd.append("complaintId", formData.complaintId || "");
+    fd.append("customerId", formData.customerSelected);
     fd.append("customerEmail", formData.customerEmail);
     fd.append("complaintDate", formData.complaintDate);
     fd.append("model", formData.modelSelected);
@@ -234,19 +273,38 @@ const ComplaintForm = () => {
     fd.append("problemStatement", formData.problemStatement);
     fd.append("causeCode", formData.causeCode);
     fd.append("severity", formData.severityLevel);
+    fd.append("status", status);
 
-    formData.attachments.forEach((file) => {
-      fd.append("files", file);
+    // 🔥 Attachments
+    attachmentRows.forEach((row, index) => {
+      if (row.file) {
+        fd.append(`attachments[${index}].file`, row.file);
+        fd.append(`attachments[${index}].attachmentName`, row.listName);
+        fd.append(`attachments[${index}].expiryDate`, row.expiryDate || "");
+        fd.append(`attachments[${index}].isMandatory`, row.isMandatory);
+      }
     });
 
     return fd;
   };
 
   const resetForm = () => {
-    setFormData({ ...INITIAL_FORM_STATE }); // safe copy
+    setFormData({ ...INITIAL_FORM_STATE });
+
+    // ✅ Reset attachments properly
+    setAttachmentRows(
+      sampleAttachmentList.map(item => ({
+        ...item,
+        checked: item.isMandatory,
+        file: null,
+        expiryDate: ""
+      }))
+    );
+
     setActiveStep(0);
     setActiveDraftId(null);
     setMessage("");
+    setErrors({});
   };
 
   const handleSaveDraft = async () => {
@@ -278,6 +336,10 @@ const ComplaintForm = () => {
     try {
       setSubmitLoading(true);
       const fd = buildComplaintFormData("SUBMITTED");
+
+      for (let pair of fd.entries()) {
+        console.log(pair[0], pair[1]);
+      }
       await submitCustomerComplaint(fd);
       setMessage("✓ Complaint submitted successfully!");
       await fetchComplaints();
@@ -286,7 +348,7 @@ const ComplaintForm = () => {
       setActiveStep(0);
     } catch (err) {
       console.error("Submit failed", err.response?.data || err);
-      setMessage("❌ Complaint submit failed");
+      setMessage("Complaint submit failed");
     }
   };
 
@@ -308,31 +370,44 @@ const ComplaintForm = () => {
   };
 
   const handleFileChange = (id, file) => {
-    setAttachmentRows(prev =>
-      prev.map(row =>
-        row.id === id
-          ? { ...row, file }
-          : row
+    setAttachmentRows((prev) =>
+      prev.map((row) =>
+        row.id === id ? { ...row, file } : row
       )
     );
 
-    // 🔥 Clear message only if valid now
+    // ✅ REMOVE FILE ERROR
+    if (file) {
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[`file_${id}`];
+        return newErrors;
+      });
+    }
+
+    // optional message clear
     setTimeout(() => {
       if (isStep2Valid()) {
         setMessage("");
       }
     }, 0);
   };
-
 
   const handleDateChange = (id, date) => {
-    setAttachmentRows(prev =>
-      prev.map(row =>
-        row.id === id
-          ? { ...row, expiryDate: date }
-          : row
+    setAttachmentRows((prev) =>
+      prev.map((row) =>
+        row.id === id ? { ...row, expiryDate: date } : row
       )
     );
+
+    // ✅ REMOVE DATE ERROR
+    if (date) {
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[`expiry_${id}`];
+        return newErrors;
+      });
+    }
 
     setTimeout(() => {
       if (isStep2Valid()) {
@@ -340,7 +415,6 @@ const ComplaintForm = () => {
       }
     }, 0);
   };
-
 
   return (
     <Box>
@@ -372,13 +446,14 @@ const ComplaintForm = () => {
               {/* Tab 1: Complaint Header */}
               {activeStep === 0 && (
                 <Box sx={{ gap: 2, display: "flex", flexDirection: "column" }}>
-                  <FormControl fullWidth>
+                  <FormControl fullWidth error={!!errors.customerSelected}>
                     <InputLabel>Select Customer</InputLabel>
                     <Select
                       name="customerSelected"
                       value={formData.customerSelected}
                       label="Select Customer"
                       onChange={handleSelectChange}
+                      required
                     >
 
                       {activeCustomers.map((c) => (
@@ -395,8 +470,8 @@ const ComplaintForm = () => {
                     name="customerEmail"
                     value={formData.customerEmail}
                     onChange={handleInputChange}
-                    placeholder="example1@mail.com, example2@mail.com"
-                  // helperText="Enter multiple emails separated by comma"
+                    error={!!errors.customerEmail}
+                    helperText={errors.customerEmail}
                   />
 
 
@@ -408,10 +483,8 @@ const ComplaintForm = () => {
                     value={formData.complaintDate}
                     onChange={handleInputChange}
                     InputLabelProps={{ shrink: true }}
-                    required
-                    inputProps={{
-                      max: new Date().toISOString().split("T")[0],
-                    }}
+                    error={!!errors.complaintDate}
+                    helperText={errors.complaintDate}
                   />
 
                   <FormControl fullWidth required>
@@ -470,8 +543,10 @@ const ComplaintForm = () => {
                     value={formData.problemStatement}
                     onChange={handleInputChange}
                     required
+                    error={!!errors.problemStatement}
+                    helperText={errors.problemStatement}
                   />
-                  <FormControl fullWidth required>
+                  <FormControl fullWidth error={!!errors.causeCode}>
                     <InputLabel shrink>Cause Code</InputLabel>
                     <Select
                       name="causeCode"
@@ -518,12 +593,13 @@ const ComplaintForm = () => {
                   {attachmentRows.map((row) => (
                     <Grid
                       container
-                      spacing={2}
+                      spacing={3}
                       alignItems="center"
                       key={row.id}
+                      sx={{ mb: 1 }}
                     >
                       {/* Checkbox */}
-                      <Grid item xs={1}>
+                      <Grid item xs={1} sx={{ display: "flex", justifyContent: "center" }}>
                         <Checkbox
                           checked={row.checked}
                           disabled={row.isMandatory}
@@ -531,9 +607,9 @@ const ComplaintForm = () => {
                         />
                       </Grid>
 
-                      {/* List Name */}
+                      {/* Document Name */}
                       <Grid item xs={3}>
-                        <Typography>
+                        <Typography fontWeight={500}>
                           {row.listName}
                           {row.isMandatory && (
                             <span style={{ color: "red" }}> *</span>
@@ -541,14 +617,17 @@ const ComplaintForm = () => {
                         </Typography>
                       </Grid>
 
-
+                      {/* Upload Button */}
                       <Grid item xs={4}>
                         <Button
                           component="label"
-
                           variant="outlined"
                           startIcon={<CloudUploadIcon />}
                           fullWidth
+                          sx={{
+                            height: 40,
+                            borderColor: errors[`file_${row.id}`] ? "red" : undefined,
+                          }}
                         >
                           {row.file ? row.file.name : "Upload File"}
                           <input
@@ -560,6 +639,18 @@ const ComplaintForm = () => {
                             }
                           />
                         </Button>
+
+                        {/* Reserve space for error (prevents jumping) */}
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: "red",
+                            minHeight: 18,
+                            display: "block",
+                          }}
+                        >
+                          {errors[`file_${row.id}`] || ""}
+                        </Typography>
                       </Grid>
 
                       {/* Expiry Date */}
@@ -567,13 +658,18 @@ const ComplaintForm = () => {
                         <TextField
                           type="date"
                           fullWidth
-                          size="small"          // 👈 same size
-
+                          size="small"
                           value={row.expiryDate}
                           onChange={(e) =>
                             handleDateChange(row.id, e.target.value)
                           }
-                          InputLabelProps={{ shrink: true }}
+                          error={!!errors[`expiry_${row.id}`]}
+                          helperText={errors[`expiry_${row.id}`] || " "}
+                          sx={{
+                            "& .MuiInputBase-root": {
+                              height: 40,
+                            },
+                          }}
                         />
                       </Grid>
                     </Grid>
@@ -591,8 +687,12 @@ const ComplaintForm = () => {
                       sx={{ gap: 1, display: "flex", flexDirection: "column" }}
                     >
                       <Typography>
-                        <strong>Customer:</strong> {formData.customerName}
-                      </Typography>
+                        <strong>Customer:</strong>{" "}
+                        {
+                          activeCustomers.find(
+                            (c) => c.CustomerId === formData.customerSelected
+                          )?.CustomerName || "-"
+                        }                      </Typography>
                       <Typography>
                         <strong>Email:</strong> {formData.customerEmail}
                       </Typography>

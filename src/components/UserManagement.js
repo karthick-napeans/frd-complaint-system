@@ -27,14 +27,14 @@ const UserManagement = () => {
   const [editingUser, setEditingUser] = useState(null);
   const [submitError, setSubmitError] = useState("");
   const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(false);        // For table loading
+  const [loading, setLoading] = useState(false);       
   const [submitLoading, setSubmitLoading] = useState(false);
   const [formData, setFormData] = useState({
     employeeId: "",
     userId: null,
     username: '',
     email: '',
-    role: 'QC_User',
+    role: '',
     contactNumber: '',
     designation: '',
     isActive: true,
@@ -42,6 +42,7 @@ const UserManagement = () => {
   });
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [userIdToDelete, setUserIdToDelete] = useState(null);
+  const [errors, setErrors] = useState({});
 
 
   useEffect(() => {
@@ -84,7 +85,6 @@ const UserManagement = () => {
       setLoading(false);
     }
   };
-
 
   const handleOpenAdd = () => {
     setEditingUser(null);
@@ -133,6 +133,38 @@ const UserManagement = () => {
     setUserIdToDelete(null);
   };
 
+  const validateUserForm = () => {
+    let tempErrors = {};
+
+    if (!formData.employeeId?.trim())
+      tempErrors.employeeId = "Required";
+
+    if (!formData.username?.trim())
+      tempErrors.username = "Required";
+
+    if (!formData.email?.trim()) {
+      tempErrors.email = "Email is required";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      tempErrors.email = "Required";
+    }
+
+    if (!editingUser && !formData.password?.trim())
+      tempErrors.password = "Required";
+
+    if (!formData.role)
+      tempErrors.role = "Required";
+
+    if (!formData.contactNumber?.trim())
+      tempErrors.contactNumber = "Required";
+
+    if (!formData.designation?.trim())
+      tempErrors.designation = "Required";
+
+    setErrors(tempErrors);
+
+    return Object.keys(tempErrors).length === 0;
+  };
+
   const buildUpdatePayload = (formData, editingUser) => {
     return {
       UserId: editingUser.UserId,
@@ -156,7 +188,8 @@ const UserManagement = () => {
   const handleCreateEditUser = async () => {
     setSubmitError("");
     setSubmitLoading(true);
-
+    const isValid = validateUserForm();
+    if (!isValid) return;
     try {
       if (editingUser) {
         const payload = buildUpdatePayload(formData, editingUser);
@@ -380,80 +413,151 @@ const UserManagement = () => {
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle>{editingUser ? 'Edit User' : 'Add New User'}</DialogTitle>
 
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', }}>
           <TextField
-            label="Employee ID"
+            label="Employee ID *"
             fullWidth
+            size="small"
             value={formData.employeeId}
-            onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
+            error={!!errors.employeeId}
+            helperText={errors.employeeId || " "}
+            sx={{mt:2}}
+            onChange={(e) => {
+              const value = e.target.value;
+              setFormData({ ...formData, employeeId: value });
+
+              if (value) {
+                setErrors((prev) => {
+                  const newErrors = { ...prev };
+                  delete newErrors.employeeId;
+                  return newErrors;
+                });
+              }
+            }}
           />
 
           <TextField
-            label="Email"
+            label="User Name"
             fullWidth
+            value={formData.username}
+            onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+            error={!!errors.username}
+            helperText={errors.username || " "}
+          />
+
+          <TextField
+            label="Email *"
             type="email"
+            fullWidth
+            size="small"
             value={formData.email}
-            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            error={!!errors.email}
+            helperText={errors.email || " "}
+            onChange={(e) => {
+              const value = e.target.value;
+              setFormData({ ...formData, email: value });
+
+              setErrors((prev) => {
+                const newErrors = { ...prev };
+                delete newErrors.email;
+                return newErrors;
+              });
+            }}
           />
 
           {!editingUser && (
             <TextField
-              label="Password"
-              fullWidth
+              label="Password *"
               type="password"
+              fullWidth
+              size="small"
               value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              error={!!errors.password}
+              helperText={errors.password || " "}
+              onChange={(e) => {
+                const value = e.target.value;
+                setFormData({ ...formData, password: value });
+
+                if (value) {
+                  setErrors((prev) => {
+                    const newErrors = { ...prev };
+                    delete newErrors.password;
+                    return newErrors;
+                  });
+                }
+              }}
             />
           )}
 
           <TextField
             select
-            label="Role"
-            SelectProps={{ native: true }}
+            label="Role *"
+            fullWidth
+            size="small"
             value={formData.role}
-            onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+            error={!!errors.role}
+            helperText={errors.role || " "}
+            onChange={(e) => {
+              const value = e.target.value;
+              setFormData({ ...formData, role: value });
+
+              if (value) {
+                setErrors((prev) => {
+                  const newErrors = { ...prev };
+                  delete newErrors.role;
+                  return newErrors;
+                });
+              }
+            }}
           >
+            <option value=""></option>
             <option value="Super_Admin">Super Admin</option>
             <option value="QC_Admin">QC Admin</option>
             <option value="QC_User">QC User</option>
           </TextField>
 
           <TextField
-            label="ContactNumber"
-            type='number'
-            SelectProps={{ native: true }}
-            value={formData.contactNumber} onChange={(e) =>
-              setFormData({ ...formData, contactNumber: e.target.value })
-            }
-          >Contact Number</TextField>
-
-
-          <TextField
-            label="Designation"
+            label="Contact Number *"
             fullWidth
-            value={formData.designation || ''}
-            onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
+            size="small"
+            value={formData.contactNumber}
+            error={!!errors.contactNumber}
+            helperText={errors.contactNumber || " "}
+            onChange={(e) => {
+              const value = e.target.value;
+              setFormData({ ...formData, contactNumber: value });
+
+              if (value) {
+                setErrors((prev) => {
+                  const newErrors = { ...prev };
+                  delete newErrors.contactNumber;
+                  return newErrors;
+                });
+              }
+            }}
           />
 
-          {/* {editingUser && (
-            <TextField
-              select
-              label="Status"
-              fullWidth
-              value={formData.isActive ? 'Active' : 'Inactive'}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  isActive: e.target.value === 'Active',
-                })
+          <TextField
+            label="Designation *"
+            fullWidth
+            size="small"
+            value={formData.designation || ""}
+            error={!!errors.designation}
+            helperText={errors.designation || " "}
+            onChange={(e) => {
+              const value = e.target.value;
+              setFormData({ ...formData, designation: value });
+
+              if (value) {
+                setErrors((prev) => {
+                  const newErrors = { ...prev };
+                  delete newErrors.designation;
+                  return newErrors;
+                });
               }
-            >
-              <option value="Active">Active</option>
-              <option value="Inactive">Inactive</option>
-            </TextField>
-
-          )} */}
-
+            }}
+          /> 
+         
           {submitError && (
             <Alert severity="error" sx={{ mb: 2 }}>
               {submitError}
