@@ -1,8 +1,6 @@
-import React from 'react';
-import { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Box,
-  Container,
   Grid,
   Card,
   CardContent,
@@ -15,199 +13,471 @@ import {
   TableHead,
   TableRow,
   Paper,
-} from '@mui/material';
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import TrendingUpIcon from '@mui/icons-material/TrendingUp';
-import PendingIcon from '@mui/icons-material/Pending';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import WarningIcon from '@mui/icons-material/Warning';
+  TextField,
+  MenuItem,
+} from "@mui/material";
+
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+} from "recharts";
+
+import AssignmentIcon from "@mui/icons-material/Assignment";
+import ReportProblemIcon from "@mui/icons-material/ReportProblem";
+import AnalyticsIcon from "@mui/icons-material/Analytics";
+import FilterListIcon from "@mui/icons-material/FilterList";
+
 import { useDispatch, useSelector } from "react-redux";
 import { loadMasters } from "../store/masterSlice";
 
 
+const formatDate = (date) => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+};
 
-const Dashboard = () => {
+const getFromDate = (days) => {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  return formatDate(d);
+};
+
+
+export default function Dashboard() {
 
   const dispatch = useDispatch();
-  const loaded = useSelector(state => state.masters.loaded);
+  const loaded = useSelector((s) => s.masters.loaded);
 
   useEffect(() => {
-    console.log("Dashboard useEffect triggered");
-
-    if (!loaded) {
-      console.log("Dispatching loadMasters...");
-      dispatch(loadMasters());
-    }
+    if (!loaded) dispatch(loadMasters());
   }, [loaded, dispatch]);
 
+
+  // ---------- FILTER ----------
+  const [filterDays, setFilterDays] = useState(7);
+
+  const today = formatDate(new Date());
+  const fromDate = getFromDate(filterDays);
+
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
+
+  // ---------- STATS ----------
+  const [totalFieldReports, setTotalFieldReports] = useState(0);
+  const [totalComplaints, setTotalComplaints] = useState(0);
+  const [totalDreReports, setTotalDreReports] = useState(0);
+
+
+  // ---------- CHART DATA ----------
+  const [trendData, setTrendData] = useState([]);
+  const [modelData, setModelData] = useState([]);
+  const [statusData, setStatusData] = useState([]);
+
+  // ---------- TABLE ----------
+  const [recentComplaints, setRecentComplaints] = useState([]);
+
+  // ---------- LOAD DASHBOARD ----------
+  const loadDashboardStats = async (from, to) => {
+
+    console.log("Loading dashboard:", from, to);
+    // TODO: replace with real API
+    // const res = await getDashboardStats(from, to);
+
+    // MOCK DATA
+    const res = {
+      fieldReports: 124,
+      complaints: 89,
+      dreReports: 56,
+      trend: [
+        { month: "Jan", complaints: 20, resolved: 15 },
+        { month: "Feb", complaints: 30, resolved: 22 },
+        { month: "Mar", complaints: 40, resolved: 33 },
+        { month: "Apr", complaints: 50, resolved: 44 },
+      ],
+      model: [
+        { model: "Model A", count: 20 },
+        { model: "Model B", count: 35 },
+        { model: "Model C", count: 15 },
+      ],
+      status: [
+        { name: "Open", value: 25 },
+        { name: "Review", value: 40 },
+        { name: "Resolved", value: 24 },
+      ],
+    };
+
+
+    setTotalFieldReports(res.fieldReports);
+    setTotalComplaints(res.complaints);
+    setTotalDreReports(res.dreReports);
+
+    setTrendData(res.trend);
+    setModelData(res.model);
+    setStatusData(res.status);
+    setRecentComplaints(res.recent);
+  };
+
+  useEffect(() => {
+    loadDashboardStats(fromDate, today);
+  }, [filterDays]);
+
+
+  // ---------- STAT CARDS ----------
   const statData = [
-    { title: 'Total Complaints', value: '242', change: '+8%', icon: TrendingUpIcon, color: 'primary' },
-    { title: 'Pending Review', value: '45', change: '-3%', icon: PendingIcon, color: 'warning' },
-    { title: 'Resolved', value: '197', change: '+12%', icon: CheckCircleIcon, color: 'success' },
-    { title: 'Open Issues', value: '12', change: '+5%', icon: WarningIcon, color: 'error' },
+    {
+      title: "Total Field Reports",
+      value: totalFieldReports,
+      color: "primary",
+      icon: AssignmentIcon,
+    },
+    {
+      title: "Customer Complaints",
+      value: totalComplaints,
+      color: "error",
+      icon: ReportProblemIcon,
+    },
+    {
+      title: "DRE Reports",
+      value: totalDreReports,
+      color: "success",
+      icon: AnalyticsIcon,
+    },
+    {
+      title: "Filter",
+      isFilter: true,
+      icon: FilterListIcon,
+      color: "secondary",
+    },
   ];
 
-  const trendData = [
-    { month: 'Aug', complaints: 45, resolved: 32 },
-    { month: 'Sep', complaints: 52, resolved: 41 },
-    { month: 'Oct', complaints: 68, resolved: 52 },
-    { month: 'Nov', complaints: 77, resolved: 65 },
-  ];
-
-  const complaintsByModel = [
-    { model: 'Model A', count: 52 },
-    { model: 'Model B', count: 48 },
-    { model: 'Model C', count: 35 },
-    { model: 'Model D', count: 22 },
-  ];
-
-  const recentComplaints = [
-    { id: 'COMP042', customer: 'Customer A', model: 'Model B', date: '2025-11-02', status: 'Open', severity: 'High' },
-    { id: 'COMP041', customer: 'Customer C', model: 'Model D', date: '2025-11-01', status: 'In Review', severity: 'Medium' },
-    { id: 'COMP040', customer: 'Customer B', model: 'Model A', date: '2025-10-31', status: 'Resolved', severity: 'Low' },
-    { id: 'COMP039', customer: 'Customer A', model: 'Model C', date: '2025-10-30', status: 'Open', severity: 'Critical' },
-  ];
-
-  const getSeverityColor = (severity) => {
-    switch (severity) {
-      case 'Critical': return 'error';
-      case 'High': return 'warning';
-      case 'Medium': return 'info';
-      case 'Low': return 'success';
-      default: return 'default';
-    }
-  };
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'Open': return 'error';
-      case 'In Review': return 'warning';
-      case 'Resolved': return 'success';
-      default: return 'default';
-    }
-  };
 
   return (
-    <Box
-    >
+    <Box sx={{ background: "#f4f6f8", minHeight: "100vh" }}>
 
-      <Box >
-        <Typography variant="h5" fontWeight={700} sx={{ mb: 2 }}>
+      {/* HEADER */}
+      <Box
+        sx={{
+          mb: 3,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <Typography variant="h5" fontWeight={700}>
           Complaint Management Dashboard
         </Typography>
 
-        {/* Stats */}
-        <Grid container spacing={3} sx={{ mb: 4 }}>
-          {statData.map((stat, idx) => {
-            const Icon = stat.icon;
-            return (
-              <Grid item xs={12} sm={6} md={3} key={idx}>
-                <Card
-                  sx={{
-                    borderRadius: 3,
-                    boxShadow: '0 8px 24px rgba(0,0,0,0.06)',
-                    transition: '0.3s',
-                    '&:hover': { transform: 'translateY(-4px)' },
-                  }}
-                >
-                  <CardContent>
-                    <Box display="flex" justifyContent="space-between">
-                      <Box>
-                        <Typography color="text.secondary" fontSize={14}>
-                          {stat.title}
-                        </Typography>
-                        <Typography variant="h5" fontWeight={700} mt={1}>
-                          {stat.value}
-                        </Typography>
-                        <Chip label={stat.change} size="small" color={stat.color} sx={{ mt: 1 }} />
-                      </Box>
-                      <Icon sx={{ fontSize: 44, opacity: 1 }} color={stat.color} />
-                    </Box>
-                  </CardContent>
-                </Card>
-              </Grid>
-            );
-          })}
-        </Grid>
+        {/* FILTER */}
+        <Box display="flex" gap={2} alignItems="center">
 
-        {/* Charts */}
-        <Grid container spacing={3} sx={{ mb: 4 }}>
-          <Grid item xs={12} md={6}>
-            <Card sx={{ borderRadius: 3, boxShadow: '0 8px 24px rgba(0,0,0,0.06)' }}>
-              <CardContent>
-                <Typography fontWeight={600} mb={2}>Complaint Trend</Typography>
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={trendData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Line type="monotone" dataKey="complaints" stroke="#6366f1" strokeWidth={3} />
-                    <Line type="monotone" dataKey="resolved" stroke="#22c55e" strokeWidth={3} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </Grid>
+          <TextField
+            select
+            size="small"
+            label="Filter"
+            value={filterDays}
+            onChange={(e) => {
 
-          <Grid item xs={12} md={6}>
-            <Card sx={{ borderRadius: 3, boxShadow: '0 8px 24px rgba(0,0,0,0.06)' }}>
-              <CardContent>
-                <Typography fontWeight={600} mb={2}>Complaints by Model</Typography>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={complaintsByModel}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="model" />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="count" radius={[6, 6, 0, 0]} fill="#6366f1" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
+              const val = e.target.value;
 
-        {/* Table */}
-        <Card sx={{ borderRadius: 3, boxShadow: '0 8px 24px rgba(0,0,0,0.06)' }}>
-          <CardContent>
-            <Typography fontWeight={600} mb={2}>Recent Complaints</Typography>
-            <TableContainer component={Paper} sx={{ maxHeight: 360 }}>
-              <Table stickyHeader>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>ID</TableCell>
-                    <TableCell>Customer</TableCell>
-                    <TableCell>Model</TableCell>
-                    <TableCell>Date</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Severity</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {recentComplaints.map((row) => (
-                    <TableRow key={row.id} hover>
-                      <TableCell>{row.id}</TableCell>
-                      <TableCell>{row.customer}</TableCell>
-                      <TableCell>{row.model}</TableCell>
-                      <TableCell>{row.date}</TableCell>
-                      <TableCell>
-                        <Chip size="small" label={row.status} color={getStatusColor(row.status)} />
-                      </TableCell>
-                      <TableCell>
-                        <Chip size="small" label={row.severity} color={getSeverityColor(row.severity)} />
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </CardContent>
-        </Card>
+              setFilterDays(val);
+
+              if (val !== "custom") {
+                const from = getFromDate(Number(val));
+                loadDashboardStats(from, today);
+              }
+            }}
+            sx={{ minWidth: 140 }}
+          >
+            <MenuItem value={7}>Last 7 Days</MenuItem>
+            <MenuItem value={14}>Last 14 Days</MenuItem>
+            <MenuItem value={20}>Last 20 Days</MenuItem>
+            <MenuItem value={90}>Last 90 Days</MenuItem>
+            <MenuItem value="custom">Custom</MenuItem>
+          </TextField>
+
+
+          {/* CUSTOM DATE RANGE */}
+          {filterDays === "custom" && (
+            <>
+              <TextField
+                type="date"
+                size="small"
+                label="From"
+                value={customFrom}
+                InputLabelProps={{ shrink: true }}
+                onChange={(e) =>
+                  setCustomFrom(e.target.value)
+                }
+              />
+
+              <TextField
+                type="date"
+                size="small"
+                label="To"
+                value={customTo}
+                InputLabelProps={{ shrink: true }}
+                onChange={(e) =>
+                  setCustomTo(e.target.value)
+                }
+              />
+
+              <Chip
+                label="Apply"
+                color="primary"
+                onClick={() =>
+                  loadDashboardStats(
+                    customFrom,
+                    customTo
+                  )
+                }
+                clickable
+              />
+            </>
+          )}
+        </Box>
       </Box>
+
+
+      {/* ---------- STATS ---------- */}
+      <Grid container spacing={3} mb={3}>
+
+        {statData.map((stat, i) => {
+
+          const Icon = stat.icon;
+
+          return (
+
+            <Grid item xs={12} sm={6} md={3} key={i}>
+
+              <Card
+                sx={{
+                  borderRadius: 4,
+                  background:
+                    "linear-gradient(135deg,#ffffff,#f9fafc)",
+                  boxShadow:
+                    "0 6px 18px rgba(0,0,0,0.08)",
+                  transition: "0.3s",
+                  "&:hover": {
+                    transform: "translateY(-4px)",
+                  },
+                }}
+              >
+
+                <CardContent>
+
+                  <Box
+                    display="flex"
+                    justifyContent="space-between"
+                  >
+
+                    <Box>
+
+                      <Typography
+                        color="text.secondary"
+                        fontSize={13}
+                      >
+                        {stat.title}
+                      </Typography>
+
+                      <Typography
+                        variant="h4"
+                        fontWeight={700}
+                        mt={1}
+                      >
+                        {stat.value}
+                      </Typography>
+
+                      <Chip
+                        label={
+                          filterDays === "custom"
+                            ? "Custom Range"
+                            : `${filterDays} Days`
+                        }
+                        size="small"
+                        color={stat.color}
+                        sx={{ mt: 1 }}
+                      />
+
+                    </Box>
+
+                    <Box
+                      sx={{
+                        background:
+                          "rgba(25,118,210,0.08)",
+                        borderRadius: 3,
+                        p: 1.5,
+                        height: "fit-content",
+                      }}
+                    >
+                      <Icon
+                        color={stat.color}
+                        sx={{ fontSize: 32 }}
+                      />
+                    </Box>
+
+                  </Box>
+
+                </CardContent>
+
+              </Card>
+
+            </Grid>
+          );
+        })}
+      </Grid>
+
+
+
+      {/* ---------- CHARTS ---------- */}
+      <Grid container spacing={3}>
+
+        {/* TREND */}
+        <Grid item xs={12} md={4}>
+
+          <Card
+            sx={{
+              borderRadius: 4,
+              boxShadow:
+                "0 6px 18px rgba(0,0,0,0.08)",
+            }}
+          >
+
+            <CardContent>
+
+              <Typography fontWeight={600} mb={2}>
+                Complaint Trend
+              </Typography>
+
+              <ResponsiveContainer height={260}>
+
+                <LineChart data={trendData}>
+
+                  <CartesianGrid strokeDasharray="3 3" />
+
+                  <XAxis dataKey="month" />
+
+                  <YAxis />
+
+                  <Tooltip />
+
+                  <Line
+                    type="monotone"
+                    dataKey="complaints"
+                    stroke="#1976d2"
+                    strokeWidth={3}
+                  />
+
+                  <Line
+                    type="monotone"
+                    dataKey="resolved"
+                    stroke="#2e7d32"
+                    strokeWidth={3}
+                  />
+
+                </LineChart>
+
+              </ResponsiveContainer>
+
+            </CardContent>
+
+          </Card>
+
+        </Grid>
+
+
+
+        {/* MODEL */}
+        <Grid item xs={12} md={4}>
+
+          <Card sx={{ borderRadius: 4 }}>
+
+            <CardContent>
+
+              <Typography fontWeight={600} mb={2}>
+                Complaints by Model
+              </Typography>
+
+              <ResponsiveContainer height={260}>
+
+                <BarChart data={modelData}>
+
+                  <CartesianGrid strokeDasharray="3 3" />
+
+                  <XAxis dataKey="model" />
+
+                  <YAxis />
+
+                  <Tooltip />
+
+                  <Bar
+                    dataKey="count"
+                    fill="#6366f1"
+                    radius={[6, 6, 0, 0]}
+                  />
+
+                </BarChart>
+
+              </ResponsiveContainer>
+
+            </CardContent>
+
+          </Card>
+
+        </Grid>
+
+
+
+        {/* STATUS */}
+        <Grid item xs={12} md={4}>
+
+          <Card sx={{ borderRadius: 4 }}>
+
+            <CardContent>
+
+              <Typography fontWeight={600} mb={2}>
+                Complaints by Status
+              </Typography>
+
+              <ResponsiveContainer height={260}>
+
+                <BarChart data={statusData}>
+
+                  <CartesianGrid strokeDasharray="3 3" />
+
+                  <XAxis dataKey="name" />
+
+                  <YAxis />
+
+                  <Tooltip />
+
+                  <Bar
+                    dataKey="value"
+                    fill="#ef5350"
+                    radius={[6, 6, 0, 0]}
+                  />
+
+                </BarChart>
+
+              </ResponsiveContainer>
+
+            </CardContent>
+
+          </Card>
+
+        </Grid>
+
+      </Grid>
+
     </Box>
   );
-};
-
-export default Dashboard;
+}

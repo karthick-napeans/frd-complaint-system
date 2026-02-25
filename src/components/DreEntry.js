@@ -46,6 +46,14 @@ const DREEntry = () => {
   const [submitLoading, setSubmitLoading] = useState(false);
   const [draftLoading, setDraftLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const today = new Date().toISOString().split("T")[0];
+
+  useEffect(() => {
+    if (message) {
+      const timer = setTimeout(() => setMessage(''), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [message]);
 
   const handleAccordionChange = (panel) => (event, isExpanded) => {
     setExpandedPanel(isExpanded ? panel : null);
@@ -86,7 +94,7 @@ const DREEntry = () => {
     dreId: '',
     dreNumber: '',          // ✅ DRE Number
     dreEngineerName: '',    // ✅ Engineer name
-    date: '',
+    date: today,
     model: '',
     part: '',
     problem: '',
@@ -99,6 +107,8 @@ const DREEntry = () => {
     setActiveStep(0);
     setMessage("");
     setShowHeaderError(false);
+
+    setErrors({});
   };
 
   const buildDreFormData = (status, attachments = []) => {
@@ -185,8 +195,7 @@ const DREEntry = () => {
   };
 
   const validateStep0 = () => {
-    let tempErrors = {};
-
+    let tempErrors = {}; 
 
     if (!formData.dreNumber)
       tempErrors.dreNumber = "Required";
@@ -206,11 +215,10 @@ const DREEntry = () => {
   };
 
   const handleSaveDraft = async () => {
-    // 🔥 Validate required draft fields
-    const isValid = validateStep0();
+     const isValid = validateStep0();
 
     if (!isValid) {
-      return; // stop saving
+      return; 
     }
 
     try {
@@ -302,7 +310,7 @@ const DREEntry = () => {
 
     if (name === "dreNumber") {
       if (!/^[0-9]*$/.test(value)) {
-        return; 
+        return;
       }
     }
 
@@ -740,7 +748,7 @@ const DREEntry = () => {
                       {draft.Model || "—"} • {draft.Part || "—"}
                     </Typography>
 
-                    <Chip label="Draft" size="small" sx={{ marginLeft:2}} />
+                    <Chip label="Draft" size="small" sx={{ marginLeft: 2 }} />
                   </Paper>
                 ))
               )}
@@ -797,7 +805,7 @@ const DREEntry = () => {
                       label="Submitted"
                       color="success"
                       size="small"
-                      sx={{ marginLeft:2}}
+                      sx={{ marginLeft: 2 }}
                     />
                   </Paper>
                 ))

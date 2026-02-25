@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   Box,
   AppBar,
@@ -9,51 +9,60 @@ import {
   Typography,
   IconButton,
   CssBaseline,
-  Divider,
-} from '@mui/material';
-import SettingsIcon from '@mui/icons-material/Settings';
-import LogoutIcon from '@mui/icons-material/Logout';
-import { BrowserRouter, Routes, Route, useNavigate, Navigate } from 'react-router-dom';
-import MenuIcon from '@mui/icons-material/Menu';
-import Login from './components/Login';
-import Dashboard from './components/Dashboard';
-import UserManagement from './components/UserManagement';
-import MasterData from './components/MasterData';
-import BulkUpload from './components/BulkUpload';
-import Reports from './components/Reports';
-import UploadHistory from './components/UploadHistory';
-import ColumnMapper from './components/ColumnMapper';
-import WarrantyEntry from './components/WarrantyEntry';
-import ComplaintForm from './components/ComplaintForm';
-import DREEntry from './components/DreEntry';
-import WarrantyAnalysis from './components/WarrantyAnalysis';
-import Sidebar from './components/Sidebar';
-import ComplaintAnalysis from './components/ComplaintAnalysis';
-import AuditLogs from './components/AuditLogs';
-import { useReloadControl } from './reload/useReloadControl';
-import ImprovementBaselinePage from './components/ImprovementBaseline';
+  Divider, CircularProgress,Button
+} from "@mui/material";
 
+import SettingsIcon from "@mui/icons-material/Settings";
+import LogoutIcon from "@mui/icons-material/Logout";
+import MenuIcon from "@mui/icons-material/Menu";
 
-//API
-import { healthCheck } from './api/pageApi';
-import CustomerSummary from './components/CustomerSummary';
-import DreSummary from './components/DreSummary';
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  useNavigate,
+  Navigate,
+} from "react-router-dom";
 
+import Login from "./components/Login";
+import Dashboard from "./components/Dashboard";
+import UserManagement from "./components/UserManagement";
+import MasterData from "./components/MasterData";
+import BulkUpload from "./components/BulkUpload";
+import Reports from "./components/Reports";
+import UploadHistory from "./components/UploadHistory";
+import ColumnMapper from "./components/ColumnMapper";
+import WarrantyEntry from "./components/WarrantyEntry";
+import ComplaintForm from "./components/ComplaintForm";
+import DREEntry from "./components/DreEntry";
+import WarrantyAnalysis from "./components/WarrantyAnalysis";
+import Sidebar from "./components/Sidebar";
+import ComplaintAnalysis from "./components/ComplaintAnalysis";
+import AuditLogs from "./components/AuditLogs";
+import CustomerSummary from "./components/CustomerSummary";
+import DreSummary from "./components/DreSummary";
+import ImprovementBaselinePage from "./components/ImprovementBaseline";
+import CloudOffIcon from "@mui/icons-material/CloudOff"; 
+
+import { useReloadControl } from "./reload/useReloadControl";
+import { healthCheck } from "./api/pageApi";
 
 const drawerWidth = 280;
 
+
+/* =======================
+   APP LAYOUT
+======================= */
 const AppLayout = ({ userRole, username, onLogout }) => {
+
   useReloadControl();
 
   const [drawerOpen, setDrawerOpen] = useState(true);
   const [anchorEl, setAnchorEl] = useState(null);
+
   const navigate = useNavigate();
 
-  const handleDrawerToggle = () => {
-    setDrawerOpen(prev => !prev);
-  };
-
-  const handleLogout = () => {
+  const handleLogoutClick = () => {
     setAnchorEl(null);
     onLogout();
     navigate("/", { replace: true });
@@ -61,11 +70,10 @@ const AppLayout = ({ userRole, username, onLogout }) => {
 
   return (
     <Box sx={{ display: "flex" }}>
+
       <CssBaseline />
 
-      {/* =======================
-          APP BAR
-      ======================= */}
+      {/* APP BAR */}
       <AppBar
         position="fixed"
         sx={{
@@ -75,7 +83,11 @@ const AppLayout = ({ userRole, username, onLogout }) => {
         }}
       >
         <Toolbar>
-          <IconButton color="inherit" onClick={handleDrawerToggle} edge="start">
+
+          <IconButton
+            color="inherit"
+            onClick={() => setDrawerOpen(!drawerOpen)}
+          >
             <MenuIcon />
           </IconButton>
 
@@ -83,8 +95,8 @@ const AppLayout = ({ userRole, username, onLogout }) => {
             QA/QC Dashboard
           </Typography>
 
-          <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} sx={{ p: 0 }}>
-            <Avatar sx={{ cursor: "pointer" }}>
+          <IconButton onClick={(e) => setAnchorEl(e.currentTarget)}>
+            <Avatar>
               {username?.charAt(0)?.toUpperCase()}
             </Avatar>
           </IconButton>
@@ -92,60 +104,59 @@ const AppLayout = ({ userRole, username, onLogout }) => {
         </Toolbar>
       </AppBar>
 
-      {/* =======================
-          SIDEBAR  ✅ THIS WAS MISSING
-      ======================= */}
+
+      {/* SIDEBAR */}
       <Sidebar
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         userRole={userRole}
         username={username}
-        onLogout={handleLogout}
+        onLogout={handleLogoutClick}
       />
 
 
+      {/* USER MENU */}
       <Menu
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
         onClose={() => setAnchorEl(null)}
-        anchorOrigin={{
-          vertical: "bottom",
-          horizontal: "right",
-        }}
-        transformOrigin={{
-          vertical: "top",
-          horizontal: "right",
-        }}
       >
-        <MenuItem onClick={() => {
-          setAnchorEl(null);
-          navigate("/settings");
-        }}>
+
+        <MenuItem
+          onClick={() => {
+            setAnchorEl(null);
+            navigate("/settings");
+          }}
+        >
           <SettingsIcon fontSize="small" sx={{ mr: 1 }} />
           Settings
         </MenuItem>
 
         <Divider />
 
-        <MenuItem onClick={handleLogout}>
+        <MenuItem onClick={handleLogoutClick}>
           <LogoutIcon fontSize="small" sx={{ mr: 1 }} />
           Logout
         </MenuItem>
+
       </Menu>
 
 
+      {/* MAIN CONTENT */}
       <Box
         component="main"
         sx={{
           flexGrow: 1,
           p: 3,
           mt: 8,
-          width: drawerOpen ? `calc(100% - ${drawerWidth}px)` : '100%',
-          transition: 'width 0.3s, margin-left 0.3s',
+          width: drawerOpen
+            ? `calc(100% - ${drawerWidth}px)`
+            : "100%",
         }}
-
       >
+
         <Routes>
+
           <Route path="/dashboard" element={<Dashboard />} />
 
           {/* Warranty */}
@@ -157,7 +168,6 @@ const AppLayout = ({ userRole, username, onLogout }) => {
           {/* DRE */}
           <Route path="/dre/entry" element={<DREEntry />} />
           <Route path="/dre/summary" element={<DreSummary />} />
-          {/* <Route path="/dre/analysis" element={<DREAnalysis />} /> */}
 
           {/* Complaints */}
           <Route path="/complaints/entry" element={<ComplaintForm />} />
@@ -169,27 +179,52 @@ const AppLayout = ({ userRole, username, onLogout }) => {
           <Route path="/masters" element={<MasterData userRole={userRole} />} />
 
           {/* Others */}
-          <Route path="/bulk-upload" element={<BulkUpload userRole={userRole} />} />
+          <Route path="/bulk-upload" element={<BulkUpload />} />
           <Route path="/upload-history" element={<UploadHistory />} />
-          <Route path="/reports" element={<Reports userRole={userRole} />} />
+          <Route path="/reports" element={<Reports />} />
           <Route path="/audit" element={<AuditLogs />} />
+
         </Routes>
 
       </Box>
+
     </Box>
   );
 };
 
+
+
 /* =======================
-  ROOT APP
+   ROOT APP
 ======================= */
 function App() {
+
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState("");
   const [username, setUsername] = useState("");
+
   const [apiStatus, setApiStatus] = useState("checking");
 
+
+  /* ✅ RESTORE LOGIN AFTER REFRESH */
   useEffect(() => {
+
+    const token = localStorage.getItem("authToken");
+    const role = localStorage.getItem("userRole");
+    const name = localStorage.getItem("username");
+
+    if (token) {
+      setIsAuthenticated(true);
+      setUserRole(role || "");
+      setUsername(name || "");
+    }
+
+  }, []);
+
+
+  /* API HEALTH CHECK */
+  useEffect(() => {
+
     const checkHealth = async () => {
       try {
         await healthCheck();
@@ -198,60 +233,123 @@ function App() {
         setApiStatus("down");
       }
     };
+
     checkHealth();
+
   }, []);
 
   if (apiStatus === "checking") {
-    return <Typography>Checking server status...</Typography>;
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "60vh",
+          gap: 2,
+        }}
+      >
+        <CircularProgress size={40} />
+        <Typography variant="body1" color="text.secondary">
+          Checking user access...
+        </Typography>
+      </Box>
+    );
   }
 
   if (apiStatus === "down") {
-    return <Typography>Service unavailable</Typography>;
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "60vh",
+          gap: 2,
+          textAlign: "center",
+        }}
+      >
+        <CloudOffIcon sx={{ fontSize: 60, color: "text.secondary" }} />
+
+        <Typography variant="h6">
+          Service unavailable
+        </Typography>
+
+        <Typography variant="body2" color="text.secondary">
+          Our server is currently unreachable. Please try again later.
+        </Typography>
+
+        <Button
+          variant="contained"
+          onClick={() => window.location.reload()}
+        >
+          Retry
+        </Button>
+      </Box>
+    );
   }
 
+
+  /* LOGIN */
   const handleLogin = (role, name) => {
+
+    localStorage.setItem("userRole", role);
+    localStorage.setItem("username", name);
+
     setIsAuthenticated(true);
     setUserRole(role);
     setUsername(name);
   };
 
+
+  /* LOGOUT */
   const handleLogout = () => {
-    localStorage.clear();
+
+    localStorage.removeItem("authToken");
+    localStorage.removeItem("userRole");
+    localStorage.removeItem("username");
+
     setIsAuthenticated(false);
-    setUserRole("");
-    setUsername("");
   };
 
+
   return (
+
     <BrowserRouter>
+
       <Routes>
+
+        {/* LOGIN */}
         <Route
           path="/"
           element={
-            !isAuthenticated ? (
-              <Login onLogin={handleLogin} />
-            ) : (
-              <Navigate to="/dashboard" />
-            )
+            !isAuthenticated
+              ? <Login onLogin={handleLogin} />
+              : <Navigate to="/dashboard" replace />
           }
         />
 
+        {/* PROTECTED */}
         <Route
           path="/*"
           element={
-            isAuthenticated ? (
-              <AppLayout
-                userRole={userRole}
-                username={username}
-                onLogout={handleLogout}
-              />
-            ) : (
-              <Navigate to="/" />
-            )
+            isAuthenticated
+              ? (
+                <AppLayout
+                  userRole={userRole}
+                  username={username}
+                  onLogout={handleLogout}
+                />
+              )
+              : <Navigate to="/" replace />
           }
         />
       </Routes>
+
     </BrowserRouter>
+
   );
 }
 

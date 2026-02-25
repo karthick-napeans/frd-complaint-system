@@ -13,7 +13,7 @@ import {
   DialogContent,
   DialogActions,
   TextField,
-  Chip,
+  Chip, Alert,
   IconButton, DialogContentText
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
@@ -47,16 +47,36 @@ const MASTER_LABEL = {
 
 const MASTER_FORM_CONFIG = {
   customer: [
-    { name: "CustomerName", label: "Customer Name", required: true },
+    {
+      name: "CustomerName",
+      label: "Customer Name",
+      required: true,
+      pattern: /^[A-Za-z ]+$/,
+      patternMessage: "Only letters and spaces allowed",
+    },
     { name: "CustomerCode", label: "Customer Code", required: true },
   ],
+
   model: [
     { name: "ModelCode", label: "Model Code", required: true },
-    { name: "ModelName", label: "Model Name", required: true },
+    {
+      name: "ModelName",
+      label: "Model Name",
+      required: true,
+      pattern: /^[A-Za-z ]+$/,
+      patternMessage: "Only letters and spaces allowed",
+    },
   ],
+
   part: [
     { name: "PartNumber", label: "Part Number", required: true },
-    { name: "PartName", label: "Part Name", required: true },
+    {
+      name: "PartName",
+      label: "Part Name",
+      required: true,
+      pattern: /^[A-Za-z ]+$/,
+      patternMessage: "Only letters and spaces allowed",
+    },
     {
       name: "PartDescription",
       label: "Description",
@@ -64,6 +84,7 @@ const MASTER_FORM_CONFIG = {
       required: true,
     },
   ],
+
   cause: [
     { name: "Code", label: "Cause Code", required: true },
     {
@@ -71,6 +92,8 @@ const MASTER_FORM_CONFIG = {
       label: "Description",
       multiline: true,
       required: true,
+      pattern: /^[A-Za-z ]+$/,
+      patternMessage: "Only letters and spaces allowed",
     },
   ],
 };
@@ -89,6 +112,14 @@ const MasterData = ({ userRole = "Admin" }) => {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [rowToDelete, setRowToDelete] = useState(null);
   const [errors, setErrors] = useState({});
+  const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    if (message) {
+      const timer = setTimeout(() => setMessage(''), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [message]);
 
   useEffect(() => {
     fetchMasterData();
@@ -117,8 +148,18 @@ const MasterData = ({ userRole = "Admin" }) => {
     let tempErrors = {};
 
     MASTER_FORM_CONFIG[masterType].forEach((field) => {
-      if (field.required && !formData[field.name]?.trim()) {
-        tempErrors[field.name] = `Required`;
+      const value = formData[field.name]?.trim();
+
+      // Required validation
+      if (field.required && !value) {
+        tempErrors[field.name] = "Required";
+        return;
+      }
+
+      // Pattern validation (only if pattern exists)
+      if (field.pattern && value && !field.pattern.test(value)) {
+        tempErrors[field.name] =
+          field.patternMessage || "Invalid format";
       }
     });
 
@@ -138,13 +179,18 @@ const MasterData = ({ userRole = "Admin" }) => {
     if (!isValid) return;
 
     setSaveLoading(true);
+    setMessage(""); // clear old message
 
     try {
       if (editingRow) {
         const payload = { ...editingRow, ...formData };
         await updateMaster(masterType, payload);
+        setSaveLoading(false);
+        setMessage("✓ Updated successfully");
       } else {
         await createMaster(masterType, formData);
+        setSaveLoading(false);
+        setMessage("✓ Created successfully");
       }
 
       await fetchMasterData();
@@ -156,6 +202,7 @@ const MasterData = ({ userRole = "Admin" }) => {
       setErrors({});
     } catch (err) {
       console.error("❌ Save failed:", err);
+      setMessage("Failed to save data");
     } finally {
       setSaveLoading(false);
     }
@@ -169,6 +216,8 @@ const MasterData = ({ userRole = "Admin" }) => {
   const handleConfirmDelete = async () => {
     if (!rowToDelete) return;
 
+    setMessage("");
+
     try {
       const idField = MASTER_ID_FIELD[masterType];
 
@@ -176,9 +225,11 @@ const MasterData = ({ userRole = "Admin" }) => {
       await fetchMasterData();
       await dispatch(loadMasters());
 
-      console.log("✅ Delete success");
+      setMessage("✓ Deleted successfully");
+
     } catch (err) {
       console.error("❌ Delete failed:", err);
+      setMessage("Failed to delete data");
     } finally {
       setConfirmOpen(false);
       setRowToDelete(null);
@@ -370,7 +421,7 @@ const MasterData = ({ userRole = "Admin" }) => {
               disableRowSelectionOnClick
               disableColumnMenu
               disableColumnReorder
-
+              disableColumnSorting
               sx={{
                 border: "none",
 
@@ -452,7 +503,7 @@ const MasterData = ({ userRole = "Admin" }) => {
           {editingRow ? "Edit" : "Add"} {MASTER_LABEL[masterType]}
         </DialogTitle>
 
-        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 0 }}>
           {MASTER_FORM_CONFIG[masterType].map((field) => (
             <TextField
               key={field.name}
@@ -460,20 +511,17 @@ const MasterData = ({ userRole = "Admin" }) => {
               fullWidth
               size="small"
               multiline={field.multiline}
+              sx={{ mt: 0.5 }}
               rows={field.multiline ? 3 : 1}
-              sx={{ mt: 1 }}
               value={formData[field.name] || ""}
               error={!!errors[field.name]}
               helperText={errors[field.name] || " "}
               onChange={(e) => {
                 const value = e.target.value;
-
                 setFormData({
                   ...formData,
                   [field.name]: value,
                 });
-
-                // 🔥 auto clear error
                 if (value) {
                   setErrors((prev) => {
                     const newErrors = { ...prev };
@@ -485,6 +533,12 @@ const MasterData = ({ userRole = "Admin" }) => {
             />
           ))}
         </DialogContent>
+
+        {message && (
+          <Alert severity={message.includes('✓') ? 'success' : 'info'} sx={{ mt: 1 }}>
+            {message}
+          </Alert>
+        )}
 
         <DialogActions>
           <Button onClick={() => setOpenDialog(false)}>Cancel</Button>

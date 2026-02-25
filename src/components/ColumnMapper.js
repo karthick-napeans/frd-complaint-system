@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
   Box,
-  Container,
   Card,
   CardContent,
   Grid,
@@ -24,7 +23,7 @@ import {
   Select,
   MenuItem,
   FormControl,
-  InputLabel,
+  InputLabel,Snackbar,   Slide
 } from "@mui/material";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import IconButton from "@mui/material/IconButton";
@@ -34,13 +33,11 @@ import SaveIcon from "@mui/icons-material/Save";
 import * as XLSX from "xlsx";
 import { useSelector } from "react-redux";
 import { getMstColumns, submitColumnMapping, getCustomerColumnMapping } from "../api/pageApi";
-import Snackbar from "@mui/material/Snackbar";
+ 
 
 const WarrantyColumnMapper = () => {
   const { customers } = useSelector((state) => state.masters);
-  console.log("Raw Customers",customers)
   const activeCustomers = customers.filter((c) => c.IsActive === true);
-  console.log("Active Customers",activeCustomers)
   const ROW_HEIGHT = 56;
   const [customerSelected, setCustomerSelected] = useState("");
   const [customerColumns, setCustomerColumns] = useState([]);
@@ -53,10 +50,10 @@ const WarrantyColumnMapper = () => {
   const [popup, setPopup] = useState({
     open: false,
     message: "",
-    severity: "success", 
+    severity: "success",
   });
   const [uploadedFile, setUploadedFile] = useState(null);
-  const fileInputRef = useRef(null); 
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     const fetchMasterColumns = async () => {
@@ -80,6 +77,36 @@ const WarrantyColumnMapper = () => {
     fetchMasterColumns();
   }, []);
 
+  useEffect(() => {
+    if (
+      existingMappings.length === 0 ||
+      masterColumns.length === 0 ||
+      customerColumns.length === 0
+    )
+      return;
+
+    const newMappings = {};
+
+    existingMappings.forEach((map) => {
+      const master = masterColumns.find(
+        (m) => m.name === map.MasterColumnName,
+      );
+
+      const customerExists = customerColumns.includes(
+        map.CustomerColumnName,
+      );
+
+      if (master && customerExists) {
+        newMappings[map.CustomerColumnName] = {
+          masterColumnId: master.id,
+          masterColumnName: master.name,
+        };
+      }
+    });
+
+    setMappings(newMappings);
+  }, [existingMappings, masterColumns, customerColumns]);
+
   const handleCustomerSelect = async (customerId) => {
     setCustomerSelected(customerId);
     setCustomerColumns([]);
@@ -90,18 +117,30 @@ const WarrantyColumnMapper = () => {
 
     try {
       const res = await getCustomerColumnMapping(customerId);
+
       const data = Array.isArray(res)
         ? res
         : Array.isArray(res?.data)
           ? res.data
           : [res];
 
-      setExistingMappings(data.filter(x => x.IsActive));
+      const activeMappings = data.filter(x => x.IsActive);
+
+      setExistingMappings(activeMappings);
+
+      // ✅ populate customer columns immediately from saved mappings
+      const customerColsFromAPI = activeMappings.map(
+        (x) => x.CustomerColumnName
+      );
+
+      setCustomerColumns(customerColsFromAPI);
+
     } catch (error) {
       console.error(error);
       setExistingMappings([]);
+      setCustomerColumns([]);
     }
-  }; 
+  };
 
   const handleUploadClick = () => fileInputRef.current.click();
 
@@ -109,11 +148,14 @@ const WarrantyColumnMapper = () => {
     setPopup({ open: true, message, severity });
   };
 
+  const SlideTransition = (props) => {
+    return <Slide {...props} direction="left" />;
+  };
+
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (!file || !customerSelected) return;
 
-    // ✅ Store file for upload + UI display
     setUploadedFile(file);
 
     const reader = new FileReader();
@@ -124,16 +166,18 @@ const WarrantyColumnMapper = () => {
       const headers = rows[0]?.filter(Boolean) || [];
 
       setCustomerColumns(headers);
-      setMappings({});
-      showPopup("Mapping saved successfully", "success");
+
+      // ❌ remove this
+      // setMappings({});
+
+      showPopup("File loaded successfully", "success");
     };
 
     reader.readAsBinaryString(file);
   };
 
-  /* -------- Drag & drop -------- */
-
   const handleDragStart = (col) => setDraggedColumn(col);
+
 
   const handleDropOnMaster = (masterCol) => {
     if (!draggedColumn) return;
@@ -154,11 +198,8 @@ const WarrantyColumnMapper = () => {
       },
     }));
 
-    showPopup(`✓ ${draggedColumn} → ${masterCol.name}`, "success");
     setDraggedColumn(null);
   };
-
-  /* -------- Dialog mapping -------- */
 
   const handleSelectMapping = (col) => {
     setDraggedColumn(col);
@@ -175,22 +216,16 @@ const WarrantyColumnMapper = () => {
         masterColumnName: selectedMaster.name,
       },
     }));
-
-    showPopup(`✓ ${draggedColumn} → ${selectedMaster.name}`, "success");
     setOpenDialog(false);
     setDraggedColumn(null);
     setSelectedMaster(null);
   };
-
-  /* -------- Remove mapping -------- */
 
   const handleRemoveMapping = (customerCol) => {
     const updated = { ...mappings };
     delete updated[customerCol];
     setMappings(updated);
   };
-
-  /* -------- Save mapping -------- */
 
   const handleSaveMapping = async () => {
     if (!customerSelected) {
@@ -232,11 +267,9 @@ const WarrantyColumnMapper = () => {
       }
     } catch (e) {
       console.error(e);
-      showPopup("❌ Server error while saving", "error");
+      showPopup("Server error while saving", "error");
     }
   };
-
-  /* -------- UI (UNCHANGED) -------- */
 
   return (
     <Box >
@@ -267,7 +300,6 @@ const WarrantyColumnMapper = () => {
 
             <Grid item xs={12} md={6} sx={{ display: "flex", alignItems: "center", gap: 1 }}>
 
-              {/* Upload Box */}
               <Box
                 sx={{
                   flex: 1,
@@ -311,8 +343,6 @@ const WarrantyColumnMapper = () => {
                 />
               </Box>
 
-              {/* Remove Button */}
-              {/* Remove Icon */}
               {uploadedFile && (
                 <IconButton
                   size="small"
@@ -323,7 +353,7 @@ const WarrantyColumnMapper = () => {
                     border: "1px solid #f44336",
                   }}
                   onClick={(e) => {
-                    e.stopPropagation(); // 👈 prevent triggering upload click
+                    e.stopPropagation();
                     setUploadedFile(null);
                     setCustomerColumns([]);
                     setMappings({});
@@ -336,10 +366,7 @@ const WarrantyColumnMapper = () => {
                 </IconButton>
               )}
 
-
             </Grid>
-
-
           </Grid>
         </CardContent>
       </Card>
@@ -447,9 +474,6 @@ const WarrantyColumnMapper = () => {
         </Grid>
       )}
 
-
-
-
       {/* ================= MAPPING SUMMARY ================= */}
       {Object.keys(mappings).length > 0 && (
         <Card sx={{ mt: 4 }}>
@@ -523,41 +547,6 @@ const WarrantyColumnMapper = () => {
         </Box>
       )}
 
-      {/* ================= EXISTING MAPPED COLUMNS ================= */}
-      {existingMappings.length > 0 && (
-        <Card sx={{ mt: 3 }}>
-          <CardContent>
-            <Typography variant="h6" fontWeight="bold" mb={2}>
-              Mapped Columns
-            </Typography>
-
-            <TableContainer component={Paper} variant="outlined">
-              <Table size="small">
-                <TableHead>
-                  <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
-                    <TableCell><b>S.No</b></TableCell>
-                    <TableCell><b>Customer Column Name</b></TableCell>
-                    <TableCell><b>Master Column Name</b></TableCell>
-                  </TableRow>
-                </TableHead>
-
-                <TableBody>
-                  {existingMappings.map((row, index) => (
-                    <TableRow key={row.MappingId}>
-                      <TableCell>{index + 1}</TableCell>
-                      <TableCell>{row.CustomerColumnName}</TableCell>
-                      <TableCell>{row.MasterColumnName}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </CardContent>
-        </Card>
-      )}
-
-
-
       {/* ================= DIALOG ================= */}
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)} fullWidth>
         <DialogTitle>Map {draggedColumn}</DialogTitle>
@@ -592,15 +581,36 @@ const WarrantyColumnMapper = () => {
 
       <Snackbar
         open={popup.open}
-        autoHideDuration={3000}
-        onClose={() => setPopup((prev) => ({ ...prev, open: false }))}
-        anchorOrigin={{ vertical: "top", horizontal: "right" }}
+        autoHideDuration={3500}
+        onClose={() =>
+          setPopup((prev) => ({ ...prev, open: false }))
+        }
+        anchorOrigin={{
+          vertical: "top",
+          horizontal: "right",
+        }}
+        TransitionComponent={SlideTransition}
       >
         <Alert
           severity={popup.severity}
           variant="filled"
-          onClose={() => setPopup((prev) => ({ ...prev, open: false }))}
-          sx={{ minWidth: 280 }}
+          elevation={6}
+          onClose={() =>
+            setPopup((prev) => ({ ...prev, open: false }))
+          }
+          sx={{
+            minWidth: 320,
+            borderRadius: 3,
+            fontWeight: 500,
+            fontSize: "0.95rem",
+            alignItems: "center",
+            boxShadow:
+              "0 10px 25px rgba(0,0,0,0.15)",
+            backdropFilter: "blur(6px)",
+            "& .MuiAlert-icon": {
+              fontSize: 22,
+            },
+          }}
         >
           {popup.message}
         </Alert>

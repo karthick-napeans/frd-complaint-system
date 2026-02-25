@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import {
   Box,
-  Container,
   Card,
   CardContent,
   Grid,
@@ -20,7 +19,7 @@ import {
   MenuItem,
   Accordion,
   AccordionSummary,
-  AccordionDetails, Checkbox,
+  AccordionDetails, Checkbox, FormHelperText
 } from "@mui/material";
 import ClearIcon from "@mui/icons-material/Clear";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
@@ -40,9 +39,6 @@ const ComplaintForm = () => {
   const activeModels = models.filter((m) => m.IsActive === true);
   const activeRepairCauses = repairCauses.filter((c) => c.IsActive === true);
   const [expandedPanel, setExpandedPanel] = useState(null);
-  const [customerSelected, setCustomerSelected] = useState("");
-  const [customerColumns, setCustomerColumns] = useState([]);
-  const [mappings, setMappings] = useState({});
   const SEVERITY_LEVELS = ["Low", "Medium", "High", "Critical"];
   const [activeStep, setActiveStep] = useState(0);
   const [message, setMessage] = useState("");
@@ -76,7 +72,7 @@ const ComplaintForm = () => {
     complaintId: "",
     customerSelected: "",
     customerEmail: "",
-    complaintDate: "",
+    complaintDate: today,
     modelSelected: "",
     partSelected: "",
     problemStatement: "",
@@ -89,6 +85,14 @@ const ComplaintForm = () => {
   const [submitLoading, setSubmitLoading] = useState(false);
   const [draftLoading, setDraftLoading] = useState(false);
   const [errors, setErrors] = useState({});
+
+  useEffect(() => {
+    if (message) {
+      const timer = setTimeout(() => setMessage(''), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [message]);
+
   const handleAccordionChange = (panel) => (event, isExpanded) => {
     setExpandedPanel(isExpanded ? panel : null);
   };
@@ -99,7 +103,7 @@ const ComplaintForm = () => {
 
   const fetchComplaints = async () => {
     try {
-      const data = await getCustomerComplaints(); // 👈 data is already array
+      const data = await getCustomerComplaints();
 
       console.log("Fetched complaints:", data);
 
@@ -108,11 +112,31 @@ const ComplaintForm = () => {
       const normalizeStatus = (status) =>
         status?.toString().trim().toUpperCase();
 
-      setComplaints(safeData);
-      setDrafts(safeData.filter((i) => normalizeStatus(i.Status) === "DRAFT"));
-      setSubmitted(
-        safeData.filter((i) => normalizeStatus(i.Status) === "SUBMITTED"),
+      // ✅ sort latest first
+      const sortedData = [...safeData].sort((a, b) => {
+        const dateDiff =
+          new Date(b.ComplaintDate) - new Date(a.ComplaintDate);
+
+        // if same date, sort by ComplaintId
+        return dateDiff !== 0
+          ? dateDiff
+          : b.ComplaintId - a.ComplaintId;
+      });
+
+      setComplaints(sortedData);
+
+      setDrafts(
+        sortedData.filter(
+          (i) => normalizeStatus(i.Status) === "DRAFT"
+        )
       );
+
+      setSubmitted(
+        sortedData.filter(
+          (i) => normalizeStatus(i.Status) === "SUBMITTED"
+        )
+      );
+
     } catch (err) {
       console.error(err);
       setComplaints([]);
@@ -156,9 +180,8 @@ const ComplaintForm = () => {
 
     if (name === "customerEmail") {
 
-      // Allow only valid typing characters
       if (!/^[a-zA-Z0-9@._,\s-]*$/.test(value)) {
-        return; // block invalid characters
+        return;
       }
 
       const emails = value.split(",").map((email) => email.trim());
@@ -227,20 +250,24 @@ const ComplaintForm = () => {
     /* ================= STEP 0 ================= */
     if (activeStep === 0) {
       if (!formData.customerSelected)
-        tempErrors.customerSelected = "Customer is required";
+        tempErrors.customerSelected = "Required";
 
       if (!formData.customerEmail)
-        tempErrors.customerEmail = "Email is required";
+        tempErrors.customerEmail = "Required";
 
       if (!formData.complaintDate)
-        tempErrors.complaintDate = "Complaint date is required";
+        tempErrors.complaintDate = "Required";
 
       if (!formData.modelSelected)
-        tempErrors.modelSelected = "Model is required";
+        tempErrors.modelSelected = "Required";
+
+      if (!formData.partSelected)
+        tempErrors.partSelected = "Required";
+
+
 
       if (Object.keys(tempErrors).length > 0) {
         setErrors(tempErrors);
-        setMessage("Please fill all required fields in Complaint Header");
         return;
       }
     }
@@ -248,14 +275,13 @@ const ComplaintForm = () => {
     /* ================= STEP 1 ================= */
     if (activeStep === 1) {
       if (!formData.problemStatement)
-        tempErrors.problemStatement = "Problem Statement is required";
+        tempErrors.problemStatement = "Required";
 
       if (!formData.causeCode)
-        tempErrors.causeCode = "Cause Code is required";
+        tempErrors.causeCode = "Required";
 
       if (Object.keys(tempErrors).length > 0) {
         setErrors(tempErrors);
-        setMessage("Please fill Problem Statement and Cause Code");
         return;
       }
     }
@@ -267,17 +293,16 @@ const ComplaintForm = () => {
       attachmentRows.forEach((row) => {
         if (row.isMandatory) {
           if (!row.file)
-            newAttachmentErrors[`file_${row.id}`] = "File required";
+            newAttachmentErrors[`file_${row.id}`] = "Required";
 
           if (!row.expiryDate)
             newAttachmentErrors[`expiry_${row.id}`] =
-              "Expiry date required";
+              "Required";
         }
       });
 
       if (Object.keys(newAttachmentErrors).length > 0) {
         setErrors(newAttachmentErrors);
-        setMessage("Please upload all mandatory documents");
         return;
       }
     }
@@ -338,9 +363,28 @@ const ComplaintForm = () => {
     setErrors({});
   };
 
+  const validateStep0 = () => {
+    let tempErrors = {};
+
+    if (!formData.complaintDate)
+      tempErrors.complaintDate = "Required";
+
+ 
+    setErrors(tempErrors);
+
+    return Object.keys(tempErrors).length === 0;
+  };
+
   const handleSaveDraft = async () => {
+    const isValid = validateStep0();
+
+    if (!isValid) {
+      return;
+    }
+
     try {
       setDraftLoading(true);
+
       const fd = buildComplaintFormData("DRAFT");
 
       await submitCustomerComplaint(fd);
@@ -352,14 +396,15 @@ const ComplaintForm = () => {
       }
 
       await fetchComplaints();
-      setDraftLoading(false)
+
       if (!formData.complaintId) {
         resetForm();
       }
 
     } catch (err) {
       console.error("Draft failed", err.response?.data || err);
-      setMessage("Draft save failed");
+    } finally {
+      setDraftLoading(false);
     }
   };
 
@@ -381,13 +426,6 @@ const ComplaintForm = () => {
       console.error("Submit failed", err.response?.data || err);
       setMessage("Complaint submit failed");
     }
-  };
-
-  const handleCustomerSelect = (customerId) => {
-    setCustomerSelected(customerId);
-    setCustomerColumns([]);
-    setMappings({});
-    // showPopup(`Selected customer ${customerId}. Upload Excel to continue.`);
   };
 
   const handleCheckboxChange = (id) => {
@@ -457,6 +495,7 @@ const ComplaintForm = () => {
         <Grid item xs={12} md={8}>
           <Card>
             <CardContent>
+              
               <Stepper activeStep={activeStep} sx={{ mb: 3 }}>
                 {steps.map((label) => (
                   <Step key={label}>
@@ -476,91 +515,104 @@ const ComplaintForm = () => {
 
               {/* Tab 1: Complaint Header */}
               {activeStep === 0 && (
-                <Box sx={{ gap: 2, display: "flex", flexDirection: "column" }}>
-                  <FormControl fullWidth error={!!errors.customerSelected}>
-                    <InputLabel>Select Customer</InputLabel>
-                    <Select
-                      name="customerSelected"
-                      value={formData.customerSelected}
-                      label="Select Customer"
-                      onChange={handleSelectChange}
-                      required
-                    >
+                <Grid container spacing={0.5}>
 
-                      {activeCustomers.map((c) => (
-                        <MenuItem key={c.CustomerId} value={c.CustomerId}>
-                          {c.CustomerName}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                  {/* Customer */}
+                  <Grid item xs={12} sx>
+                    <FormControl fullWidth error={!!errors.customerSelected}>
+                      <InputLabel>Select Customer</InputLabel>
+                      <Select
+                        name="customerSelected"
+                        value={formData.customerSelected || ""}
+                        label="Select Customer"
+                        onChange={handleSelectChange}
+                      >
+                        {activeCustomers.map((c) => (
+                          <MenuItem key={c.CustomerId} value={c.CustomerId}>
+                            {c.CustomerName}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                      <FormHelperText>
+                        {errors.customerSelected || " "}
+                      </FormHelperText>
+                    </FormControl>
+                  </Grid>
 
-                  <TextField
-                    label="Customer Email"
-                    fullWidth
-                    name="customerEmail"
-                    value={formData.customerEmail}
-                    onChange={handleInputChange}
-                    error={!!errors.customerEmail}
-                    helperText={errors.customerEmail}
-                  />
+                  {/* Customer Email */}
+                  <Grid item xs={12}>
+                    <TextField
+                      label="Customer Email"
+                      fullWidth
+                      name="customerEmail"
+                      value={formData.customerEmail || ""}
+                      onChange={handleInputChange}
+                      error={!!errors.customerEmail}
+                      helperText={errors.customerEmail || " "}
+                    />
+                  </Grid>
 
+                  {/* Complaint Date */}
+                  <Grid item xs={12}>
+                    <TextField
+                      label="Complaint Date"
+                      type="date"
+                      fullWidth
+                      name="complaintDate"
+                      value={formData.complaintDate || ""}
+                      onChange={handleInputChange}
+                      InputLabelProps={{ shrink: true }}
+                      inputProps={{ max: today }}
+                      error={!!errors.complaintDate}
+                      helperText={errors.complaintDate || " "}
+                    />
+                  </Grid>
 
-                  <TextField
-                    label="Complaint Date"
-                    type="date"
-                    fullWidth
-                    name="complaintDate"
-                    value={formData.complaintDate}
-                    onChange={handleInputChange}
-                    InputLabelProps={{ shrink: true }}
-                    inputProps={{ max: today }}   // ✅ blocks future selection
-                    error={!!errors.complaintDate}
-                    helperText={errors.complaintDate}
-                  />
+                  {/* Model */}
+                  <Grid item xs={12}>
+                    <FormControl fullWidth error={!!errors.modelSelected}>
+                      <InputLabel>Model</InputLabel>
+                      <Select
+                        name="modelSelected"
+                        value={formData.modelSelected || ""}
+                        label="Model"
+                        onChange={handleSelectChange}
+                      >
+                        {activeModels.map((m) => (
+                          <MenuItem key={m.ModelId} value={m.ModelCode}>
+                            {m.ModelCode}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                      <FormHelperText>
+                        {errors.modelSelected || " "}
+                      </FormHelperText>
+                    </FormControl>
+                  </Grid>
 
-                  <FormControl fullWidth required>
-                    <InputLabel shrink>Model</InputLabel>
-                    <Select
-                      name="modelSelected"
-                      value={formData.modelSelected}
-                      onChange={handleSelectChange}
-                      displayEmpty
-                      label="Model"
-                    >
+                  {/* Part */}
+                  <Grid item xs={12} >
+                    <FormControl fullWidth error={!!errors.partSelected}>
+                      <InputLabel>Part</InputLabel>
+                      <Select
+                        name="partSelected"
+                        value={formData.partSelected || ""}
+                        label="Part"
+                        onChange={handleSelectChange}
+                      >
+                        {activeParts.map((p) => (
+                          <MenuItem key={p.PartId} value={p.PartNumber}>
+                            {p.PartName}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                      <FormHelperText>
+                        {errors.partSelected || " "}
+                      </FormHelperText>
+                    </FormControl>
+                  </Grid>
 
-
-                      {activeModels.map((m) => (
-                        <MenuItem key={m.ModelId} value={m.ModelCode}>
-                          {m.ModelCode}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-
-
-                  <FormControl fullWidth>
-                    <InputLabel shrink>Part</InputLabel>
-                    <Select
-                      name="partSelected"
-                      value={formData.partSelected}
-                      onChange={handleSelectChange}
-                      displayEmpty
-                      label="Part"
-                    >
-
-
-                      {activeParts.map((p) => (
-                        <MenuItem key={p.PartId} value={p.PartNumber}>
-                          {p.PartName}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-
-
-
-                </Box>
+                </Grid>
               )}
 
               {/* Tab 2: Problem & Cause */}
@@ -742,7 +794,6 @@ const ComplaintForm = () => {
                 </Box>
               )}
 
-
               {/* Tab 4: Review & Submit */}
               {activeStep === 3 && (
                 <Box sx={{ gap: 2, display: "flex", flexDirection: "column" }}>
@@ -906,7 +957,7 @@ const ComplaintForm = () => {
                       {draft.Model || "—"} • {draft.Part || "—"}
                     </Typography>
 
-                    <Chip label="Draft" size="small" sx={{marginLeft:2 }} />
+                    <Chip label="Draft" size="small" sx={{ marginLeft: 2 }} />
                   </Paper>
                 ))
               )}
@@ -963,7 +1014,7 @@ const ComplaintForm = () => {
                       label="Submitted"
                       color="success"
                       size="small"
-                      sx={{ marginLeft:2 }}
+                      sx={{ marginLeft: 2 }}
                     />
                   </Paper>
                 ))

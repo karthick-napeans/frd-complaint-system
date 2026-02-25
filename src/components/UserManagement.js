@@ -13,7 +13,7 @@ import {
   TextField,
   Chip,
   IconButton,
-  Alert, DialogContentText
+  Alert, DialogContentText, MenuItem
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import AddIcon from '@mui/icons-material/Add';
@@ -43,6 +43,44 @@ const UserManagement = () => {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [userIdToDelete, setUserIdToDelete] = useState(null);
   const [errors, setErrors] = useState({});
+
+  const patterns = {
+    char: /^[A-Za-z ]+$/,                 // letters + space
+    charNum: /^[A-Za-z0-9]+$/,           // letters + numbers
+    email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, // valid email
+    number: /^[0-9]+$/,                  // numbers only
+  };
+
+  const EMPTY_USER_FORM = {
+    employeeId: "",
+    username: "",
+    email: "",
+    password: "",
+    role: "",
+    contactNumber: "",
+    designation: "",
+  };
+
+  const handleResetUserForm = () => {
+    if (editingUser) {
+      // reset to original editing values
+      setFormData({
+        employeeId: editingUser.employeeId || "",
+        username: editingUser.username || "",
+        email: editingUser.email || "",
+        password: "",
+        role: editingUser.role || "",
+        contactNumber: editingUser.contactNumber || "",
+        designation: editingUser.designation || "",
+      });
+    } else {
+      // reset to empty
+      setFormData(EMPTY_USER_FORM);
+    }
+
+    setErrors({});        // ✅ clear all validation errors
+    setSubmitError("");   // ✅ clear API error
+  };
 
 
   useEffect(() => {
@@ -145,7 +183,7 @@ const UserManagement = () => {
     if (!formData.email?.trim()) {
       tempErrors.email = "Email is required";
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      tempErrors.email = "Required";
+      tempErrors.email = "Invalid Format";
     }
 
     if (!editingUser && !formData.password?.trim())
@@ -186,15 +224,24 @@ const UserManagement = () => {
   };
 
   const handleCreateEditUser = async () => {
+
     setSubmitError("");
-    setSubmitLoading(true);
+
     const isValid = validateUserForm();
-    if (!isValid) return;
+    if (!isValid) {
+      setSubmitLoading(false); // ✅ stop loader if validation fails
+      return;
+    }
+
+    setSubmitLoading(true); // start loader AFTER validation
+
     try {
       if (editingUser) {
         const payload = buildUpdatePayload(formData, editingUser);
         await updateUser(payload);
+        handleResetUserForm();
         await fetchUsers();
+
       } else {
         const newUser = {
           UserName: formData.username,
@@ -207,6 +254,7 @@ const UserManagement = () => {
         };
 
         await createUser(newUser);
+        handleResetUserForm(); 
         await fetchUsers();
       }
 
@@ -216,8 +264,9 @@ const UserManagement = () => {
     } catch (error) {
       const message = getErrorMessage(error);
       setSubmitError(message);
+
     } finally {
-      setSubmitLoading(false);
+      setSubmitLoading(false); 
     }
   };
 
@@ -418,31 +467,36 @@ const UserManagement = () => {
             label="Employee ID *"
             fullWidth
             size="small"
-            value={formData.employeeId}
+            value={formData.employeeId || ""}
             error={!!errors.employeeId}
             helperText={errors.employeeId || " "}
             sx={{ mt: 2 }}
             onChange={(e) => {
               const value = e.target.value;
+
+              if (!patterns.charNum.test(value) && value !== "") return;
+
               setFormData({ ...formData, employeeId: value });
 
-              if (value) {
-                setErrors((prev) => {
-                  const newErrors = { ...prev };
-                  delete newErrors.employeeId;
-                  return newErrors;
-                });
-              }
+              setErrors(prev => ({ ...prev, employeeId: "" }));
             }}
           />
 
           <TextField
-            label="User Name"
+            label="User Name *"
             fullWidth
-            value={formData.username}
-            onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+            size="small"
+            value={formData.username || ""}
             error={!!errors.username}
             helperText={errors.username || " "}
+            onChange={(e) => {
+              const value = e.target.value;
+
+              if (!patterns.char.test(value) && value !== "") return;
+
+              setFormData({ ...formData, username: value });
+              setErrors(prev => ({ ...prev, username: "" }));
+            }}
           />
 
           <TextField
@@ -450,18 +504,14 @@ const UserManagement = () => {
             type="email"
             fullWidth
             size="small"
-            value={formData.email}
+            value={formData.email || ""}
             error={!!errors.email}
             helperText={errors.email || " "}
             onChange={(e) => {
               const value = e.target.value;
-              setFormData({ ...formData, email: value });
 
-              setErrors((prev) => {
-                const newErrors = { ...prev };
-                delete newErrors.email;
-                return newErrors;
-              });
+              setFormData({ ...formData, email: value });
+              setErrors(prev => ({ ...prev, email: "" }));
             }}
           />
 
@@ -489,17 +539,23 @@ const UserManagement = () => {
             />
           )}
 
+
           <TextField
             select
             label="Role *"
             fullWidth
             size="small"
-            value={formData.role}
+            sx={{ mb: 3, }}
+            value={formData.role || ""}
             error={!!errors.role}
-            helperText={errors.role || " "}
+            helperText={errors.role || ""}
             onChange={(e) => {
               const value = e.target.value;
-              setFormData({ ...formData, role: value });
+
+              setFormData((prev) => ({
+                ...prev,
+                role: value,
+              }));
 
               if (value) {
                 setErrors((prev) => {
@@ -510,30 +566,34 @@ const UserManagement = () => {
               }
             }}
           >
-            <option value=""></option>
-            <option value="Super_Admin">Super Admin</option>
-            <option value="QC_Admin">QC Admin</option>
-            <option value="QC_User">QC User</option>
+            <MenuItem value="Super_Admin">
+              Super Admin
+            </MenuItem>
+
+            <MenuItem value="QC_Admin">
+              QC Admin
+            </MenuItem>
+
+            <MenuItem value="QC_User">
+              QC User
+            </MenuItem>
           </TextField>
 
           <TextField
             label="Contact Number *"
             fullWidth
             size="small"
-            value={formData.contactNumber}
+            value={formData.contactNumber || ""}
             error={!!errors.contactNumber}
             helperText={errors.contactNumber || " "}
+            inputProps={{ maxLength: 10 }}
             onChange={(e) => {
               const value = e.target.value;
-              setFormData({ ...formData, contactNumber: value });
 
-              if (value) {
-                setErrors((prev) => {
-                  const newErrors = { ...prev };
-                  delete newErrors.contactNumber;
-                  return newErrors;
-                });
-              }
+              if (!patterns.number.test(value) && value !== "") return;
+
+              setFormData({ ...formData, contactNumber: value });
+              setErrors(prev => ({ ...prev, contactNumber: "" }));
             }}
           />
 
@@ -546,15 +606,11 @@ const UserManagement = () => {
             helperText={errors.designation || " "}
             onChange={(e) => {
               const value = e.target.value;
-              setFormData({ ...formData, designation: value });
 
-              if (value) {
-                setErrors((prev) => {
-                  const newErrors = { ...prev };
-                  delete newErrors.designation;
-                  return newErrors;
-                });
-              }
+              if (!patterns.char.test(value) && value !== "") return;
+
+              setFormData({ ...formData, designation: value });
+              setErrors(prev => ({ ...prev, designation: "" }));
             }}
           />
 
@@ -575,10 +631,10 @@ const UserManagement = () => {
             pb: 2,
           }}
         >
-          {/* 🔴 Bottom Left Reset */}
           <Button
             variant="outlined"
             color="error"
+            onClick={handleResetUserForm}
           >
             Reset
           </Button>

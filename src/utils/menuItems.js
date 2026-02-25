@@ -41,7 +41,7 @@ const menuItems = [
     label: 'Field Reports',
     icon: <BuildIcon />,
     path: '/warranty',
-    roles: ['Super_Admin', 'QC Admin'],
+    roles: ['Super_Admin', 'QC Admin', 'QC User'],
     collapsible: true,
     submenu: [
       {
@@ -105,7 +105,7 @@ const menuItems = [
         label: 'Analysis',
         icon: <FactCheckIcon />,
         path: '/complaints/analysis',
-        roles: ['Super_Admin', 'QC Admin', 'QC User'],
+        roles: ['Super_Admin', 'QC Admin'],
       },
     ],
   },

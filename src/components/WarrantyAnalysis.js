@@ -37,46 +37,116 @@ const WarrantyAnalysis = () => {
 
   const [customerSelected, setCustomerSelected] = useState("");
   const [rawData, setRawData] = useState([]);
-  const today = new Date().toISOString().split("T")[0];
   const [selectedModels, setSelectedModels] = useState([]);
   const [selectedParts, setSelectedParts] = useState([]);
   const [selectedRegions, setSelectedRegions] = useState([]);
-  const [prodDateFrom, setProdDateFrom] = useState("2023-01-01");
-  const [prodDateTo, setProdDateTo] = useState("2025-12-31");
-  const [repairFrom, setRepairFrom] = useState("2023-01-01");
-  const [repairTo, setRepairTo] = useState("2025-12-31");
+  const formatLocalYYYYMMDD = (date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  };
+
+  const todayObj = new Date();
+
+  // To date = today
+  const today = formatLocalYYYYMMDD(todayObj);
+
+  // From date = first day of same month last year
+  const fromObj = new Date(
+    todayObj.getFullYear() - 1,
+    todayObj.getMonth(),
+    1
+  );
+
+  const lastYearMonthStart = formatLocalYYYYMMDD(fromObj);
+
+  // state
+  const [prodDateFrom, setProdDateFrom] = useState(lastYearMonthStart);
+  const [prodDateTo, setProdDateTo] = useState(today);
+
+  const [repairFrom, setRepairFrom] = useState(lastYearMonthStart);
+  const [repairTo, setRepairTo] = useState(today);
   const [errors, setErrors] = useState({});
-  const validateDates = () => {
+
+
+
+  const handleDateChange = (field, value) => {
+    let newProdFrom = prodDateFrom;
+    let newProdTo = prodDateTo;
+    let newRepairFrom = repairFrom;
+    let newRepairTo = repairTo;
+
+    if (field === "prodDateFrom") {
+      newProdFrom = value;
+      setProdDateFrom(value);
+    }
+
+    if (field === "prodDateTo") {
+      newProdTo = value;
+      setProdDateTo(value);
+    }
+
+    if (field === "repairFrom") {
+      newRepairFrom = value;
+      setRepairFrom(value);
+    }
+
+    if (field === "repairTo") {
+      newRepairTo = value;
+      setRepairTo(value);
+    }
+
+    // validate using updated values
+    const newErrors = validateDates({
+      prodDateFrom: newProdFrom,
+      prodDateTo: newProdTo,
+      repairFrom: newRepairFrom,
+      repairTo: newRepairTo,
+    });
+
+    setErrors(newErrors); // ✅ overwrite old errors
+  };
+
+  const validateDates = ({
+    prodDateFrom,
+    prodDateTo,
+    repairFrom,
+    repairTo,
+  } = {}) => {   // ✅ default prevents crash
     const errors = {};
 
-    // Future date validation
-    if (prodDateFrom && prodDateFrom > today) {
-      errors.prodDateFrom = "Future date not allowed";
+    const prodFrom = prodDateFrom ? new Date(prodDateFrom) : null;
+    const prodTo = prodDateTo ? new Date(prodDateTo) : null;
+    const repFrom = repairFrom ? new Date(repairFrom) : null;
+    const repTo = repairTo ? new Date(repairTo) : null;
+
+    prodFrom?.setHours(0, 0, 0, 0);
+    prodTo?.setHours(0, 0, 0, 0);
+    repFrom?.setHours(0, 0, 0, 0);
+    repTo?.setHours(0, 0, 0, 0);
+
+    if (prodFrom && prodTo && prodFrom > prodTo) {
+      errors.prodDateFrom = "From date must be ≤ To date";
+      errors.prodDateTo = "To date must be ≥ From date";
     }
 
-    if (prodDateTo && prodDateTo > today) {
-      errors.prodDateTo = "Future date not allowed";
-    }
-
-    if (repairFrom && repairFrom > today) {
-      errors.repairFrom = "Future date not allowed";
-    }
-
-    if (repairTo && repairTo > today) {
-      errors.repairTo = "Future date not allowed";
-    }
-
-    // From <= To validation
-    if (prodDateFrom && prodDateTo && prodDateFrom > prodDateTo) {
-      errors.prodDateTo = "Production To must be greater than From date";
-    }
-
-    if (repairFrom && repairTo && repairFrom > repairTo) {
-      errors.repairTo = "Repair To must be greater than From date";
+    if (repFrom && repTo && repFrom > repTo) {
+      errors.repairFrom = "From date must be ≤ To date";
+      errors.repairTo = "To date must be ≥ From date";
     }
 
     return errors;
   };
+
+  useEffect(() => {
+    const dateErrors = validateDates();
+
+    setErrors(prev => ({
+      ...prev,
+      ...dateErrors,
+    }));
+  }, [prodDateFrom, prodDateTo, repairFrom, repairTo]);
 
   useEffect(() => {
     if (activeCustomers.length > 0 && !customerSelected) {
@@ -307,6 +377,8 @@ const WarrantyAnalysis = () => {
     return new Date(a.month) - new Date(b.month);
   });
 
+ 
+
   // ---------- UI ----------
   return (
     <Box>
@@ -440,13 +512,9 @@ const WarrantyAnalysis = () => {
                 type="date"
                 label="Production From"
                 value={prodDateFrom}
-                onChange={(e) => {
-                  setProdDateFrom(e.target.value);
-                  setErrors(validateDates());
-                }}
+                onChange={(e) => handleDateChange("prodDateFrom", e.target.value)}
                 fullWidth
                 size="small"
-                variant="outlined"
                 InputLabelProps={{ shrink: true }}
                 inputProps={{ max: today }}
                 error={!!errors.prodDateFrom}
@@ -459,13 +527,9 @@ const WarrantyAnalysis = () => {
                 type="date"
                 label="Production To"
                 value={prodDateTo}
-                onChange={(e) => {
-                  setProdDateTo(e.target.value);
-                  setErrors(validateDates());
-                }}
+                onChange={(e) => handleDateChange("prodDateTo", e.target.value)}
                 fullWidth
                 size="small"
-                variant="outlined"
                 InputLabelProps={{ shrink: true }}
                 inputProps={{ max: today }}
                 error={!!errors.prodDateTo}
@@ -478,13 +542,9 @@ const WarrantyAnalysis = () => {
                 type="date"
                 label="Repair From"
                 value={repairFrom}
-                onChange={(e) => {
-                  setRepairFrom(e.target.value);
-                  setErrors(validateDates());
-                }}
+                onChange={(e) => handleDateChange("repairFrom", e.target.value)}
                 fullWidth
                 size="small"
-                variant="outlined"
                 InputLabelProps={{ shrink: true }}
                 inputProps={{ max: today }}
                 error={!!errors.repairFrom}
@@ -497,13 +557,9 @@ const WarrantyAnalysis = () => {
                 type="date"
                 label="Repair To"
                 value={repairTo}
-                onChange={(e) => {
-                  setRepairTo(e.target.value);
-                  setErrors(validateDates());
-                }}
+                onChange={(e) => handleDateChange("repairTo", e.target.value)}
                 fullWidth
                 size="small"
-                variant="outlined"
                 InputLabelProps={{ shrink: true }}
                 inputProps={{ max: today }}
                 error={!!errors.repairTo}
@@ -613,8 +669,16 @@ const WarrantyAnalysis = () => {
                   <BarChart data={usedMonthData}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="label" />
-                    <YAxis />
-                    <Tooltip />
+                    <YAxis
+                      domain={[
+                        0,
+                        (dataMax) => {
+                          const even = Math.ceil(dataMax);
+                          return even % 2 === 0 ? even : even + 1;
+                        }
+                      ]}
+                      allowDecimals={false}
+                    />                 <Tooltip />
                     <Bar dataKey="count" fill="#10b981">
                       <LabelList
                         dataKey="count"
@@ -656,7 +720,16 @@ const WarrantyAnalysis = () => {
                   <BarChart data={mileageData}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="label" />
-                    <YAxis />
+                    <YAxis
+                      domain={[
+                        0,
+                        (dataMax) => {
+                          const even = Math.ceil(dataMax);
+                          return even % 2 === 0 ? even : even + 1;
+                        }
+                      ]}
+                      allowDecimals={false}
+                    />
                     <Tooltip />
                     <Bar dataKey="count" fill="#f59e0b">
                       <LabelList
@@ -700,8 +773,16 @@ const WarrantyAnalysis = () => {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis
                       type="number"
-                      domain={[0, 'dataMax + 1']}   // 👈 adds spacing dynamically
-                    />                    <YAxis dataKey="name" type="category" interval={0} />
+                      domain={[
+                        0,
+                        (dataMax) => {
+                          const even = Math.ceil(dataMax);
+                          return even % 2 === 0 ? even : even + 1;
+                        }
+                      ]}
+                      allowDecimals={false}
+                    />
+                    <YAxis dataKey="name" type="category" interval={0} />
                     <Tooltip />
                     <Bar dataKey="count" fill="#6366f1">
                       <LabelList
@@ -748,8 +829,15 @@ const WarrantyAnalysis = () => {
                     <CartesianGrid strokeDasharray="3 3" />
 
                     <XAxis
-                      type="number"            // 👈 numeric axis
-                      domain={[0, dataMax => dataMax * 2]}
+                      type="number"
+                      domain={[
+                        0,
+                        (dataMax) => {
+                          const even = Math.ceil(dataMax);
+                          return even % 2 === 0 ? even : even + 1;
+                        }
+                      ]}
+                      allowDecimals={false}
                     />
 
                     <YAxis

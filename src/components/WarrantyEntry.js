@@ -152,7 +152,7 @@ const WarrantyEntry = () => {
     {
       field: 'id',
       headerName: 'ID',
-      width: 70,
+      width: 50,
       resizable: false,
       headerAlign: 'center',
       align: 'center',
@@ -161,7 +161,7 @@ const WarrantyEntry = () => {
     {
       field: 'customer',
       headerName: 'Customer',
-      width: 150,
+      width: 100,
       resizable: false,
       headerAlign: 'center',
       align: 'center',
@@ -170,7 +170,7 @@ const WarrantyEntry = () => {
     {
       field: 'filename',
       headerName: 'Filename',
-      width: 280,
+      width: 230,
       resizable: false,
       headerAlign: 'center',
       align: 'center',
@@ -193,7 +193,14 @@ const WarrantyEntry = () => {
       headerAlign: 'center',
       align: 'center',
     },
-
+    {
+      field: 'subletRatio',
+      headerName: 'Sublet Cost',
+      width: 120,
+      resizable: false,
+      headerAlign: 'center',
+      align: 'center',
+    },
     {
       field: 'status',
       headerName: 'Status',
@@ -236,6 +243,7 @@ const WarrantyEntry = () => {
         </div>
       ),
     },
+
   ];
 
   return (
@@ -455,7 +463,6 @@ const WarrantyEntry = () => {
 
       </Grid>
 
-      {/* Message */}
       {message && (
         <Alert severity={message.includes('✓') ? 'success' : 'info'} sx={{ mt: 2 }}>
           {message}

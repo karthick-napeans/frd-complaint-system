@@ -23,15 +23,19 @@ const DreSummary = () => {
     const [loading, setLoading] = useState(false);
     const [filterPart, setFilterPart] = useState("All");
     const [filterStatus, setFilterStatus] = useState("All");
-    const [fromDate, setFromDate] = useState("");
     const today = new Date().toISOString().split("T")[0];
-    const [toDate, setToDate] = useState("");
+    const lastMonthDate = new Date();
+    lastMonthDate.setMonth(lastMonthDate.getMonth() - 1);
+    const lastMonth = lastMonthDate.toISOString().split("T")[0];
+    const [fromDate, setFromDate] = useState(lastMonth);
+    const [toDate, setToDate] = useState(today);
     const [dateErrors, setDateErrors] = useState({
         fromDate: "",
         toDate: "",
     });
 
     const validateDates = (from, to) => {
+
         const errors = {
             fromDate: "",
             toDate: "",
@@ -39,10 +43,10 @@ const DreSummary = () => {
 
         const today = new Date().toISOString().split("T")[0];
 
-        // ✅ If both empty → no error
+        // if both empty → no error
         if (!from && !to) return errors;
 
-        // Future date check
+        // future date validation
         if (from && from > today) {
             errors.fromDate = "Invalid Date";
         }
@@ -51,9 +55,10 @@ const DreSummary = () => {
             errors.toDate = "Invalid Date";
         }
 
-        // From <= To check
+        // range validation
         if (from && to && from > to) {
-            errors.toDate = "Invalid Date";
+            errors.fromDate =  "From date must be ≤ To date";
+            errors.toDate =  "To date must be ≥ From date";
         }
 
         return errors;

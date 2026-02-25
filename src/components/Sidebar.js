@@ -22,7 +22,7 @@ const Sidebar = ({ userRole, username, onLogout, open, onClose }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [expandedItem, setExpandedItem] = useState(null);
-  const hasInitialized = React.useRef(false); 
+  const hasInitialized = React.useRef(false);
 
   useEffect(() => {
     if (hasInitialized.current) return;
@@ -49,9 +49,28 @@ const Sidebar = ({ userRole, username, onLogout, open, onClose }) => {
     setExpandedItem(prev => (prev === id ? null : id));
   };
 
-  const filteredMenuItems = menuItems.filter(item =>
-    item.roles.includes(userRole)
-  );
+  const normalizeRole = (role) =>
+    role?.toLowerCase().replace(/[_\s]+/g, '');
+
+  const filteredMenuItems = menuItems
+    .map(item => {
+      if (!item.roles.some(r => normalizeRole(r) === normalizeRole(userRole)))
+        return null;
+
+      if (!item.submenu) return item;
+
+      const filteredSubmenu = item.submenu.filter(sub =>
+        sub.roles.some(r => normalizeRole(r) === normalizeRole(userRole))
+      );
+
+      return {
+        ...item,
+        submenu: filteredSubmenu,
+      };
+    })
+    .filter(item => item && (!item.submenu || item.submenu.length > 0));
+
+
 
   return (
     <Drawer
@@ -89,31 +108,50 @@ const Sidebar = ({ userRole, username, onLogout, open, onClose }) => {
         <List sx={{ flex: 1 }}>
           {filteredMenuItems.map(item => {
             const hasSubmenu = item.submenu?.length > 0;
-            const isActive = location.pathname.startsWith(item.path);
+
+            // parent active if exact match OR any submenu match
+            const isParentActive =
+              location.pathname === item.path ||
+              item.submenu?.some(sub =>
+                location.pathname.startsWith(sub.path)
+              );
+
             const isExpanded = expandedItem === item.id;
 
             if (hasSubmenu) {
               return (
                 <Box key={item.id}>
-                  <ListItemButton onClick={() => handleToggleSubmenu(item.id)}>
+                  <ListItemButton
+                    onClick={() => handleToggleSubmenu(item.id)}
+                    selected={isParentActive}
+                  >
                     <ListItemIcon>{item.icon}</ListItemIcon>
+
                     <ListItemText primary={item.label} />
+
                     {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
                   </ListItemButton>
 
-                  <Collapse in={isExpanded} unmountOnExit>
+                  <Collapse in={isExpanded} timeout="auto" unmountOnExit>
                     <List disablePadding>
-                      {item.submenu.map(sub => (
-                        <ListItemButton
-                          key={sub.id}
-                          sx={{ pl: 4 }}
-                          selected={location.pathname === sub.path}
-                          onClick={() => handleNavigate(sub.path)}
-                        >
-                          <ListItemIcon>{sub.icon}</ListItemIcon>
-                          <ListItemText primary={sub.label} />
-                        </ListItemButton>
-                      ))}
+                      {item.submenu.map(sub => {
+                        const isSubActive =
+                          location.pathname === sub.path ||
+                          location.pathname.startsWith(sub.path);
+
+                        return (
+                          <ListItemButton
+                            key={sub.id}
+                            sx={{ pl: 4 }}
+                            selected={isSubActive}
+                            onClick={() => handleNavigate(sub.path)}
+                          >
+                            <ListItemIcon>{sub.icon}</ListItemIcon>
+
+                            <ListItemText primary={sub.label} />
+                          </ListItemButton>
+                        );
+                      })}
                     </List>
                   </Collapse>
                 </Box>
@@ -123,10 +161,11 @@ const Sidebar = ({ userRole, username, onLogout, open, onClose }) => {
             return (
               <ListItemButton
                 key={item.id}
-                selected={isActive}
+                selected={isParentActive}
                 onClick={() => handleNavigate(item.path)}
               >
                 <ListItemIcon>{item.icon}</ListItemIcon>
+
                 <ListItemText primary={item.label} />
               </ListItemButton>
             );
