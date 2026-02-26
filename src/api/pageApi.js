@@ -51,6 +51,14 @@ export const getCustomerColumnMapping = (customerId) => {
     return getRequest(`/customer-excel-mappings/${customerId}`);
 };
 
+export const getAttachmentChecklist = () => {
+    return getRequest(`/complaints/attachments/checklist`)
+}
+
+export const getAllImprovementList = () => {
+    return getRequest(`/improvements/get`)
+}
+
 
 //postRequest
 export const loginApi = (payload) => {
@@ -67,11 +75,11 @@ export const updateUser = (payload) => {
         JSON.stringify(payload, null, 2)
     );
 
-    return postRequest(`/users/update`, payload);
+    return postRequest(`/ users / update`, payload);
 }
 
 export const deleteUser = (id) => {
-    return postRequest(`/users/active`, { UserId: id });
+    return postRequest(`/ users / active`, { UserId: id });
 }
 
 export const saveDreDraft = (payload) => {
@@ -98,10 +106,21 @@ export const uploadWarrantyClaims = (formData) => {
 export const getWrantyReport = (payload) => {
     console.log("Generating warranty report with payload:", payload);
     return postRequest(
-        "/warranty-claims/analysis/report",
+        "/warranty-claims/analysis/report_new",
         payload
     );
 };
 
+export const saveImprovementBaseline = (payload) => {
+    return postRequest("/improvements/create", payload);
+}
+
+export const deleteImprovementBaseline = (payload) => {
+    return postRequest("/improvements/delete", payload);
+}
+
+export const getDashboardData = (payload) => {
+    return postRequest("/dashboard/data", payload);
+}
 
 

@@ -126,18 +126,32 @@ const MasterData = ({ userRole = "Admin" }) => {
   }, [masterType]);
 
   const fetchMasterData = async () => {
-    setLoading(true); // 🔄 START LOADER
+    setLoading(true);
+
     try {
       const data = await getMasters(masterType);
 
-      setRows(Array.isArray(data) ? data : []);
+      const sortedData = Array.isArray(data)
+        ? [...data].sort((a, b) => {
+          // Find dynamic Id key (CustomerId, ModelId, etc.)
+          const idKey = Object.keys(a).find(key =>
+            key.toLowerCase().endsWith("id")
+          );
+
+          if (!idKey) return 0;
+
+          return (b[idKey] || 0) - (a[idKey] || 0);
+        })
+        : [];
+
+      setRows(sortedData);
+
     } catch (err) {
       setRows([]);
     } finally {
-      setLoading(false); // ✅ STOP LOADER
+      setLoading(false);
     }
   };
-
   const handleOpenAdd = () => {
     setEditingRow(null);
     setFormData({});
@@ -179,17 +193,15 @@ const MasterData = ({ userRole = "Admin" }) => {
     if (!isValid) return;
 
     setSaveLoading(true);
-    setMessage(""); // clear old message
+    setMessage("");
 
     try {
       if (editingRow) {
         const payload = { ...editingRow, ...formData };
         await updateMaster(masterType, payload);
-        setSaveLoading(false);
         setMessage("✓ Updated successfully");
       } else {
         await createMaster(masterType, formData);
-        setSaveLoading(false);
         setMessage("✓ Created successfully");
       }
 
@@ -202,7 +214,14 @@ const MasterData = ({ userRole = "Admin" }) => {
       setErrors({});
     } catch (err) {
       console.error("❌ Save failed:", err);
-      setMessage("Failed to save data");
+
+      // ✅ Extract API message safely
+      const apiMessage =
+        err?.response?.data?.Message ||
+        err?.response?.data?.message ||
+        "Failed to save data";
+
+      setMessage(apiMessage);
     } finally {
       setSaveLoading(false);
     }
@@ -419,7 +438,6 @@ const MasterData = ({ userRole = "Admin" }) => {
               }}
 
               disableRowSelectionOnClick
-              disableColumnMenu
               disableColumnReorder
               disableColumnSorting
               sx={{

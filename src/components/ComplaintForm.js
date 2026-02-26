@@ -19,7 +19,13 @@ import {
   MenuItem,
   Accordion,
   AccordionSummary,
-  AccordionDetails, Checkbox, FormHelperText
+  AccordionDetails, Checkbox, FormHelperText,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
 } from "@mui/material";
 import ClearIcon from "@mui/icons-material/Clear";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
@@ -27,7 +33,7 @@ import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import SaveIcon from "@mui/icons-material/Save";
 import { useSelector } from "react-redux";
 import CircularProgress from "@mui/material/CircularProgress";
-import { submitCustomerComplaint, getCustomerComplaints } from "../api/pageApi";
+import { submitCustomerComplaint, getCustomerComplaints, getAttachmentChecklist } from "../api/pageApi";
 
 
 
@@ -53,15 +59,10 @@ const ComplaintForm = () => {
     "Review & Submit",
   ];
   const today = new Date().toISOString().split("T")[0];
-  const sampleAttachmentList = [
-    { id: 1, listName: "Counter Measure", isMandatory: true },
-    { id: 2, listName: "PAN Copy", isMandatory: true },
-    { id: 3, listName: "Address Proof", isMandatory: false },
-    { id: 4, listName: "Invoice Copy", isMandatory: false },
-    { id: 5, listName: "Photograph", isMandatory: true }
-  ];
+  const [attachmentList, setAttachmentList] = useState([])
+
   const [attachmentRows, setAttachmentRows] = useState(
-    sampleAttachmentList.map(item => ({
+    attachmentList.map(item => ({
       ...item,
       checked: item.isMandatory,
       file: null,
@@ -92,6 +93,33 @@ const ComplaintForm = () => {
       return () => clearTimeout(timer);
     }
   }, [message]);
+
+
+
+  useEffect(() => {
+    const fetchAttachments = async () => {
+      try {
+        const res = await getAttachmentChecklist();
+
+        setAttachmentRows(
+          res.map(item => ({
+            id: item.Id,
+            listName: item.Name,
+            isMandatory: item.Ismandatory,  // 🔥 important
+            checked: item.Ismandatory,
+            file: null,
+            expiryDate: "",
+            emails: "",
+          }))
+        );
+
+      } catch (err) {
+        console.error("Error While Fetch Attachments List", err);
+      }
+    };
+
+    fetchAttachments();
+  }, []);
 
   const handleAccordionChange = (panel) => (event, isExpanded) => {
     setExpandedPanel(isExpanded ? panel : null);
@@ -244,6 +272,28 @@ const ComplaintForm = () => {
     );
   };
 
+  const validateEmails = (emailString) => {
+    if (!emailString) return "Email is required";
+
+    const emails = emailString
+      .split(",")
+      .map(e => e.trim())
+      .filter(e => e !== "");
+
+    const emailRegex =
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    const invalidEmails = emails.filter(
+      email => !emailRegex.test(email)
+    );
+
+    if (invalidEmails.length > 0) {
+      return `Invalid email(s): ${invalidEmails.join(", ")}`;
+    }
+
+    return "";
+  };
+
   const handleNext = () => {
     let tempErrors = {};
 
@@ -287,25 +337,25 @@ const ComplaintForm = () => {
     }
 
     /* ================= STEP 2 ================= */
-    if (activeStep === 2) {
-      const newAttachmentErrors = {};
+    // if (activeStep === 2) {
+    //   const newAttachmentErrors = {};
 
-      attachmentRows.forEach((row) => {
-        if (row.isMandatory) {
-          if (!row.file)
-            newAttachmentErrors[`file_${row.id}`] = "Required";
+    //   attachmentRows.forEach((row) => {
+    //     if (row.isMandatory) {
+    //       if (!row.file)
+    //         newAttachmentErrors[`file_${row.id}`] = "Required";
 
-          if (!row.expiryDate)
-            newAttachmentErrors[`expiry_${row.id}`] =
-              "Required";
-        }
-      });
+    //       if (!row.expiryDate)
+    //         newAttachmentErrors[`expiry_${row.id}`] =
+    //           "Required";
+    //     }
+    //   });
 
-      if (Object.keys(newAttachmentErrors).length > 0) {
-        setErrors(newAttachmentErrors);
-        return;
-      }
-    }
+    //   if (Object.keys(newAttachmentErrors).length > 0) {
+    //     setErrors(newAttachmentErrors);
+    //     return;
+    //   }
+    // }
 
     setErrors({});
     setMessage("");
@@ -349,7 +399,7 @@ const ComplaintForm = () => {
 
     // ✅ Reset attachments properly
     setAttachmentRows(
-      sampleAttachmentList.map(item => ({
+      attachmentList.map(item => ({
         ...item,
         checked: item.isMandatory,
         file: null,
@@ -369,7 +419,7 @@ const ComplaintForm = () => {
     if (!formData.complaintDate)
       tempErrors.complaintDate = "Required";
 
- 
+
     setErrors(tempErrors);
 
     return Object.keys(tempErrors).length === 0;
@@ -485,6 +535,20 @@ const ComplaintForm = () => {
     }, 0);
   };
 
+  const handleEmailChange = (id, value) => {
+    setAttachmentRows(prev =>
+      prev.map(row =>
+        row.id === id ? { ...row, emails: value } : row
+      )
+    );
+    const errorMessage = validateEmails(value);
+
+    setErrors(prev => ({
+      ...prev,
+      [`email_${id}`]: errorMessage,
+    }));
+  };
+
   return (
     <Box>
       <Typography variant="h5" fontWeight={700} sx={{ mb: 2 }}>
@@ -492,10 +556,10 @@ const ComplaintForm = () => {
       </Typography>
 
       <Grid container spacing={3}>
-        <Grid item xs={12} md={8}>
+        <Grid item xs={12} md={(activeStep === 2 || activeStep === 3) ? 10 : 8}>
           <Card>
             <CardContent>
-              
+
               <Stepper activeStep={activeStep} sx={{ mb: 3 }}>
                 {steps.map((label) => (
                   <Step key={label}>
@@ -669,128 +733,141 @@ const ComplaintForm = () => {
 
               {/* Tab 3: Attachments */}
               {activeStep === 2 && (
-                <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                  <Typography variant="h6">
+                <Box>
+                  <Typography variant="h6" mb={2}>
                     Upload Required Documents
                   </Typography>
 
-                  {attachmentRows.map((row) => (
-                    <Grid
-                      container
-                      spacing={3}
-                      alignItems="flex-start"   // 🔥 important change
-                      key={row.id}
-                      sx={{ mb: 1 }}
+                  <TableContainer component={Paper} sx={{ borderRadius: 2, overflowX: "hidden", }}>
+                    <Table
+                      size="small"
+                      sx={{
+                        tableLayout: "fixed",
+                        width: "100%",
+                        "& .MuiTableCell-root": {
+                          verticalAlign: "middle",
+                          py: 1.5,   // controls row height cleanly
+                        },
+                      }}
                     >
-                      {/* Checkbox */}
-                      <Grid
-                        item
-                        xs={1}
-                        sx={{
-                          display: "flex",
-                          justifyContent: "center",
-                          alignItems: "center",
-                        }}
-                      >
-                        <Checkbox
-                          checked={row.checked}
-                          disabled={row.isMandatory}
-                          onChange={() => handleCheckboxChange(row.id)}
-                        />
-                      </Grid>
+                      <TableHead>
+                        <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
+                          <TableCell width={60}></TableCell>
+                          <TableCell><strong>Document</strong></TableCell>
+                          <TableCell><strong>Upload</strong></TableCell>
+                          <TableCell><strong>Email  </strong></TableCell>
+                          <TableCell><strong>Last Date</strong></TableCell>
+                        </TableRow>
+                      </TableHead>
 
-                      {/* Document Name */}
-                      <Grid
-                        item
-                        xs={3}
-                        sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          height: 40,
-                          mt: 1.5
-                        }}
-                      >
-                        <Typography fontWeight={500}>
-                          {row.listName}
-                          {row.isMandatory && (
-                            <span style={{ color: "red" }}> *</span>
-                          )}
-                        </Typography>
-                      </Grid>
+                      <TableBody>
+                        {attachmentRows.map((row) => (
+                          <TableRow key={row.id} hover>
 
-                      {/* Upload Button */}
-                      <Grid item xs={4}>
-                        <Button
-                          component="label"
-                          variant="outlined"
-                          startIcon={<CloudUploadIcon />}
-                          fullWidth
-                          sx={{
-                            height: 40,
-                            justifyContent: "flex-start",
-                            textTransform: "none",
-                            borderColor: errors[`file_${row.id}`]
-                              ? "error.main"
-                              : undefined,
-                            overflow: "hidden",
-                          }}
-                        >
-                          <Box
-                            sx={{
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              whiteSpace: "nowrap",
-                              width: "100%",
-                              textAlign: "left",
-                            }}
-                          >
-                            {row.file ? row.file.name : "Upload File"}
-                          </Box>
+                            {/* Checkbox */}
+                            <TableCell width="5%">
+                              <Checkbox
+                                checked={row.checked}
+                                disabled={row.isMandatory}
+                                onChange={() => handleCheckboxChange(row.id)}
+                              />
+                            </TableCell>
 
-                          <input
-                            type="file"
-                            hidden
-                            accept=".pdf,.jpg,.jpeg,.png"
-                            onChange={(e) =>
-                              handleFileChange(row.id, e.target.files[0])
-                            }
-                          />
-                        </Button>
+                            {/* Document Name */}
+                            <TableCell width="20%">
+                              <Typography fontWeight={500}>
+                                {row.listName}
+                                {row.isMandatory && (
+                                  <span style={{ color: "red" }}> *</span>
+                                )}
+                              </Typography>
+                            </TableCell>
 
-                        {/* Fixed space for error */}
-                        <Typography
-                          variant="caption"
-                          sx={{
-                            color: "error.main",
-                            minHeight: 20,
-                            display: "block",
-                          }}
-                        >
-                          {errors[`file_${row.id}`] || ""}
-                        </Typography>
-                      </Grid>
+                            {/* Upload */}
+                            <TableCell
+                              width="25%"
+                              sx={{ verticalAlign: "middle" }}
+                            >
+                              <Button
+                                component="label"
+                                variant="outlined"
+                                startIcon={<CloudUploadIcon />}
+                                fullWidth
+                                sx={{
+                                  justifyContent: "flex-start",
+                                  textTransform: "none",
+                                }}
+                              >
+                                <Box
+                                  sx={{
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                    whiteSpace: "nowrap",
+                                    width: "100%",
+                                    textAlign: "left",
+                                  }}
+                                >
+                                  {row.file ? row.file.name : "Upload File"}
+                                </Box>
 
-                      {/* Expiry Date */}
-                      <Grid item xs={4}>
-                        <TextField
-                          type="date"
-                          fullWidth
-                          size="small"
-                          value={row.expiryDate}
-                          onChange={(e) =>
-                            handleDateChange(row.id, e.target.value)
-                          }
-                          error={!!errors[`expiry_${row.id}`]}
-                          helperText={errors[`expiry_${row.id}`] || " "}
-                          sx={{
-                            "& .MuiInputBase-root": {
-                              height: 40,
-                            },
-                          }}
-                        />
-                      </Grid>
-                    </Grid>
-                  ))}
+                                <input
+                                  type="file"
+                                  hidden
+                                  accept=".pdf,.jpg,.jpeg,.png"
+                                  onChange={(e) =>
+                                    handleFileChange(row.id, e.target.files[0])
+                                  }
+                                />
+                              </Button>
+                            </TableCell>
+
+                            {/* Email Input */}
+                            <TableCell width="25%">
+                              <Box display="flex" alignItems="center">
+                                <TextField
+                                  fullWidth
+                                  size="small"
+                                  placeholder="test@mail.com"
+                                  value={row.emails || ""}
+                                  onChange={(e) =>
+                                    handleEmailChange(row.id, e.target.value)
+                                  }
+                                  error={!!errors[`email_${row.id}`]}
+                                  helperText={errors[`email_${row.id}`]}
+                                />
+                              </Box>
+                            </TableCell>
+
+
+                            {/* Expiry Date */}
+                            <TableCell
+                              width="25%"
+                              sx={{ verticalAlign: "middle" }}
+                            >
+                              <Box display="flex" alignItems="center">
+                                <TextField
+                                  type="date"
+                                  fullWidth
+                                  size="small"
+                                  value={row.expiryDate}
+                                  onChange={(e) =>
+                                    handleDateChange(row.id, e.target.value)
+                                  }
+                                  error={!!errors[`expiry_${row.id}`]}
+                                  helperText={errors[`expiry_${row.id}`]}
+                                  sx={{
+                                    "& .MuiInputBase-root": {
+                                      height: 38,   // keeps height consistent
+                                    },
+                                  }}
+                                />
+                              </Box>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
                 </Box>
               )}
 
@@ -830,10 +907,55 @@ const ComplaintForm = () => {
                       <Typography>
                         <strong>Severity:</strong> {formData.severityLevel}
                       </Typography>
-                      <Typography>
-                        <strong>Attachments:</strong>{" "}
-                        {formData.attachments.length} file(s)
-                      </Typography>
+                      <Box mt={2}>
+                        <Typography variant="subtitle1" fontWeight={600} mb={1}>
+                          Attachments
+                        </Typography>
+
+                        {attachmentRows.filter(r => r.checked).length === 0 ? (
+                          <Typography variant="body2" color="text.secondary">
+                            No attachments added
+                          </Typography>
+                        ) : (
+                          <TableContainer
+                            component={Paper}
+                            sx={{ borderRadius: 2 }}
+                          >
+                            <Table size="small">
+                              <TableHead>
+                                <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
+                                  <TableCell><strong>Document</strong></TableCell>
+                                  <TableCell><strong>File Name</strong></TableCell>
+                                  <TableCell><strong>Email</strong></TableCell>
+                                  <TableCell><strong>Last Date</strong></TableCell>
+                                </TableRow>
+                              </TableHead>
+
+                              <TableBody>
+                                {attachmentRows
+                                  .filter(row => row.checked)
+                                  .map((row) => (
+                                    <TableRow key={row.id} hover>
+                                      <TableCell>{row.listName}</TableCell>
+
+                                      <TableCell>
+                                        {row.file ? row.file.name : "Not Uploaded"}
+                                      </TableCell>
+
+                                      <TableCell>
+                                        {row.emails || "-"}
+                                      </TableCell>
+
+                                      <TableCell>
+                                        {row.expiryDate || "-"}
+                                      </TableCell>
+                                    </TableRow>
+                                  ))}
+                              </TableBody>
+                            </Table>
+                          </TableContainer>
+                        )}
+                      </Box>
                     </Box>
                   </Paper>
                 </Box>
@@ -905,8 +1027,7 @@ const ComplaintForm = () => {
           </Card>
         </Grid>
 
-        {/* Sidebar */}
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} md={(activeStep === 2 || activeStep === 3) ? 2 : 4}>
 
           {/* DRAFTS */}
           <Accordion

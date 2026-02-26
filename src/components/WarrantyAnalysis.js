@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import {
   Box,
   Container,
@@ -12,7 +12,7 @@ import {
   Select,
   MenuItem,
   Checkbox,
-  ListItemText, IconButton
+  ListItemText, IconButton, Button
 } from "@mui/material";
 import {
   BarChart,
@@ -26,15 +26,17 @@ import {
   ResponsiveContainer,
   ComposedChart, ReferenceLine, LabelList
 } from "recharts";
-import { getWrantyReport } from "../api/pageApi";
+import CloseIcon from "@mui/icons-material/Close";
+import { getWrantyReport, getAllImprovementList } from "../api/pageApi";
 import { useSelector } from "react-redux";
 import html2canvas from "html2canvas";
 import DownloadIcon from "@mui/icons-material/Download";
+import FilterListIcon from "@mui/icons-material/FilterList";
+import Collapse from "@mui/material/Collapse";
 
 const WarrantyAnalysis = () => {
   const { customers } = useSelector((state) => state.masters);
   const activeCustomers = customers.filter((c) => c.IsActive);
-
   const [customerSelected, setCustomerSelected] = useState("");
   const [rawData, setRawData] = useState([]);
   const [selectedModels, setSelectedModels] = useState([]);
@@ -46,30 +48,63 @@ const WarrantyAnalysis = () => {
     const d = String(date.getDate()).padStart(2, "0");
     return `${y}-${m}-${d}`;
   };
-
+  const [apiData, setApiData] = useState(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
   const todayObj = new Date();
-
-  // To date = today
   const today = formatLocalYYYYMMDD(todayObj);
-
-  // From date = first day of same month last year
   const fromObj = new Date(
     todayObj.getFullYear() - 1,
     todayObj.getMonth(),
     1
   );
-
   const lastYearMonthStart = formatLocalYYYYMMDD(fromObj);
-
-  // state
   const [prodDateFrom, setProdDateFrom] = useState(lastYearMonthStart);
   const [prodDateTo, setProdDateTo] = useState(today);
-
   const [repairFrom, setRepairFrom] = useState(lastYearMonthStart);
   const [repairTo, setRepairTo] = useState(today);
   const [errors, setErrors] = useState({});
+  const hasFetchedOnce = useRef(false);
+  const [latestImprovement, setLatestImprovement] = useState(null);
 
+  useEffect(() => {
+    fetchImprovementList();
+  }, []);
 
+  const fetchImprovementList = async () => {
+    try {
+      const res = await getAllImprovementList();
+
+      if (!res || res.length === 0) return;
+
+      // Sort latest first
+      const sorted = res.sort(
+        (a, b) =>
+          new Date(b.ImprovementDate) - new Date(a.ImprovementDate)
+      );
+
+      const latest = sorted[0];
+
+      setLatestImprovement({
+        id: latest.ImprovementId,
+        date: latest.ImprovementDate,
+        yearMonth: latest.ImprovementDate.slice(0, 7), // YYYY-MM
+        description: latest.Details,
+      });
+
+    } catch (err) {
+      console.error("Error fetching improvement list", err);
+    }
+  };
+
+  useEffect(() => {
+    if (!customerSelected) return;
+    if (hasFetchedOnce.current) return;
+
+    hasFetchedOnce.current = true;
+
+    fetchWarrantyReport();
+  }, [customerSelected]);
 
   const handleDateChange = (field, value) => {
     let newProdFrom = prodDateFrom;
@@ -139,6 +174,24 @@ const WarrantyAnalysis = () => {
     return errors;
   };
 
+  const handleApplyFilters = async () => {
+    const dateErrors = validateDates();
+
+    if (Object.keys(dateErrors).length > 0) {
+      setErrors(dateErrors);
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      await fetchWarrantyReport();
+      setFiltersOpen(false); // collapse after success
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     const dateErrors = validateDates();
 
@@ -154,38 +207,35 @@ const WarrantyAnalysis = () => {
     }
   }, [activeCustomers]);
 
-  useEffect(() => {
-    if (!customerSelected || !prodDateFrom || !prodDateTo) return;
+  // useEffect(() => {
+  //   if (!customerSelected || !prodDateFrom || !prodDateTo) return;
 
-    fetchWarrantyReport();
-  }, [customerSelected, prodDateFrom, prodDateTo]);
+  //   fetchWarrantyReport();
+  // }, [customerSelected, prodDateFrom, prodDateTo]);
 
   const fetchWarrantyReport = async () => {
     try {
       const payload = {
-        CustomerId: String(customerSelected),
-        ProductionFromDate: prodDateFrom,
-        ProductionToDate: prodDateTo,
+        customerId: Number(customerSelected),
+        productionFromDate: prodDateFrom || null,
+        productionToDate: prodDateTo || null,
+        repairFromDate: repairFrom || null,
+        repairToDate: repairTo || null,
+        modelList: selectedModels || [],
+        partList: selectedParts || [],
+        regionList: selectedRegions || [],
       };
 
       console.log("Sending Payload:", payload);
 
       const response = await getWrantyReport(payload);
-      console.log("API RESPONSE:", response);
 
-      const apiData = Array.isArray(response)
-        ? response
-        : Array.isArray(response?.data)
-          ? response.data
-          : [];
-
-      setRawData(apiData);
+      setApiData(response?.data || response || null);
 
     } catch (error) {
       console.error("API ERROR:", error?.response?.data || error);
     }
   };
-
 
   const getRegionFromRO = (hk) => {
     if (!hk) return null;
@@ -256,97 +306,44 @@ const WarrantyAnalysis = () => {
 
   // 1️⃣ Production vs Repair
   const prodRepairData = useMemo(() => {
+    if (!apiData?.Trend) return [];
 
-    const productionMap = {};
-    const repairMap = {};
-
-    const from = repairFrom ? new Date(repairFrom) : null;
-    const to = repairTo ? new Date(repairTo) : null;
-    if (to) to.setHours(23, 59, 59, 999);
-
-    uiFilteredData.forEach(d => {
-      if (!d.productionDate) return;
-
-      const key = d.productionDate.toISOString().slice(0, 7);
-
-      productionMap[key] = (productionMap[key] || 0) + 1;
-    });
-
-    uiFilteredData.forEach(d => {
-      if (!d.repairDate) return;
-
-      if (from && to) {
-        if (d.repairDate < from || d.repairDate > to)
-          return;
-      }
-
-      const key = d.repairDate.toISOString().slice(0, 7);
-      repairMap[key] = (repairMap[key] || 0) + 1;
-    });
-
-    const allMonths = new Set([
-      ...Object.keys(productionMap),
-      ...Object.keys(repairMap)
-    ]);
-
-    return Array.from(allMonths)
-      .sort()
-      .map(month => ({
-        month,
-        production: productionMap[month] || 0,
-        repair: repairMap[month] || 0
-      }));
-
-  }, [uiFilteredData, repairFrom, repairTo]);
+    return apiData.Trend.map(item => ({
+      month: item.YearMonth,
+      production: item.ProductionCount,
+      repair: item.RepairCount,
+    }));
+  }, [apiData]);
 
   // 2️⃣ Used Month
   const usedMonthData = useMemo(() => {
-    const map = {};
-    uiFilteredData.forEach((d) => {
-      const key = d.Used_Month;
-      map[key] = (map[key] || 0) + 1;
-    });
-    return Object.entries(map).map(([label, count]) => ({
-      label,
-      count,
+    if (!apiData?.UsedMonthDistribution) return [];
+
+    return apiData.UsedMonthDistribution.map(item => ({
+      label: item.UsedMonthRange,
+      count: item.FailureCount,
     }));
-  }, [uiFilteredData]);
+  }, [apiData]);
 
   // 3️⃣ Mileage
   const mileageData = useMemo(() => {
-    const ranges = {
-      "0-10K": 0,
-      "10-20K": 0,
-      "20-30K": 0,
-      "30-40K": 0,
-      "40K+": 0,
-    };
+    if (!apiData?.MileageDistribution) return [];
 
-    uiFilteredData.forEach((d) => {
-      if (d.Mileage < 10000) ranges["0-10K"]++;
-      else if (d.Mileage < 20000) ranges["10-20K"]++;
-      else if (d.Mileage < 30000) ranges["20-30K"]++;
-      else if (d.Mileage < 40000) ranges["30-40K"]++;
-      else ranges["40K+"]++;
-    });
-
-    return Object.entries(ranges).map(([label, count]) => ({
-      label,
-      count,
+    return apiData.MileageDistribution.map(item => ({
+      label: item.MileageRange,
+      count: item.FailureCount,
     }));
-  }, [uiFilteredData]);
+  }, [apiData]);
 
   // 4️⃣ Nature
   const natureData = useMemo(() => {
-    const map = {};
-    uiFilteredData.forEach((d) => {
-      map[d.Nature_Code] = (map[d.Nature_Code] || 0) + 1;
-    });
-    return Object.entries(map).map(([name, count]) => ({
-      name,
-      count,
+    if (!apiData?.NatureDistribution) return [];
+
+    return apiData.NatureDistribution.map(item => ({
+      name: item.Nature_Code,
+      count: item.FailureCount,
     }));
-  }, [uiFilteredData]);
+  }, [apiData]);
 
   // 5️⃣ Region
   const regionData = useMemo(() => {
@@ -363,213 +360,291 @@ const WarrantyAnalysis = () => {
     }));
   }, [uiFilteredData]);
 
-  const improvementBaseline = [
-    { month: "Sep 2024", description: "Initial target set" },
-    { month: "Nov 2024", description: "Process optimization phase 1" },
-    { month: "Jun 2025", description: "Tooling improvement completed" }
-  ];
 
-  // Latest entry
-  const latestImprovement =
-    improvementBaseline[improvementBaseline.length - 1];
+
+
 
   const sortedData = [...prodRepairData].sort((a, b) => {
     return new Date(a.month) - new Date(b.month);
   });
 
- 
+
 
   // ---------- UI ----------
   return (
     <Box>
-      <Typography variant="h5" fontWeight="bold" mb={2}>
-        Warranty Analysis
-      </Typography>
+      <Box
+        display="flex"
+        alignItems="center"
+        justifyContent="space-between"
+        mb={2}
+      >
+        <Typography variant="h5" fontWeight="bold">
+          Warranty Analysis
+        </Typography>
 
-      {/* Filters */}
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Grid container spacing={2}>
+        {!filtersOpen && (
+          <Button
+            variant="contained"
+            size="small"
+            startIcon={<FilterListIcon />}
+            onClick={() => setFiltersOpen(true)}
+          >
+            Filters
+          </Button>
+        )}
+      </Box>
 
-            {/* ROW 1 */}
-            <Grid item xs={12} md={3}>
-              <FormControl
-                fullWidth
+
+
+      <Collapse in={filtersOpen} timeout="auto" unmountOnExit>
+        <Card
+          sx={{
+            mb: 3,
+            borderRadius: 3,
+            boxShadow: 2,
+          }}
+        >
+          <CardContent>
+
+            {/* HEADER */}
+            <Box
+              display="flex"
+              alignItems="center"
+              justifyContent="space-between"
+              mb={3}
+            >
+              <Typography variant="h6" fontWeight={600}>
+                Filters
+              </Typography>
+
+              <IconButton
                 size="small"
+                onClick={() => setFiltersOpen(false)}
                 sx={{
-                  "& .MuiInputLabel-root": {
-                    backgroundColor: "#fff",
-                    px: 0.5,
-                  }
+                  backgroundColor: "#f5f5f5",
+                  "&:hover": { backgroundColor: "#e0e0e0" },
                 }}
               >
-                <InputLabel shrink>Customer</InputLabel>
-                <Select
-                  value={customerSelected}
-                  onChange={(e) => setCustomerSelected(e.target.value)}
-                  label="Customer"
-                >
-                  {activeCustomers.map((c) => (
-                    <MenuItem key={c.CustomerId} value={c.CustomerId}>
-                      {c.CustomerName}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+                <CloseIcon fontSize="small" />
+              </IconButton>
+            </Box>
 
-            </Grid>
+            {/* FILTER FIELDS */}
+            <Grid container spacing={2}>
 
-            <Grid item xs={12} md={3}>
-              <FormControl
-                fullWidth
-                size="small"
-                sx={{
-                  "& .MuiInputLabel-root": {
-                    backgroundColor: "#fff",
-                    px: 0.5,
-                  }
-                }}
-              >
-                <InputLabel shrink>Model</InputLabel>
-                <Select
-                  multiple
-                  value={selectedModels}
-                  onChange={(e) => setSelectedModels(e.target.value)}
-                  renderValue={(selected) => selected.join(", ")}
+              {/* ROW 1 */}
+              <Grid item xs={12} md={3}>
+                <FormControl
+                  fullWidth
+                  size="small"
+                  sx={{
+                    "& .MuiInputLabel-root": {
+                      backgroundColor: "#fff",
+                      px: 0.5,
+                    }
+                  }}
                 >
-                  {[...new Set(warrantyData.map((d) => d.Model_Name))].map(
-                    (model) => (
-                      <MenuItem key={model} value={model}>
-                        <Checkbox checked={selectedModels.includes(model)} />
-                        <ListItemText primary={model} />
+                  <InputLabel shrink>Customer</InputLabel>
+                  <Select
+                    value={customerSelected}
+                    onChange={(e) => setCustomerSelected(e.target.value)}
+                    label="Customer"
+                  >
+                    {activeCustomers.map((c) => (
+                      <MenuItem key={c.CustomerId} value={c.CustomerId}>
+                        {c.CustomerName}
                       </MenuItem>
-                    )
-                  )}
-                </Select>
-              </FormControl>
-            </Grid>
+                    ))}
+                  </Select>
+                </FormControl>
 
-            <Grid item xs={12} md={3}>
-              <FormControl
-                fullWidth
-                size="small"
-                sx={{
-                  "& .MuiInputLabel-root": {
-                    backgroundColor: "#fff",
-                    px: 0.5,
-                  }
-                }}
-              >
-                <InputLabel shrink>Part No</InputLabel>
-                <Select
-                  multiple
-                  value={selectedParts}
-                  onChange={(e) => setSelectedParts(e.target.value)}
-                  renderValue={(selected) => selected.join(", ")}
+              </Grid>
+
+              <Grid item xs={12} md={3}>
+                <FormControl
+                  fullWidth
+                  size="small"
+                  sx={{
+                    "& .MuiInputLabel-root": {
+                      backgroundColor: "#fff",
+                      px: 0.5,
+                    }
+                  }}
                 >
-                  {[...new Set(warrantyData.map((d) => d.Part_Number))].map(
-                    (part) => (
-                      <MenuItem key={part} value={part}>
-                        <Checkbox checked={selectedParts.includes(part)} />
-                        <ListItemText primary={part} />
+                  <InputLabel shrink>Model</InputLabel>
+                  <Select
+                    multiple
+                    value={selectedModels}
+                    onChange={(e) => setSelectedModels(e.target.value)}
+                    renderValue={(selected) => selected.join(", ")}
+                  >
+                    {[...new Set(warrantyData.map((d) => d.Model_Name))].map(
+                      (model) => (
+                        <MenuItem key={model} value={model}>
+                          <Checkbox checked={selectedModels.includes(model)} />
+                          <ListItemText primary={model} />
+                        </MenuItem>
+                      )
+                    )}
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              <Grid item xs={12} md={3}>
+                <FormControl
+                  fullWidth
+                  size="small"
+                  sx={{
+                    "& .MuiInputLabel-root": {
+                      backgroundColor: "#fff",
+                      px: 0.5,
+                    }
+                  }}
+                >
+                  <InputLabel shrink>Part No</InputLabel>
+                  <Select
+                    multiple
+                    value={selectedParts}
+                    onChange={(e) => setSelectedParts(e.target.value)}
+                    renderValue={(selected) => selected.join(", ")}
+                  >
+                    {[...new Set(warrantyData.map((d) => d.Part_Number))].map(
+                      (part) => (
+                        <MenuItem key={part} value={part}>
+                          <Checkbox checked={selectedParts.includes(part)} />
+                          <ListItemText primary={part} />
+                        </MenuItem>
+                      )
+                    )}
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              <Grid item xs={12} md={3}>
+                <FormControl
+                  fullWidth
+                  size="small"
+                  sx={{
+                    "& .MuiInputLabel-root": {
+                      backgroundColor: "#fff",
+                      px: 0.5,
+                    }
+                  }}
+                >
+                  <InputLabel shrink>Region</InputLabel>
+                  <Select
+                    multiple
+                    value={selectedRegions}
+                    onChange={(e) => setSelectedRegions(e.target.value)}
+                  >
+                    {["North", "South", "East", "West"].map((r) => (
+                      <MenuItem key={r} value={r}>
+                        {r}
                       </MenuItem>
-                    )
-                  )}
-                </Select>
-              </FormControl>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              {/* ROW 2 - 4 DATE PICKERS */}
+
+              <Grid item xs={12} md={3}>
+                <TextField
+                  type="date"
+                  label="Production From"
+                  value={prodDateFrom}
+                  onChange={(e) => handleDateChange("prodDateFrom", e.target.value)}
+                  fullWidth
+                  size="small"
+                  InputLabelProps={{ shrink: true }}
+                  inputProps={{ max: today }}
+                  error={!!errors.prodDateFrom}
+                  helperText={errors.prodDateFrom}
+                />
+              </Grid>
+
+              <Grid item xs={12} md={3}>
+                <TextField
+                  type="date"
+                  label="Production To"
+                  value={prodDateTo}
+                  onChange={(e) => handleDateChange("prodDateTo", e.target.value)}
+                  fullWidth
+                  size="small"
+                  InputLabelProps={{ shrink: true }}
+                  inputProps={{ max: today }}
+                  error={!!errors.prodDateTo}
+                  helperText={errors.prodDateTo}
+                />
+              </Grid>
+
+              <Grid item xs={12} md={3}>
+                <TextField
+                  type="date"
+                  label="Repair From"
+                  value={repairFrom}
+                  onChange={(e) => handleDateChange("repairFrom", e.target.value)}
+                  fullWidth
+                  size="small"
+                  InputLabelProps={{ shrink: true }}
+                  inputProps={{ max: today }}
+                  error={!!errors.repairFrom}
+                  helperText={errors.repairFrom}
+                />
+              </Grid>
+
+              <Grid item xs={12} md={3}>
+                <TextField
+                  type="date"
+                  label="Repair To"
+                  value={repairTo}
+                  onChange={(e) => handleDateChange("repairTo", e.target.value)}
+                  fullWidth
+                  size="small"
+                  InputLabelProps={{ shrink: true }}
+                  inputProps={{ max: today }}
+                  error={!!errors.repairTo}
+                  helperText={errors.repairTo}
+                />
+              </Grid>
+
             </Grid>
 
-            <Grid item xs={12} md={3}>
-              <FormControl
-                fullWidth
-                size="small"
-                sx={{
-                  "& .MuiInputLabel-root": {
-                    backgroundColor: "#fff",
-                    px: 0.5,
-                  }
+            {/* ACTION BUTTONS */}
+            <Box
+              display="flex"
+              justifyContent="flex-end"
+              gap={2}
+              mt={4}
+            >
+              <Button
+                variant="outlined"
+                onClick={() => {
+                  setSelectedModels([]);
+                  setSelectedParts([]);
+                  setSelectedRegions([]);
+                  setProdDateFrom("");
+                  setProdDateTo("");
+                  setRepairFrom("");
+                  setRepairTo("");
                 }}
               >
-                <InputLabel shrink>Region</InputLabel>
-                <Select
-                  multiple
-                  value={selectedRegions}
-                  onChange={(e) => setSelectedRegions(e.target.value)}
-                >
-                  {["North", "South", "East", "West"].map((r) => (
-                    <MenuItem key={r} value={r}>
-                      {r}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
+                Reset
+              </Button>
 
-            {/* ROW 2 - 4 DATE PICKERS */}
+              <Button
+                variant="contained"
+                onClick={handleApplyFilters}
+                disabled={loading}
+              >
+                {loading ? "Applying..." : "Apply Filters"}
+              </Button>
+            </Box>
 
-            <Grid item xs={12} md={3}>
-              <TextField
-                type="date"
-                label="Production From"
-                value={prodDateFrom}
-                onChange={(e) => handleDateChange("prodDateFrom", e.target.value)}
-                fullWidth
-                size="small"
-                InputLabelProps={{ shrink: true }}
-                inputProps={{ max: today }}
-                error={!!errors.prodDateFrom}
-                helperText={errors.prodDateFrom}
-              />
-            </Grid>
-
-            <Grid item xs={12} md={3}>
-              <TextField
-                type="date"
-                label="Production To"
-                value={prodDateTo}
-                onChange={(e) => handleDateChange("prodDateTo", e.target.value)}
-                fullWidth
-                size="small"
-                InputLabelProps={{ shrink: true }}
-                inputProps={{ max: today }}
-                error={!!errors.prodDateTo}
-                helperText={errors.prodDateTo}
-              />
-            </Grid>
-
-            <Grid item xs={12} md={3}>
-              <TextField
-                type="date"
-                label="Repair From"
-                value={repairFrom}
-                onChange={(e) => handleDateChange("repairFrom", e.target.value)}
-                fullWidth
-                size="small"
-                InputLabelProps={{ shrink: true }}
-                inputProps={{ max: today }}
-                error={!!errors.repairFrom}
-                helperText={errors.repairFrom}
-              />
-            </Grid>
-
-            <Grid item xs={12} md={3}>
-              <TextField
-                type="date"
-                label="Repair To"
-                value={repairTo}
-                onChange={(e) => handleDateChange("repairTo", e.target.value)}
-                fullWidth
-                size="small"
-                InputLabelProps={{ shrink: true }}
-                inputProps={{ max: today }}
-                error={!!errors.repairTo}
-                helperText={errors.repairTo}
-              />
-            </Grid>
-
-          </Grid>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </Collapse>
 
 
       {/* Charts */}
@@ -608,7 +683,48 @@ const WarrantyAnalysis = () => {
                     />
 
                     <YAxis />
-                    <Tooltip />
+                    <Tooltip
+                      content={({ active, payload, label }) => {
+                        if (!active || !payload || payload.length === 0) return null;
+
+                        const isBaseline =
+                          latestImprovement?.yearMonth === label;
+
+                        return (
+                          <div
+                            style={{
+                              background: "#fff",
+                              padding: "10px",
+                              border: "1px solid #ddd",
+                              borderRadius: 6,
+                              boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                            }}
+                          >
+                            <p style={{ margin: 0, fontWeight: 600 }}>
+                              {label}
+                            </p>
+
+                            {payload.map((entry, index) => (
+                              <p key={index} style={{ margin: 0 }}>
+                                {entry.name}: {entry.value}
+                              </p>
+                            ))}
+
+                            {isBaseline && (
+                              <p
+                                style={{
+                                  marginTop: 6,
+                                  fontWeight: 600,
+                                  color: "red",
+                                }}
+                              >
+                                Improvement: {latestImprovement.description}
+                              </p>
+                            )}
+                          </div>
+                        );
+                      }}
+                    />
                     <Legend />
 
                     <Bar dataKey="production" fill="#3b82f6" barSize={25} />
@@ -631,11 +747,26 @@ const WarrantyAnalysis = () => {
                     </Line>
 
                     <ReferenceLine
-                      x={latestImprovement.month}
-                      stroke="black"
-                      strokeWidth={2}
-                      strokeDasharray="6 6"
+                      x={latestImprovement?.yearMonth}
+                      stroke="red"
+                      strokeDasharray="5 5"
+                      label={({ viewBox }) => {
+                        const { x, y } = viewBox;
+                        return (
+                          <text
+                            x={x}
+                            y={y - 5}
+                            textAnchor="middle"
+                            fill="red"
+                            fontWeight="bold"     // 🔥 bold
+                            fontSize={12}
+                          >
+                            Latest Improvement
+                          </text>
+                        );
+                      }}
                     />
+
 
                   </ComposedChart>
                 </ResponsiveContainer>
