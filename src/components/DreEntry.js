@@ -83,7 +83,7 @@ const DREEntry = () => {
     dreId: '',
     dreNumber: '',
     dreEngineerName: '',
-    date: '',
+    date: today,
     model: '',
     part: '',
     problem: '',

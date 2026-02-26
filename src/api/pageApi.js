@@ -70,12 +70,7 @@ export const createUser = (payload) => {
 }
 
 export const updateUser = (payload) => {
-    console.log(
-        "RAW UPDATE PAYLOAD:",
-        JSON.stringify(payload, null, 2)
-    );
-
-    return postRequest(`/ users / update`, payload);
+    return postRequest(`/users/update`, payload);
 }
 
 export const deleteUser = (id) => {

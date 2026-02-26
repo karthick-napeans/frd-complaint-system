@@ -43,6 +43,10 @@ const UserManagement = () => {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [userIdToDelete, setUserIdToDelete] = useState(null);
   const [errors, setErrors] = useState({});
+  const [paginationModel, setPaginationModel] = useState({
+    page: 0,
+    pageSize: 10,
+  });
 
   const patterns = {
     char: /^[A-Za-z ]+$/,                 // letters + space
@@ -116,14 +120,20 @@ const UserManagement = () => {
           ? users.Data
           : [];
 
-      setUsers(userList);
+      // 🔥 Sort by UserId DESC
+      const sortedUsers = [...userList].sort(
+        (a, b) => b.UserId - a.UserId
+      );
+
+      setUsers(sortedUsers);
+
     } catch (error) {
       console.error("Error fetching users:", error);
     } finally {
       setLoading(false);
     }
   };
-
+  
   const handleOpenAdd = () => {
     setEditingUser(null);
     setFormData({ username: '', email: '', role: 'QC_User', password: '' });
@@ -136,6 +146,7 @@ const UserManagement = () => {
       userId: row.UserId,
       username: row.UserName ?? '',
       email: row.EmailId ?? '',
+      employeeId: row.EmployeeId ?? '',
       role: row.UserRole ?? 'QC_User',
       contactNumber: row.ContactNumber ? String(row.ContactNumber) : '',
       designation: row.Designation ?? '',
@@ -210,6 +221,8 @@ const UserManagement = () => {
       UserName: formData.username || editingUser.UserName,
       EmailId: formData.email || editingUser.EmailId,
 
+      EmployeeId: formData.employeeId,
+
       PasswordHash: editingUser.PasswordHash,
       ProfilePicUrl: editingUser.ProfilePicUrl ?? null,
 
@@ -251,10 +264,11 @@ const UserManagement = () => {
           UserRole: formData.role,
           Designation: formData.designation,
           ProfilePicUrl: null,
+          EmployeeId: formData.employeeId
         };
 
         await createUser(newUser);
-        handleResetUserForm(); 
+        handleResetUserForm();
         await fetchUsers();
       }
 
@@ -266,7 +280,7 @@ const UserManagement = () => {
       setSubmitError(message);
 
     } finally {
-      setSubmitLoading(false); 
+      setSubmitLoading(false);
     }
   };
 
@@ -297,15 +311,23 @@ const UserManagement = () => {
 
   const columns = [
     {
-      field: 'sno',
-      headerName: 'S. No',
+      field: 'serialNo',
+      headerName: 'S.No',
       width: 80,
-      align: 'center',
       headerAlign: 'center',
+      align: 'center',
       sortable: false,
       filterable: false,
-      renderCell: (params) =>
-        params.api.getRowIndexRelativeToVisibleRows(params.id) + 1,
+      renderCell: (params) => {
+        const currentPage = paginationModel.page;
+        const pageSize = paginationModel.pageSize;
+
+        const visibleIndex = users
+          .slice(currentPage * pageSize, currentPage * pageSize + pageSize)
+          .findIndex((row) => row.UserId === params.row.UserId);
+
+        return currentPage * pageSize + visibleIndex + 1;
+      },
     },
     {
       field: 'EmployeeId',
@@ -395,34 +417,27 @@ const UserManagement = () => {
               rows={users}
               columns={columns}
               getRowId={(row) => row.UserId}
-              loading={loading}   // 🔥 Add this line
+              loading={loading}
+              pageSizeOptions={[10, 20, 50]}
+
 
               pagination
-              autoHeight              // 🔥 KEY LINE
-              pageSizeOptions={[10, 20, 50]}
-              initialState={{
-                pagination: {
-                  paginationModel: {
-                    page: 0,
-                    pageSize: 10,
-                  },
-                },
-              }}
+              autoHeight
+
+              paginationModel={paginationModel}
+              onPaginationModelChange={setPaginationModel}
 
               disableRowSelectionOnClick
 
               sx={{
                 border: 'none',
-
                 '& .MuiDataGrid-columnHeaders': {
                   backgroundColor: '#f8fafc',
                   fontWeight: 700,
                 },
-
                 '& .MuiDataGrid-row:hover': {
                   backgroundColor: '#f9fafb',
                 },
-
                 '& .MuiDataGrid-cell': {
                   justifyContent: 'center',
                   display: 'flex',

@@ -7,7 +7,7 @@ import {
   Typography,
   Chip,
   TextField,
-  MenuItem,
+  MenuItem, Button
 } from "@mui/material";
 
 import {
@@ -25,14 +25,6 @@ import {
 } from "recharts";
 
 import { getDashboardData } from "../api/pageApi";
-import AssignmentIcon from "@mui/icons-material/Assignment";
-import ReportProblemIcon from "@mui/icons-material/ReportProblem";
-import AnalyticsIcon from "@mui/icons-material/Analytics";
-import BuildIcon from "@mui/icons-material/Build";
-import PrecisionManufacturingIcon from "@mui/icons-material/PrecisionManufacturing";
-import DraftsIcon from "@mui/icons-material/Drafts";
-import InventoryIcon from "@mui/icons-material/Inventory";
-import CategoryIcon from "@mui/icons-material/Category";
 import { useDispatch, useSelector } from "react-redux";
 import { loadMasters } from "../store/masterSlice";
 
@@ -74,8 +66,27 @@ export default function Dashboard() {
 
   // ---------------- VALIDATION ----------------
   const validateDates = (from, to) => {
-    const errors = { fromDate: "", toDate: "" };
 
+    const errors = {
+      fromDate: "",
+      toDate: "",
+    };
+
+    const today = new Date().toISOString().split("T")[0];
+
+    // if both empty → no error
+    if (!from && !to) return errors;
+
+    // future date validation
+    if (from && from > today) {
+      errors.fromDate = "Invalid Date";
+    }
+
+    if (to && to > today) {
+      errors.toDate = "Invalid Date";
+    }
+
+    // range validation
     if (from && to && from > to) {
       errors.fromDate = "From date must be ≤ To date";
       errors.toDate = "To date must be ≥ From date";
@@ -132,6 +143,7 @@ export default function Dashboard() {
       loadDashboardStats(from, to);
     }
   }, [filterDays, customFrom, customTo]);
+ 
 
   // Module Comparison
   const moduleData = [
@@ -170,6 +182,37 @@ export default function Dashboard() {
           Complaint Management Dashboard
         </Typography>
 
+        {filterDays === "custom" && (
+          <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
+            <TextField
+              type="date"
+              size="small"
+              label="From"
+              InputLabelProps={{ shrink: true }}
+              value={customFrom || ""}
+              onChange={(e) => setCustomFrom(e.target.value)}
+            />
+
+            <TextField
+              type="date"
+              size="small"
+              label="To"
+              InputLabelProps={{ shrink: true }}
+              value={customTo || ""}
+              onChange={(e) => setCustomTo(e.target.value)}
+            />
+
+            {/* <Button
+              variant="contained"
+              size="small"
+              disabled={!customFrom || !customTo}
+              onClick={handleApplyCustomFilter}
+            >
+              Apply
+            </Button> */}
+          </Box>
+        )}
+
         <TextField
           select
           size="small"
@@ -187,7 +230,6 @@ export default function Dashboard() {
       {/* STAT CARDS */}
 
       <Grid container spacing={3} mb={2}>
-
         {[
           {
             title: "Field Reports",

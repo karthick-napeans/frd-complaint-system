@@ -444,7 +444,7 @@ const ComplaintForm = () => {
       } else {
         setMessage("✓ Draft saved successfully");
       }
-
+      resetForm();
       await fetchComplaints();
 
       if (!formData.complaintId) {

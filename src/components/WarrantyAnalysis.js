@@ -358,10 +358,7 @@ const WarrantyAnalysis = () => {
       region: r,
       count: map[r] || 0
     }));
-  }, [uiFilteredData]);
-
-
-
+  }, [uiFilteredData]); 
 
 
   const sortedData = [...prodRepairData].sort((a, b) => {
