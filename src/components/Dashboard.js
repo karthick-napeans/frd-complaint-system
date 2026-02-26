@@ -68,9 +68,12 @@ export default function Dashboard() {
 
   const today = formatDate(new Date());
   const fromDate = getFromDate(filterDays);
-
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
+  const [dateErrors, setDateErrors] = useState({
+    fromDate: "",
+    toDate: "",
+  });
 
   // ---------- STATS ----------
   const [totalFieldReports, setTotalFieldReports] = useState(0);
@@ -86,8 +89,47 @@ export default function Dashboard() {
   // ---------- TABLE ----------
   const [recentComplaints, setRecentComplaints] = useState([]);
 
+  useEffect(() => {
+    const errors = validateDates(customFrom, customTo);
+    setDateErrors(errors);
+  }, [customFrom, customTo]);
+
+  const validateDates = (from, to) => {
+
+    const errors = {
+      fromDate: "",
+      toDate: "",
+    };
+
+    const today = new Date().toISOString().split("T")[0];
+
+    // if both empty → no error
+    if (!from && !to) return errors;
+
+    // future date validation
+    if (from && from > today) {
+      errors.fromDate = "Invalid Date";
+    }
+
+    if (to && to > today) {
+      errors.toDate = "Invalid Date";
+    }
+
+    // range validation
+    if (from && to && from > to) {
+      errors.fromDate = "From date must be ≤ To date";
+      errors.toDate = "To date must be ≥ From date";
+    }
+
+    return errors;
+  };
+
   // ---------- LOAD DASHBOARD ----------
   const loadDashboardStats = async (from, to) => {
+    const errors = validateDates(customFrom, customTo);
+    setDateErrors(errors);
+
+    if (errors.fromDate || errors.toDate) return;
 
     console.log("Loading dashboard:", from, to);
     // TODO: replace with real API
@@ -215,9 +257,9 @@ export default function Dashboard() {
                 label="From"
                 value={customFrom}
                 InputLabelProps={{ shrink: true }}
-                onChange={(e) =>
-                  setCustomFrom(e.target.value)
-                }
+                onChange={(e) => setCustomFrom(e.target.value)}
+                error={!!dateErrors.fromDate}
+                helperText={dateErrors.fromDate}
               />
 
               <TextField
@@ -226,9 +268,9 @@ export default function Dashboard() {
                 label="To"
                 value={customTo}
                 InputLabelProps={{ shrink: true }}
-                onChange={(e) =>
-                  setCustomTo(e.target.value)
-                }
+                onChange={(e) => setCustomTo(e.target.value)}
+                error={!!dateErrors.toDate}
+                helperText={dateErrors.toDate}
               />
 
               <Chip
