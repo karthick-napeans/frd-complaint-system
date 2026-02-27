@@ -197,11 +197,7 @@ const DREEntry = () => {
   const validateStep0 = () => {
     let tempErrors = {}; 
 
-    if (!formData.dreNumber)
-      tempErrors.dreNumber = "Required";
-
-    if (!formData.date)
-      tempErrors.date = "Required";
+ 
 
     if (!formData.model)
       tempErrors.model = "Required";
@@ -330,7 +326,7 @@ const DREEntry = () => {
 
   return (
     <Box>
-      <Typography variant="h5" fontWeight={700} sx={{ mb: 2 }}>
+      <Typography variant="h5" fontWeight={700} sx={{ mb: 2 , color: "#3b3b3b" }}>
         DRE Entry
       </Typography>
 

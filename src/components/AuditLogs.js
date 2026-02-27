@@ -171,7 +171,7 @@ const AuditLogs = () => {
 
   return (
     <Box>
-      <Typography  variant='h5' fontWeight={700} sx={{ mb: 2 }}>
+      <Typography  variant='h5' fontWeight={700} sx={{ mb: 2 , color: "#3b3b3b" }}>
         Audit Logs
       </Typography>
 

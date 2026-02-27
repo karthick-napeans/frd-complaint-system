@@ -138,7 +138,7 @@ const ComplaintAnalysis = ({ apiData }) => {
     return (
         <Box sx={{ p: 3, backgroundColor: "#fff" }}>
 
-            <Typography align="center" fontWeight="bold" fontSize={20}>
+            <Typography align="center" fontWeight="bold" fontSize={20} sx={{ color: "#3b3b3b" }}>
                 CUSTOMER COMPLAINT PPM TREND - {selectedYear}
             </Typography>
 

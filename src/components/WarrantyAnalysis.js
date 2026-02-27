@@ -347,19 +347,27 @@ const WarrantyAnalysis = () => {
 
   // 5️⃣ Region
   const regionData = useMemo(() => {
-    const map = {};
+    if (!apiData?.RegionDistribution) return [];
 
-    uiFilteredData.forEach((d) => {
-      if (!d.region) return;
-      map[d.region] = (map[d.region] || 0) + 1;
+    const regionMap = {};
+
+    apiData.RegionDistribution.forEach(item => {
+      regionMap[item.Region] = item.FailureCount;
     });
 
-    return ["North", "South", "East", "West"].map(r => ({
-      region: r,
-      count: map[r] || 0
-    }));
-  }, [uiFilteredData]); 
+    const regionNameMap = {
+      N: "North",
+      S: "South",
+      E: "East",
+      W: "West",
+    };
 
+    return ["N", "S", "E", "W"].map(code => ({
+      region: regionNameMap[code],
+      count: regionMap[code] || 0,
+    }));
+
+  }, [apiData]);
 
   const sortedData = [...prodRepairData].sort((a, b) => {
     return new Date(a.month) - new Date(b.month);
@@ -376,7 +384,7 @@ const WarrantyAnalysis = () => {
         justifyContent="space-between"
         mb={2}
       >
-        <Typography variant="h5" fontWeight="bold">
+        <Typography variant="h5" fontWeight="bold" sx={{ color: "#3b3b3b" }}>
           Warranty Analysis
         </Typography>
 

@@ -200,7 +200,7 @@ const DreSummary = () => {
 
             {/* Header */}
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                <Typography variant="h5" fontWeight={700} >
+                <Typography variant="h5" fontWeight={700} sx={{ color: "#3b3b3b" }}>
                     DRE Summary
                 </Typography>
 

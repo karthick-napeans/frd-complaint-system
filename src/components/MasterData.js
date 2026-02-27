@@ -132,16 +132,18 @@ const MasterData = ({ userRole = "Admin" }) => {
       const data = await getMasters(masterType);
 
       const sortedData = Array.isArray(data)
-        ? [...data].sort((a, b) => {
-          // Find dynamic Id key (CustomerId, ModelId, etc.)
-          const idKey = Object.keys(a).find(key =>
-            key.toLowerCase().endsWith("id")
-          );
+        ? [...data]
+          .filter(item => item.IsActive === "true" || item.IsActive === true)
 
-          if (!idKey) return 0;
+          .sort((a, b) => {
+            const idKey = Object.keys(a).find(key =>
+              key.toLowerCase().endsWith("id")
+            );
 
-          return (b[idKey] || 0) - (a[idKey] || 0);
-        })
+            if (!idKey) return 0;
+
+            return (b[idKey] || 0) - (a[idKey] || 0);
+          })
         : [];
 
       setRows(sortedData);
@@ -152,6 +154,7 @@ const MasterData = ({ userRole = "Admin" }) => {
       setLoading(false);
     }
   };
+
   const handleOpenAdd = () => {
     setEditingRow(null);
     setFormData({});
@@ -357,7 +360,7 @@ const MasterData = ({ userRole = "Admin" }) => {
   return (
     <Box>
       <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
-        <Typography variant="h5" fontWeight={700}>
+        <Typography variant="h5" fontWeight={700} sx={{ color: "#3b3b3b" }}>
           Master Data Management
         </Typography>
 

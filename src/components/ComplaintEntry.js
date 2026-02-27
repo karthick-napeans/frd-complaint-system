@@ -124,7 +124,7 @@ const ComplaintEntry = () => {
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Typography variant="h4" fontWeight="bold" sx={{ mb: 3 }}>
+      <Typography variant="h4" fontWeight="bold" sx={{ mb: 3 }} color="#3b3b3b">
         Complaint & DRE Entry
       </Typography>
 

@@ -121,9 +121,9 @@ const UserManagement = () => {
           : [];
 
       // 🔥 Sort by UserId DESC
-      const sortedUsers = [...userList].sort(
-        (a, b) => b.UserId - a.UserId
-      );
+      const sortedUsers = [...userList]
+        .filter(user => user.IsActive === "true" || user.IsActive === true) // ✅ Active only
+        .sort((a, b) => b.UserId - a.UserId);        // ✅ Descending order
 
       setUsers(sortedUsers);
 
@@ -133,7 +133,7 @@ const UserManagement = () => {
       setLoading(false);
     }
   };
-  
+
   const handleOpenAdd = () => {
     setEditingUser(null);
     setFormData({ username: '', email: '', role: 'QC_User', password: '' });
@@ -401,7 +401,7 @@ const UserManagement = () => {
   return (
     < Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-        <Typography variant="h5" fontWeight={700}>
+        <Typography variant="h5" fontWeight={700} sx={{ color: "#3b3b3b" }}>
           User Management
         </Typography>
 

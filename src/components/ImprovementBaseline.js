@@ -128,7 +128,7 @@ const ImprovementBaselinePage = () => {
     return (
         <Box >
 
-            <Typography variant="h5" fontWeight={700} mb={2}>
+            <Typography variant="h5" fontWeight={700} mb={2} sx={{ color: "#3b3b3b" }}>
                 Improvement Baseline Configuration
             </Typography>
 

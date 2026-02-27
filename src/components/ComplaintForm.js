@@ -369,31 +369,40 @@ const ComplaintForm = () => {
   const buildComplaintFormData = (status) => {
     const fd = new FormData();
 
-    // 🔹 Normal fields
+    // 🔹 Normal Fields
     fd.append("complaintId", formData.complaintId || "");
-    fd.append("customerId", formData.customerSelected);
-    fd.append("customerEmail", formData.customerEmail);
-    fd.append("complaintDate", formData.complaintDate);
-    fd.append("model", formData.modelSelected);
-    fd.append("part", formData.partSelected);
-    fd.append("problemStatement", formData.problemStatement);
-    fd.append("causeCode", formData.causeCode);
-    fd.append("severity", formData.severityLevel);
+    fd.append("customerId", formData.customerSelected || "");
+    fd.append("customerEmail", formData.customerEmail || "");
+    fd.append("complaintDate", formData.complaintDate || "");
+    fd.append("model", formData.modelSelected || "");
+    fd.append("part", formData.partSelected || "");
+    fd.append("problemStatement", formData.problemStatement || "");
+    fd.append("causeCode", formData.causeCode || "");
+    fd.append("severity", formData.severityLevel || "");
     fd.append("status", status);
 
     // 🔥 Attachments
-    attachmentRows.forEach((row, index) => {
+    let attachmentIndex = 0;
+
+    attachmentRows.forEach((row) => {
       if (row.file) {
-        fd.append(`attachments[${index}].file`, row.file);
-        fd.append(`attachments[${index}].attachmentName`, row.listName);
-        fd.append(`attachments[${index}].expiryDate`, row.expiryDate || "");
-        fd.append(`attachments[${index}].isMandatory`, row.isMandatory);
+
+        // Clean comma separated emails
+        const cleanEmails = row.emails
+          ? row.emails.split(",").map(e => e.trim()).join(",")
+          : "";
+
+        fd.append(`attachments[${attachmentIndex}].checklistId`, row.id);
+        fd.append(`attachments[${attachmentIndex}].file`, row.file);
+        fd.append(`attachments[${attachmentIndex}].emails`, cleanEmails);
+        fd.append(`attachments[${attachmentIndex}].expiryDate`, row.expiryDate || "");
+
+        attachmentIndex++;
       }
     });
 
     return fd;
   };
-
   const resetForm = () => {
     setFormData({ ...INITIAL_FORM_STATE });
 
@@ -551,7 +560,7 @@ const ComplaintForm = () => {
 
   return (
     <Box>
-      <Typography variant="h5" fontWeight={700} sx={{ mb: 2 }}>
+      <Typography variant="h5" fontWeight={700} sx={{ mb: 2, color: "#3b3b3b" }}>
         Customer Complaint Entry
       </Typography>
 

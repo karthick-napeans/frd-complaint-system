@@ -23,7 +23,6 @@ import {
   Cell,
   Legend,
 } from "recharts";
-
 import { getDashboardData } from "../api/pageApi";
 import { useDispatch, useSelector } from "react-redux";
 import { loadMasters } from "../store/masterSlice";
@@ -31,25 +30,14 @@ import { loadMasters } from "../store/masterSlice";
 export default function Dashboard() {
   const dispatch = useDispatch();
   const loaded = useSelector((s) => s.masters.loaded);
-
-  useEffect(() => {
-    if (!loaded) dispatch(loadMasters());
-  }, [loaded, dispatch]);
-
-  // ---------------- FILTER ----------------
   const [filterDays, setFilterDays] = useState(7);
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
-
   const today = new Date().toISOString().split("T")[0];
-
-  const getFromDate = (days) => {
-    const date = new Date();
-    date.setDate(date.getDate() - (days - 1));
-    return date.toISOString().split("T")[0];
-  };
-
-  // ---------------- STATS ----------------
+  const [dateErrors, setDateErrors] = useState({
+    fromDate: "",
+    toDate: "",
+  });
   const [totalFieldReports, setTotalFieldReports] = useState(0);
   const [totalComplaints, setTotalComplaints] = useState(0);
   const [totalDreReports, setTotalDreReports] = useState(0);
@@ -59,12 +47,46 @@ export default function Dashboard() {
   const [totalModels, setTotalModels] = useState(0);
   const [totalAttachmentDue, setTotalAttachmentDue] = useState(0);
 
-  // ---------------- CHART DATA ----------------
-  const [trendData, setTrendData] = useState([]);
-  const [modelData, setModelData] = useState([]);
-  const [statusData, setStatusData] = useState([]);
+  useEffect(() => {
+    if (!loaded) dispatch(loadMasters());
+  }, [loaded, dispatch]);
 
-  // ---------------- VALIDATION ----------------
+  useEffect(() => {
+    const today = new Date();
+
+    const toDate = today.toISOString().split("T")[0];
+
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(today.getMonth() - 6);
+
+    const fromDate = sixMonthsAgo.toISOString().split("T")[0];
+
+    setCustomFrom(fromDate);
+    setCustomTo(toDate);
+  }, []);
+
+  useEffect(() => {
+    const from =
+      filterDays === "custom"
+        ? customFrom
+        : getFromDate(filterDays);
+
+    const to =
+      filterDays === "custom"
+        ? customTo
+        : today;
+
+    if (from && to) {
+      loadDashboardStats(from, to);
+    }
+  }, [filterDays, customFrom, customTo]);
+
+  const getFromDate = (days) => {
+    const date = new Date();
+    date.setDate(date.getDate() - (days - 1));
+    return date.toISOString().split("T")[0];
+  };
+
   const validateDates = (from, to) => {
 
     const errors = {
@@ -95,7 +117,6 @@ export default function Dashboard() {
     return errors;
   };
 
-  // ---------------- LOAD DASHBOARD ----------------
   const loadDashboardStats = async (from, to) => {
     const errors = validateDates(from, to);
     if (errors.fromDate || errors.toDate) return;
@@ -105,9 +126,7 @@ export default function Dashboard() {
         FromDate: from,
         ToDate: to,
       };
-
       const res = await getDashboardData(payload);
-
       setTotalFieldReports(res?.TotalFieldReports || 0);
       setTotalComplaints(res?.TotalCustomerComplaints || 0);
       setTotalDreReports(res?.TotalDreEntry || 0);
@@ -118,34 +137,25 @@ export default function Dashboard() {
       setTotalAttachmentDue(
         res?.TotalCustomerComplaintsAttachmentsInDue || 0
       );
-
-      // If API returns chart data
-      setTrendData(res?.TrendData || []);
-      setModelData(res?.ModelData || []);
-      setStatusData(res?.StatusData || []);
     } catch (error) {
       console.error("Dashboard Error:", error);
     }
   };
 
-  useEffect(() => {
-    const from =
-      filterDays === "custom"
-        ? customFrom
-        : getFromDate(filterDays);
+  const handleFromChange = (value) => {
+    setCustomFrom(value);
 
-    const to =
-      filterDays === "custom"
-        ? customTo
-        : today;
+    const errors = validateDates(value, customTo);
+    setDateErrors(errors);
+  };
 
-    if (from && to) {
-      loadDashboardStats(from, to);
-    }
-  }, [filterDays, customFrom, customTo]);
- 
+  const handleToChange = (value) => {
+    setCustomTo(value);
 
-  // Module Comparison
+    const errors = validateDates(customFrom, value);
+    setDateErrors(errors);
+  };
+
   const moduleData = [
     { name: "Field Reports", value: totalFieldReports },
     { name: "Customer", value: totalComplaints },
@@ -153,14 +163,12 @@ export default function Dashboard() {
     { name: "Masters", value: totalParts + totalModels },
   ];
 
-  // Customer Breakdown
   const customerData = [
     { name: "Complaints", value: totalComplaints },
     { name: "Draft", value: totalComplaintDraft },
     { name: "Attachment Due", value: totalAttachmentDue },
   ];
 
-  // DRE Breakdown
   const dreData = [
     { name: "Entries", value: totalDreReports },
     { name: "Draft", value: totalDreDraft },
@@ -178,7 +186,11 @@ export default function Dashboard() {
           justifyContent: "space-between",
         }}
       >
-        <Typography variant="h5" fontWeight={700}>
+        <Typography
+          variant="h5"
+          fontWeight={700}
+          sx={{ color: "#3b3b3b" }}
+        >
           Complaint Management Dashboard
         </Typography>
 
@@ -190,7 +202,9 @@ export default function Dashboard() {
               label="From"
               InputLabelProps={{ shrink: true }}
               value={customFrom || ""}
-              onChange={(e) => setCustomFrom(e.target.value)}
+              onChange={(e) => handleFromChange(e.target.value)}
+              error={!!dateErrors.fromDate}
+              helperText={dateErrors.fromDate}
             />
 
             <TextField
@@ -199,7 +213,9 @@ export default function Dashboard() {
               label="To"
               InputLabelProps={{ shrink: true }}
               value={customTo || ""}
-              onChange={(e) => setCustomTo(e.target.value)}
+              onChange={(e) => handleToChange(e.target.value)}
+              error={!!dateErrors.toDate}
+              helperText={dateErrors.toDate}
             />
 
             {/* <Button

@@ -273,7 +273,7 @@ const WarrantyColumnMapper = () => {
 
   return (
     <Box >
-      <Typography variant="h5" fontWeight="bold" mb={3}>
+      <Typography variant="h5" fontWeight="bold" mb={3} sx={{ color: "#3b3b3b" }}>
         Master Excel Template Mapper
       </Typography>
 

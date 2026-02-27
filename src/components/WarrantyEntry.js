@@ -248,7 +248,7 @@ const WarrantyEntry = () => {
 
   return (
     <Box >
-      <Typography variant="h5" fontWeight="bold" sx={{ mb: 2 }}>
+      <Typography variant="h5" fontWeight="bold" sx={{ mb: 2, color: "#3b3b3b" }} >
         Warranty Claim Entry - Excel Upload
       </Typography>
 
