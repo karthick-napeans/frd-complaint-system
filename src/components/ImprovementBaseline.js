@@ -11,7 +11,7 @@ import {
     Stack,
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
-import EditIcon from "@mui/icons-material/Edit";
+import ConfirmDialog from "./ConfirmDialog";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
 import { saveImprovementBaseline, getAllImprovementList, deleteImprovementBaseline } from "../api/pageApi";
@@ -21,11 +21,22 @@ const ImprovementBaselinePage = () => {
         lastImprovementDate: new Date().toISOString().split("T")[0],
         improvementDescription: "",
     })
+    const [confirmState, setConfirmState] = useState({
+        open: false,
+        title: "",
+        message: "",
+        successMessage: "",
+        errorMessage: "",
+        onConfirm: null
+    });
     const [saving, setSaving] = useState(false);
     const [errors, setErrors] = useState({});
     const [rows, setRows] = useState([]);
     const [loading, setLoading] = useState(false);
-
+    const [paginationModel, setPaginationModel] = React.useState({
+        page: 0,
+        pageSize: 10,
+    });
     useEffect(() => {
         fetchImprovementList();
     }, []);
@@ -57,30 +68,38 @@ const ImprovementBaselinePage = () => {
         }
     };
 
-    const handleDelete = async (row) => {
-        try {
-            console.log("Delete Activated");
+    const handleDelete = (row) => {
+        setConfirmState({
+            open: true,
+            title: "Delete Improvement",
+            message: `Are you sure you want to delete this improvement record dated ${row.date}?`,
+            successMessage: "Improvement deleted successfully.",
+            errorMessage: "Failed to delete improvement.",
+            onConfirm: () => confirmDeleteImprovement(row)
+        });
+    };
 
-            // 🔥 Full row data available
-            console.log("Full Row:", row);
+    const confirmDeleteImprovement = async (row) => {
+        console.log("Delete Activated");
+        console.log("Full Row:", row);
 
-            const payload = {
-                ImprovementId: row.id,
-                ImprovementDate: row.date,
-                Details: row.description,
-            };
+        const payload = {
+            ImprovementId: row.id,
+            ImprovementDate: row.date,
+            Details: row.description,
+        };
 
-            console.log("Sending Payload:", payload);
+        console.log("Sending Payload:", payload);
 
-            const res = await deleteImprovementBaseline(payload);
+        const res = await deleteImprovementBaseline(payload);
 
-            console.log("Delete response:", res);
+        console.log("Delete response:", res);
 
-            await fetchImprovementList();
+        await fetchImprovementList();
+    };
 
-        } catch (err) {
-            console.error("Delete failed", err);
-        }
+    const handleCancelDelete = () => {
+        setConfirmState(prev => ({ ...prev, open: false }));
     };
 
     const handleCreate = async () => {
@@ -220,55 +239,36 @@ const ImprovementBaselinePage = () => {
                             Improvement History
                         </Typography>
 
-                        <Button
-                            variant="outlined"
-                            startIcon={<AddIcon />}
-                            onClick={() =>
-                                setRows([
-                                    ...rows,
-                                    {
-                                        id: Date.now(),
-                                        date: "",
-                                        description: "",
-                                    },
-                                ])
-                            }
-                        >
-                            Add
-                        </Button>
+
                     </Box>
 
                     <DataGrid
                         autoHeight
                         loading={loading}
                         rows={rows}
-                        sx={{
-                            "& .MuiDataGrid-cell": {
-                                display: "flex",
-                                alignItems: "center",   // 🔥 vertical center
-                                justifyContent: "center", // 🔥 horizontal center
-                            },
-                            "& .MuiDataGrid-columnHeader": {
-                                justifyContent: "center",
-                            },
-                        }}
-
                         columns={[
                             {
                                 field: "sno",
                                 headerName: "S.No",
-                                width: 80,
+                                width: 90,
                                 sortable: false,
                                 filterable: false,
                                 align: "center",
                                 headerAlign: "center",
-                                renderCell: (params) =>
-                                    params.api.getRowIndexRelativeToVisibleRows(params.id) + 1,
+                                renderCell: (params) => {
+                                    const page = paginationModel.page;
+                                    const pageSize = paginationModel.pageSize;
+                                    const rowIndex =
+                                        params.api.getRowIndexRelativeToVisibleRows(params.id);
+
+                                    return page * pageSize + rowIndex + 1;
+                                },
                             },
                             {
                                 field: "date",
                                 headerName: "Improvement Date",
                                 flex: 1,
+                                minWidth: 180,
                                 editable: true,
                                 align: "center",
                                 headerAlign: "center",
@@ -277,6 +277,7 @@ const ImprovementBaselinePage = () => {
                                 field: "description",
                                 headerName: "Description",
                                 flex: 2,
+                                minWidth: 300,
                                 editable: true,
                                 align: "center",
                                 headerAlign: "center",
@@ -289,27 +290,58 @@ const ImprovementBaselinePage = () => {
                                 align: "center",
                                 headerAlign: "center",
                                 renderCell: (params) => (
-                                    <Stack direction="row" spacing={1}>
+                                    <Box
+                                        sx={{
+                                            width: "100%",
+                                            height: "100%",
+                                            display: "flex",
+                                            justifyContent: "center",
+                                            alignItems: "center",
+                                        }}
+                                    >
                                         <DeleteIcon
                                             sx={{ cursor: "pointer" }}
                                             color="error"
                                             onClick={() => handleDelete(params.row)}
                                         />
-                                    </Stack>
+                                    </Box>
                                 ),
-                            },
+                            }
                         ]}
+                        pagination
+                        paginationModel={paginationModel}
+                        onPaginationModelChange={setPaginationModel}
+                        pageSizeOptions={[10, 20, 50]}
 
-                        pageSizeOptions={[5, 10]}
                         disableRowSelectionOnClick
-                        processRowUpdate={(newRow) => {
-                            setRows((prev) =>
-                                prev.map((r) => (r.id === newRow.id ? newRow : r))
-                            );
-                            return newRow;
+                        disableColumnResize
+                        disableColumnSorting
+
+                        sx={{
+                            border: "none",
+                            "& .MuiDataGrid-columnHeaders": {
+                                backgroundColor: "#f1f5f9",
+                                fontWeight: 700,
+                            },
+                            "& .MuiDataGrid-row:hover": {
+                                backgroundColor: "#f8fafc",
+                            },
+                            "& .MuiDataGrid-cell": {
+                                alignItems: "center",
+                            },
                         }}
                     />
                 </CardContent>
+
+                <ConfirmDialog
+                    open={confirmState.open}
+                    title={confirmState.title}
+                    message={confirmState.message}
+                    successMessage={confirmState.successMessage}
+                    errorMessage={confirmState.errorMessage}
+                    onConfirm={confirmState.onConfirm}
+                    onCancel={handleCancelDelete}
+                />
             </Card>
         </Box>
     );

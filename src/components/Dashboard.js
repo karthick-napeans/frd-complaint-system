@@ -163,19 +163,39 @@ export default function Dashboard() {
     { name: "Masters", value: totalParts + totalModels },
   ];
 
-  const customerData = [
-    { name: "Complaints", value: totalComplaints },
-    { name: "Draft", value: totalComplaintDraft },
-    { name: "Attachment Due", value: totalAttachmentDue },
-  ];
+
+  const submittedDre = totalDreReports - totalDreDraft;
 
   const dreData = [
-    { name: "Entries", value: totalDreReports },
-    { name: "Draft", value: totalDreDraft },
+    {
+      name: "Draft",
+      value: totalDreDraft,
+    },
+    {
+      name: "Submitted",
+      value: submittedDre < 0 ? 0 : submittedDre,
+    },
   ];
 
   const COLORS = ["#1976d2", "#ff9800", "#4caf50"];
 
+  const submittedComplaints =
+    totalComplaints - totalComplaintDraft;
+
+  const customerData = [
+    {
+      name: "Draft",
+      value: totalComplaintDraft,
+    },
+    {
+      name: "Submitted",
+      value: submittedComplaints < 0 ? 0 : submittedComplaints,
+    },
+    {
+      name: "Attachments Due",
+      value: totalAttachmentDue,
+    },
+  ];
   return (
     <Box sx={{ background: "#f4f6f8", minHeight: "100vh", }}>
       {/* HEADER */}
@@ -393,7 +413,7 @@ export default function Dashboard() {
               </Typography>
 
               <ResponsiveContainer height={230}>
-                <PieChart>
+                <PieChart width={350} height={300}>
                   <Pie
                     data={customerData}
                     dataKey="value"
@@ -409,6 +429,7 @@ export default function Dashboard() {
                       />
                     ))}
                   </Pie>
+
                   <Tooltip />
                   <Legend />
                 </PieChart>

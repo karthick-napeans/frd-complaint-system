@@ -23,7 +23,7 @@ import {
   Select,
   MenuItem,
   FormControl,
-  InputLabel,Snackbar,   Slide
+  InputLabel, Snackbar, Slide
 } from "@mui/material";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import IconButton from "@mui/material/IconButton";
@@ -33,7 +33,7 @@ import SaveIcon from "@mui/icons-material/Save";
 import * as XLSX from "xlsx";
 import { useSelector } from "react-redux";
 import { getMstColumns, submitColumnMapping, getCustomerColumnMapping } from "../api/pageApi";
- 
+
 
 const WarrantyColumnMapper = () => {
   const { customers } = useSelector((state) => state.masters);
@@ -486,12 +486,18 @@ const WarrantyColumnMapper = () => {
               <Table size="small">
                 <TableHead>
                   <TableRow>
+                    <TableCell align="center">
+                      <b>S.No</b>
+                    </TableCell>
+
                     <TableCell>
                       <b>Customer Column</b>
                     </TableCell>
+
                     <TableCell>
                       <b>Master Column</b>
                     </TableCell>
+
                     <TableCell align="center">
                       <b>Action</b>
                     </TableCell>
@@ -499,36 +505,46 @@ const WarrantyColumnMapper = () => {
                 </TableHead>
 
                 <TableBody>
-                  {Object.entries(mappings).map(([customerCol, master]) => (
-                    <TableRow key={customerCol}>
-                      <TableCell>
-                        <Chip
-                          label={customerCol}
-                          size="small"
-                          variant="outlined"
-                        />
-                      </TableCell>
+                  {Object.entries(mappings).map(
+                    ([customerCol, master], index) => (
+                      <TableRow key={customerCol}>
 
-                      <TableCell>
-                        <Typography fontWeight={600}>
-                          {master.masterColumnName}
-                        </Typography>
-                      </TableCell>
+                        {/* ✅ Serial Number */}
+                        <TableCell align="center">
+                          {index + 1}
+                        </TableCell>
 
-                      <TableCell align="center">
-                        <Button
-                          size="small"
-                          color="error"
-                          onClick={() => handleRemoveMapping(customerCol)}
-                        >
-                          Remove
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                        <TableCell>
+                          <Chip
+                            label={customerCol}
+                            size="small"
+                            variant="outlined"
+                          />
+                        </TableCell>
+
+                        <TableCell>
+                          <Typography fontWeight={600}>
+                            {master.masterColumnName}
+                          </Typography>
+                        </TableCell>
+
+                        <TableCell align="center">
+                          <Button
+                            size="small"
+                            color="error"
+                            onClick={() =>
+                              handleRemoveMapping(customerCol)
+                            }
+                          >
+                            Remove
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  )}
                 </TableBody>
               </Table>
-            </TableContainer>
+            </TableContainer> 
           </CardContent>
         </Card>
       )}

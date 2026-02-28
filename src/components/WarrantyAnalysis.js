@@ -35,7 +35,9 @@ import FilterListIcon from "@mui/icons-material/FilterList";
 import Collapse from "@mui/material/Collapse";
 
 const WarrantyAnalysis = () => {
-  const { customers } = useSelector((state) => state.masters);
+  const { customers, models, parts } = useSelector((state) => state.masters);
+  // console.log("Models in WarrantyAnalysis:", models);
+  // console.log("Parts in WarrantyAnalysis:", parts);
   const activeCustomers = customers.filter((c) => c.IsActive);
   const [customerSelected, setCustomerSelected] = useState("");
   const [rawData, setRawData] = useState([]);
@@ -484,14 +486,21 @@ const WarrantyAnalysis = () => {
                     onChange={(e) => setSelectedModels(e.target.value)}
                     renderValue={(selected) => selected.join(", ")}
                   >
-                    {[...new Set(warrantyData.map((d) => d.Model_Name))].map(
-                      (model) => (
-                        <MenuItem key={model} value={model}>
-                          <Checkbox checked={selectedModels.includes(model)} />
-                          <ListItemText primary={model} />
+                    {models
+                      ?.filter((model) => model.IsActive)
+                      .map((model) => (
+                        <MenuItem
+                          key={model.ModelId}
+                          value={model.ModelCode}   // ✅ send ModelCode
+                        >
+                          <Checkbox
+                            checked={selectedModels.includes(model.ModelCode)}
+                          />
+                          <ListItemText
+                            primary={`${model.ModelCode} - ${model.ModelName}`}
+                          />
                         </MenuItem>
-                      )
-                    )}
+                      ))}
                   </Select>
                 </FormControl>
               </Grid>
@@ -514,14 +523,21 @@ const WarrantyAnalysis = () => {
                     onChange={(e) => setSelectedParts(e.target.value)}
                     renderValue={(selected) => selected.join(", ")}
                   >
-                    {[...new Set(warrantyData.map((d) => d.Part_Number))].map(
-                      (part) => (
-                        <MenuItem key={part} value={part}>
-                          <Checkbox checked={selectedParts.includes(part)} />
-                          <ListItemText primary={part} />
+                    {parts
+                      ?.filter((part) => part.IsActive)
+                      .map((part) => (
+                        <MenuItem
+                          key={part.PartId}
+                          value={part.PartNumber}   // ✅ send PartNumber
+                        >
+                          <Checkbox
+                            checked={selectedParts.includes(part.PartNumber)}
+                          />
+                          <ListItemText
+                            primary={`${part.PartNumber} - ${part.PartName}`}
+                          />
                         </MenuItem>
-                      )
-                    )}
+                      ))}
                   </Select>
                 </FormControl>
               </Grid>
@@ -542,10 +558,12 @@ const WarrantyAnalysis = () => {
                     multiple
                     value={selectedRegions}
                     onChange={(e) => setSelectedRegions(e.target.value)}
+                    renderValue={(selected) => selected.join(", ")}
                   >
-                    {["North", "South", "East", "West"].map((r) => (
-                      <MenuItem key={r} value={r}>
-                        {r}
+                    {["North", "South", "East", "West"].map((region) => (
+                      <MenuItem key={region} value={region}>
+                        <Checkbox checked={selectedRegions.indexOf(region) > -1} />
+                        <ListItemText primary={region} />
                       </MenuItem>
                     ))}
                   </Select>
@@ -629,10 +647,10 @@ const WarrantyAnalysis = () => {
                   setSelectedModels([]);
                   setSelectedParts([]);
                   setSelectedRegions([]);
-                  setProdDateFrom("");
-                  setProdDateTo("");
-                  setRepairFrom("");
-                  setRepairTo("");
+                  setProdDateFrom(lastYearMonthStart);
+                  setProdDateTo(today);
+                  setRepairFrom(lastYearMonthStart);
+                  setRepairTo(today);
                 }}
               >
                 Reset
@@ -681,13 +699,20 @@ const WarrantyAnalysis = () => {
 
                     <XAxis
                       dataKey="month"
-                      angle={-50}
-                      textAnchor="end"
-                      interval={0}
-                      height={80}
+                      angle={sortedData.length > 15 ? -60 : 0}
+                      textAnchor={sortedData.length > 15 ? "end" : "middle"}
+                      interval={sortedData.length > 15 ? Math.ceil(sortedData.length / 30) : 0}
+                      minTickGap={20}
+                      height={sortedData.length > 15 ? 100 : 60}
+                      tick={{ fontSize: 15 }}
                     />
 
-                    <YAxis />
+                    <YAxis
+                      allowDecimals={false}
+                      domain={[5, (dataMax) => dataMax + 2]}
+                      interval={0}
+                      tickMargin={8}
+                    />
                     <Tooltip
                       content={({ active, payload, label }) => {
                         if (!active || !payload || payload.length === 0) return null;

@@ -163,13 +163,13 @@ const menuItems = [
   // =====================
   // AUDIT LOGS
   // =====================
-  {
-    id: 'audit',
-    label: 'Audit Logs',
-    icon: <AssignmentIcon />,
-    path: '/audit',
-    roles: ['Super_Admin'],
-  },
+  // {
+  //   id: 'audit',
+  //   label: 'Audit Logs',
+  //   icon: <AssignmentIcon />,
+  //   path: '/audit',
+  //   roles: ['Super_Admin'],
+  // },
 ];
 
 export default menuItems;

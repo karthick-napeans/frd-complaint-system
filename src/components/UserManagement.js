@@ -20,6 +20,7 @@ import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CircularProgress from '@mui/material/CircularProgress';
+import ConfirmDialog from './ConfirmDialog';
 import { getAllUsers, createUser, updateUser, deleteUser } from '../api/pageApi';
 
 const UserManagement = () => {
@@ -40,6 +41,14 @@ const UserManagement = () => {
     isActive: true,
     password: '',
   });
+  const [confirmState, setConfirmState] = useState({
+    open: false,
+    title: "",
+    message: "",
+    onConfirm: null
+  });
+
+  const [confirmLoading, setConfirmLoading] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [userIdToDelete, setUserIdToDelete] = useState(null);
   const [errors, setErrors] = useState({});
@@ -155,31 +164,31 @@ const UserManagement = () => {
     setOpenDialog(true);
   };
 
-  const handleDelete = (id) => {
-    setUserIdToDelete(id);
-    setConfirmOpen(true);
+  const handleDelete = (user) => {
+    setConfirmState({
+      open: true,
+      title: "Delete User",
+      message: `Are you sure you want to delete ${user.username}?`,
+      successMessage: "User deleted successfully.",
+      errorMessage: "Failed to delete user. Please try again.",
+      onConfirm: () => confirmDeleteUser(user.id)
+    });
   };
 
-  const handleConfirmDelete = async () => {
-    if (!userIdToDelete) return;
+  const confirmDeleteUser = async (id) => {
+    console.log("Deleting user with ID:", id);
 
-    try {
-      console.log("Deleting user with ID:", userIdToDelete);
+    // If delete fails, it must throw
+    await deleteUser(id);
 
-      await deleteUser(userIdToDelete);
-      await fetchUsers();
-
-    } catch (error) {
-      console.error("Error deleting user:", error);
-    } finally {
-      setConfirmOpen(false);
-      setUserIdToDelete(null);
-    }
+    // Refresh list after success
+    await fetchUsers();
   };
 
   const handleCancelDelete = () => {
-    setConfirmOpen(false);
-    setUserIdToDelete(null);
+    if (confirmLoading) return;
+
+    setConfirmState(prev => ({ ...prev, open: false }));
   };
 
   const validateUserForm = () => {
@@ -449,35 +458,39 @@ const UserManagement = () => {
           </Box>
         </CardContent>
 
-        <Dialog open={confirmOpen} onClose={handleCancelDelete}>
-          <DialogTitle>Delete Record</DialogTitle>
+        <ConfirmDialog
+          open={confirmState.open}
+          title={confirmState.title}
+          message={confirmState.message}
+          successMessage={confirmState.successMessage}
+          errorMessage={confirmState.errorMessage}
+          onConfirm={confirmState.onConfirm}
+          onCancel={handleCancelDelete}
+        />
 
-          <DialogContent>
-            <DialogContentText>
-              Are you sure you want to delete this record? This action cannot be undone.
-            </DialogContentText>
-          </DialogContent>
-
-          <DialogActions>
-            <Button onClick={handleCancelDelete} color="inherit">
-              Cancel
-            </Button>
-            <Button
-              onClick={handleConfirmDelete}
-              color="error"
-              variant="contained"
-            >
-              Delete
-            </Button>
-          </DialogActions>
-        </Dialog>
 
       </Card>
 
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>{editingUser ? 'Edit User' : 'Add New User'}</DialogTitle>
+      <Dialog open={openDialog} onClose={() => {
+        setOpenDialog(false);
+        setSubmitError("");
+        setErrors({});
+      }} maxWidth="sm" fullWidth>
 
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', }}>
+        <DialogTitle>
+          {editingUser ? 'Edit User' : 'Add New User'}
+        </DialogTitle>
+
+        {/* 🔥 TOP ERROR MESSAGE */}
+        {submitError && (
+          <Box sx={{ px: 3 }}>
+            <Alert severity="error">
+              {submitError}
+            </Alert>
+          </Box>
+        )}
+
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column' }}>
           <TextField
             label="Employee ID *"
             fullWidth
@@ -628,12 +641,12 @@ const UserManagement = () => {
               setErrors(prev => ({ ...prev, designation: "" }));
             }}
           />
-
+          {/* 
           {submitError && (
             <Alert severity="error" sx={{ mb: 2 }}>
               {submitError}
             </Alert>
-          )}
+          )} */}
 
 
         </DialogContent>
@@ -656,7 +669,12 @@ const UserManagement = () => {
 
           {/* Right Side Buttons */}
           <Box sx={{ display: "flex", gap: 1 }}>
-            <Button onClick={() => setOpenDialog(false)}>
+            <Button onClick={() => {
+              setOpenDialog(false);
+              setSubmitError("");
+              setErrors({});
+
+            }}>
               Cancel
             </Button>
 

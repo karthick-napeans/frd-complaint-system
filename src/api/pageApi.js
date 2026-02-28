@@ -74,7 +74,7 @@ export const updateUser = (payload) => {
 }
 
 export const deleteUser = (id) => {
-    return postRequest(`/ users / active`, { UserId: id });
+    return postRequest(`/users/active`, { UserId: id });
 }
 
 export const saveDreDraft = (payload) => {

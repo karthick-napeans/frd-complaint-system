@@ -21,6 +21,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
+import ConfirmDialog from "./ConfirmDialog";
 
 import {
   getMasters,
@@ -54,11 +55,23 @@ const MASTER_FORM_CONFIG = {
       pattern: /^[A-Za-z ]+$/,
       patternMessage: "Only letters and spaces allowed",
     },
-    { name: "CustomerCode", label: "Customer Code", required: true },
+    {
+      name: "CustomerCode",
+      label: "Customer Code",
+      required: true,
+      pattern: /^[A-Za-z0-9 ]+$/,
+      patternMessage: "Only letters and numbers allowed",
+    },
   ],
 
   model: [
-    { name: "ModelCode", label: "Model Code", required: true },
+    {
+      name: "ModelCode",
+      label: "Model Code",
+      required: true,
+      pattern: /^[A-Za-z0-9 ]+$/,
+      patternMessage: "Only letters and numbers allowed",
+    },
     {
       name: "ModelName",
       label: "Model Name",
@@ -69,7 +82,13 @@ const MASTER_FORM_CONFIG = {
   ],
 
   part: [
-    { name: "PartNumber", label: "Part Number", required: true },
+    {
+      name: "PartNumber",
+      label: "Part Number",
+      required: true,
+      pattern: /^[A-Za-z0-9 ]+$/,
+      patternMessage: "Only letters and numbers allowed",
+    },
     {
       name: "PartName",
       label: "Part Name",
@@ -86,14 +105,18 @@ const MASTER_FORM_CONFIG = {
   ],
 
   cause: [
-    { name: "Code", label: "Cause Code", required: true },
+    {
+      name: "Code",
+      label: "Cause Code",
+      required: true,
+      pattern: /^[A-Za-z0-9 ]+$/,
+      patternMessage: "Only letters and numbers allowed",
+    },
     {
       name: "CodeDescription",
       label: "Description",
       multiline: true,
       required: true,
-      pattern: /^[A-Za-z ]+$/,
-      patternMessage: "Only letters and spaces allowed",
     },
   ],
 };
@@ -109,10 +132,16 @@ const MasterData = ({ userRole = "Admin" }) => {
   const [formData, setFormData] = useState({});
   const [loading, setLoading] = useState(false);
   const [saveLoading, setSaveLoading] = useState(false);
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [rowToDelete, setRowToDelete] = useState(null);
   const [errors, setErrors] = useState({});
   const [message, setMessage] = useState('');
+  const [confirmState, setConfirmState] = useState({
+    open: false,
+    title: "",
+    message: "",
+    successMessage: "",
+    errorMessage: "",
+    onConfirm: null
+  });
 
   useEffect(() => {
     if (message) {
@@ -202,9 +231,11 @@ const MasterData = ({ userRole = "Admin" }) => {
       if (editingRow) {
         const payload = { ...editingRow, ...formData };
         await updateMaster(masterType, payload);
+        setSaveLoading(false);
         setMessage("✓ Updated successfully");
       } else {
         await createMaster(masterType, formData);
+        setSaveLoading(false);
         setMessage("✓ Created successfully");
       }
 
@@ -231,36 +262,26 @@ const MasterData = ({ userRole = "Admin" }) => {
   };
 
   const handleDelete = (row) => {
-    setRowToDelete(row);
-    setConfirmOpen(true);
+    const idField = MASTER_ID_FIELD[masterType];
+
+    setConfirmState({
+      open: true,
+      title: "Delete Record",
+      message: `Are you sure you want to delete this record?`,
+      successMessage: "Record deleted successfully",
+      errorMessage: "Failed to delete data",
+      onConfirm: () => confirmDelete(row[idField])
+    });
   };
 
-  const handleConfirmDelete = async () => {
-    if (!rowToDelete) return;
-
-    setMessage("");
-
-    try {
-      const idField = MASTER_ID_FIELD[masterType];
-
-      await deleteMaster(masterType, rowToDelete[idField]);
-      await fetchMasterData();
-      await dispatch(loadMasters());
-
-      setMessage("✓ Deleted successfully");
-
-    } catch (err) {
-      console.error("❌ Delete failed:", err);
-      setMessage("Failed to delete data");
-    } finally {
-      setConfirmOpen(false);
-      setRowToDelete(null);
-    }
+  const confirmDelete = async (id) => {
+    await deleteMaster(masterType, id);
+    await dispatch(loadMasters());
+    await fetchMasterData();
   };
 
   const handleCancelDelete = () => {
-    setConfirmOpen(false);
-    setRowToDelete(null);
+    setConfirmState(prev => ({ ...prev, open: false }));
   };
 
   const StatusChip = ({ value }) => (
@@ -329,7 +350,7 @@ const MasterData = ({ userRole = "Admin" }) => {
 
       part: [
         { field: "PartNumber", headerName: "Part Number", width: 180 },
-        { field: "PartName", headerName: "Part Name", width: 220 },
+        { field: "PartName", headerName: "Part Name", width: 200 },
         { field: "PartDescription", headerName: "Description", width: 300 },
         {
           field: "IsActive",
@@ -487,29 +508,15 @@ const MasterData = ({ userRole = "Admin" }) => {
 
           </Box>
 
-          <Dialog open={confirmOpen} onClose={handleCancelDelete}>
-            <DialogTitle>Delete Record</DialogTitle>
-
-            <DialogContent>
-              <DialogContentText>
-                Are you sure you want to delete this record? This action cannot be undone.
-              </DialogContentText>
-            </DialogContent>
-
-            <DialogActions>
-              <Button onClick={handleCancelDelete} color="inherit">
-                Cancel
-              </Button>
-              <Button
-                onClick={handleConfirmDelete}
-                color="error"
-                variant="contained"
-              >
-                Delete
-              </Button>
-            </DialogActions>
-          </Dialog>
-
+          <ConfirmDialog
+            open={confirmState.open}
+            title={confirmState.title}
+            message={confirmState.message}
+            successMessage={confirmState.successMessage}
+            errorMessage={confirmState.errorMessage}
+            onConfirm={confirmState.onConfirm}
+            onCancel={handleCancelDelete}
+          />
         </CardContent>
       </Card>
 
@@ -562,7 +569,7 @@ const MasterData = ({ userRole = "Admin" }) => {
         )}
 
         <DialogActions>
-          <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
+          <Button onClick={() => { setOpenDialog(false); setErrors({}); }} >Cancel</Button>
           <Button
             variant="contained"
             onClick={handleSave}
