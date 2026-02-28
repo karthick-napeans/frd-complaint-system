@@ -737,7 +737,7 @@ const DREEntry = () => {
                     onClick={() => handleDraftClick(draft)}
                   >
                     <Typography fontWeight={600} fontSize={13}>
-                      {draft.DreNumber || "Untitled Draft"}
+                      {draft.DreEngineerName || "Untitled Draft"}
                     </Typography>
 
                     <Typography variant="caption" color="text.secondary">
@@ -789,7 +789,7 @@ const DREEntry = () => {
                     }}
                   >
                     <Typography fontWeight={600} fontSize={13}>
-                      {entry.DreNumber}
+                      {entry.DreEngineerName}
                     </Typography>
 
                     <Typography variant="caption" color="text.secondary">

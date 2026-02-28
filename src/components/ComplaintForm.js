@@ -94,8 +94,6 @@ const ComplaintForm = () => {
     }
   }, [message]);
 
-
-
   useEffect(() => {
     const fetchAttachments = async () => {
       try {
@@ -403,6 +401,7 @@ const ComplaintForm = () => {
 
     return fd;
   };
+
   const resetForm = () => {
     setFormData({ ...INITIAL_FORM_STATE });
 
@@ -427,6 +426,10 @@ const ComplaintForm = () => {
 
     if (!formData.complaintDate)
       tempErrors.complaintDate = "Required";
+
+    if (!formData.customerSelected)
+      tempErrors.customerSelected = "Required";
+
 
 
     setErrors(tempErrors);
