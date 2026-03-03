@@ -57,8 +57,8 @@ const DreSummary = () => {
 
         // range validation
         if (from && to && from > to) {
-            errors.fromDate =  "From date must be ≤ To date";
-            errors.toDate =  "To date must be ≥ From date";
+            errors.fromDate = "From date must be ≤ To date";
+            errors.toDate = "To date must be ≥ From date";
         }
 
         return errors;
@@ -167,6 +167,14 @@ const DreSummary = () => {
             field: 'Part',
             headerName: 'Part',
             flex: 1,
+            resizable: false,
+            headerAlign: 'center',
+            align: 'center',
+        },
+        {
+            field: 'ProblemDescription',
+            headerName: 'Description',
+            width: 250,
             resizable: false,
             headerAlign: 'center',
             align: 'center',
