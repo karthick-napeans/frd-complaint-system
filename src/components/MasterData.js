@@ -3,7 +3,6 @@ import { useDispatch } from "react-redux";
 import { loadMasters } from "../store/masterSlice";
 import {
   Box,
-  Container,
   Card,
   CardContent,
   Typography,
@@ -14,8 +13,9 @@ import {
   DialogActions,
   TextField,
   Chip, Alert,
-  IconButton, DialogContentText
+  IconButton, Checkbox, FormControlLabel
 } from "@mui/material";
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import { DataGrid } from "@mui/x-data-grid";
 import CircularProgress from '@mui/material/CircularProgress';
 import AddIcon from "@mui/icons-material/Add";
@@ -37,6 +37,7 @@ const MASTER_ID_FIELD = {
   model: "ModelId",
   part: "PartId",
   cause: "RepairCauseCodeId",
+  attachment: "Id",
 };
 
 const MASTER_LABEL = {
@@ -44,6 +45,7 @@ const MASTER_LABEL = {
   model: "Model",
   part: "Part",
   cause: "Repair Cause",
+  attachment: "Checklist Attachment",
 };
 
 const MASTER_FORM_CONFIG = {
@@ -117,6 +119,20 @@ const MASTER_FORM_CONFIG = {
       label: "Description",
       multiline: true,
       required: true,
+    },
+  ],
+  attachment: [
+    {
+      name: "Name",
+      label: "Attachment Name",
+      required: true,
+      pattern: /^[A-Za-z0-9 ]+$/,
+      patternMessage: "Only letters and numbers allowed",
+    },
+    {
+      name: "IsMandatory",
+      label: "Is Mandatory",
+      type: "checkbox",
     },
   ],
 };
@@ -194,15 +210,25 @@ const MasterData = ({ userRole = "Admin" }) => {
     let tempErrors = {};
 
     MASTER_FORM_CONFIG[masterType].forEach((field) => {
-      const value = formData[field.name]?.trim();
 
-      // Required validation
-      if (field.required && !value) {
-        tempErrors[field.name] = "Required";
+      // skip checkbox validation
+      if (field.type === "checkbox") return;
+
+      const rawValue = formData[field.name];
+      const value =
+        typeof rawValue === "string"
+          ? rawValue.trim()
+          : rawValue !== undefined && rawValue !== null
+            ? String(rawValue).trim()
+            : "";
+
+      // required validation
+      if (field.required && value.length === 0) {
+        tempErrors[field.name] = `${field.label} is required`;
         return;
       }
 
-      // Pattern validation (only if pattern exists)
+      // pattern validation
       if (field.pattern && value && !field.pattern.test(value)) {
         tempErrors[field.name] =
           field.patternMessage || "Invalid format";
@@ -213,7 +239,7 @@ const MasterData = ({ userRole = "Admin" }) => {
 
     return Object.keys(tempErrors).length === 0;
   };
-
+  
   const handleEdit = (row) => {
     setEditingRow(row);
     setFormData(row);
@@ -266,10 +292,14 @@ const MasterData = ({ userRole = "Admin" }) => {
 
     setConfirmState({
       open: true,
-      title: "Delete Record",
-      message: `Are you sure you want to delete this record?`,
-      successMessage: "Record deleted successfully",
-      errorMessage: "Failed to delete data",
+      title: "Delete User",
+      message: `Are you sure you want to delete ${row.Name || row.CustomerName || row.ModelName || row.PartNumber || row.Code}?`,
+      successMessage: "Record deleted successfully.",
+      errorMessage: "Failed to delete record. Please try again.",
+      actionLabel: "Delete",
+      loadingLabel: "Deleting...",
+      buttonColor: "#ff6b6b",
+      icon: <DeleteOutlineIcon sx={{ color: "#ff6b6b" }} />,
       onConfirm: () => confirmDelete(row[idField])
     });
   };
@@ -374,6 +404,23 @@ const MasterData = ({ userRole = "Admin" }) => {
         { ...actionColumn, width: 120 },
       ],
 
+      attachment: [
+        { field: "Name", headerName: "Attachment Name", width: 250 },
+        {
+          field: "IsMandatory",
+          headerName: "Is Mandatory",
+          width: 150,
+          renderCell: (p) => (p.value ? "Yes" : "No"),
+        },
+        {
+          field: "IsActive",
+          headerName: "Status",
+          width: 120,
+          renderCell: (p) => <StatusChip value={p.value} />,
+        },
+        { ...actionColumn, width: 120 },
+      ],
+
 
     };
   }, [masterType]);
@@ -413,6 +460,7 @@ const MasterData = ({ userRole = "Admin" }) => {
             <option value="model">Model</option>
             <option value="part">Part</option>
             <option value="cause">Repair Cause</option>
+            <option value="attachment">Checklist Attachment</option>
           </TextField>
         </CardContent>
       </Card>
@@ -531,35 +579,65 @@ const MasterData = ({ userRole = "Admin" }) => {
           {editingRow ? "Edit" : "Add"} {MASTER_LABEL[masterType]}
         </DialogTitle>
 
+
+
         <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 0 }}>
-          {MASTER_FORM_CONFIG[masterType].map((field) => (
-            <TextField
-              key={field.name}
-              label={`${field.label}${field.required ? "*" : ""}`}
-              fullWidth
-              size="small"
-              multiline={field.multiline}
-              sx={{ mt: 0.5 }}
-              rows={field.multiline ? 3 : 1}
-              value={formData[field.name] || ""}
-              error={!!errors[field.name]}
-              helperText={errors[field.name] || " "}
-              onChange={(e) => {
-                const value = e.target.value;
-                setFormData({
-                  ...formData,
-                  [field.name]: value,
-                });
-                if (value) {
-                  setErrors((prev) => {
-                    const newErrors = { ...prev };
-                    delete newErrors[field.name];
-                    return newErrors;
+          {MASTER_FORM_CONFIG[masterType].map((field) => {
+
+            if (field.type === "checkbox") {
+              return (
+                <FormControlLabel
+                  key={field.name}
+                  sx={{ mt: 0.5 }}
+                  control={
+                    <Checkbox
+                      checked={formData[field.name] || false}
+                      onChange={(e) => {
+                        const value = e.target.checked;
+
+                        setFormData({
+                          ...formData,
+                          [field.name]: value,
+                        });
+                      }}
+                    />
+                  }
+                  label={field.label}
+                />
+              );
+            }
+
+            return (
+              <TextField
+                key={field.name}
+                label={`${field.label}${field.required ? "*" : ""}`}
+                fullWidth
+                size="small"
+                multiline={field.multiline}
+                sx={{ mt: 0.5 }}
+                rows={field.multiline ? 3 : 1}
+                value={formData[field.name] || ""}
+                error={!!errors[field.name]}
+                helperText={errors[field.name] || " "}
+                onChange={(e) => {
+                  const value = e.target.value;
+
+                  setFormData({
+                    ...formData,
+                    [field.name]: value,
                   });
-                }
-              }}
-            />
-          ))}
+
+                  if (value) {
+                    setErrors((prev) => {
+                      const newErrors = { ...prev };
+                      delete newErrors[field.name];
+                      return newErrors;
+                    });
+                  }
+                }}
+              />
+            );
+          })}
         </DialogContent>
 
         {message && (

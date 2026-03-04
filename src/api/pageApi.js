@@ -59,6 +59,10 @@ export const getAllImprovementList = () => {
     return getRequest(`/improvements/get`)
 }
 
+export const getPPMData = (payload) => {
+    return getRequestWithBody("/complaints/ppm");
+}
+
 
 //postRequest
 export const loginApi = (payload) => {
@@ -118,4 +122,15 @@ export const getDashboardData = (payload) => {
     return postRequest("/dashboard/data", payload);
 }
 
+export const resetPassword = (userId) => {
+    return postRequest("/users/password/reset", { UserId: userId });
+}
+
+export const updatePassword = (passwordHash) => {
+    return postRequest("/users/update/mypassword", { PasswordHash: passwordHash });
+}
+
+export const saveMonthlySalesData = (payload) => {
+    return postRequest("/complaints/sales/entry", payload);
+}
 

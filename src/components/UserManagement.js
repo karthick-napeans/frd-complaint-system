@@ -16,14 +16,17 @@ import {
   Alert, DialogContentText, MenuItem
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import LockResetIcon from '@mui/icons-material/LockReset';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CircularProgress from '@mui/material/CircularProgress';
 import ConfirmDialog from './ConfirmDialog';
-import { getAllUsers, createUser, updateUser, deleteUser } from '../api/pageApi';
+import { getAllUsers, createUser, updateUser, deleteUser, resetPassword } from '../api/pageApi';
 
-const UserManagement = () => {
+const UserManagement = ({ userRole }) => {
+  const currentUserRole = userRole?.toLowerCase();
   const [openDialog, setOpenDialog] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [submitError, setSubmitError] = useState("");
@@ -45,12 +48,15 @@ const UserManagement = () => {
     open: false,
     title: "",
     message: "",
+    successMessage: "",
+    errorMessage: "",
+    actionLabel: "Confirm",
+    loadingLabel: "Processing...",
+    buttonColor: "#1976d2",
+    icon: null,
     onConfirm: null
   });
-
   const [confirmLoading, setConfirmLoading] = useState(false);
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [userIdToDelete, setUserIdToDelete] = useState(null);
   const [errors, setErrors] = useState({});
   const [paginationModel, setPaginationModel] = useState({
     page: 0,
@@ -171,9 +177,33 @@ const UserManagement = () => {
       message: `Are you sure you want to delete ${user.username}?`,
       successMessage: "User deleted successfully.",
       errorMessage: "Failed to delete user. Please try again.",
+      actionLabel: "Delete",
+      loadingLabel: "Deleting...",
+      buttonColor: "#ff6b6b",
+      icon: <DeleteOutlineIcon sx={{ color: "#ff6b6b" }} />,
       onConfirm: () => confirmDeleteUser(user.id)
     });
   };
+
+  const handleResetPassword = (user) => {
+    setConfirmState({
+      open: true,
+      title: "Reset Password",
+      message: `Are you sure you want to reset the password for ${user.username}?`,
+      successMessage: "Password reset successfully.",
+      errorMessage: "Failed to reset password. Please try again.",
+      actionLabel: "Reset",
+      loadingLabel: "Resetting...",
+      buttonColor: "#f59e0b",
+      icon: <LockResetIcon sx={{ color: "#f59e0b" }} />,
+      onConfirm: () => confirmResetPassword(user.id)
+    });
+  };
+
+  const confirmResetPassword = async (userId) => {
+    setConfirmLoading(true);
+    await resetPassword(userId);
+  }
 
   const confirmDeleteUser = async (id) => {
     console.log("Deleting user with ID:", id);
@@ -186,11 +216,12 @@ const UserManagement = () => {
   };
 
   const handleCancelDelete = () => {
-    if (confirmLoading) return;
-
-    setConfirmState(prev => ({ ...prev, open: false }));
+    setConfirmState(prev => ({
+      ...prev,
+      open: false
+    }));
   };
-
+  
   const validateUserForm = () => {
     let tempErrors = {};
 
@@ -318,7 +349,7 @@ const UserManagement = () => {
     />
   );
 
-  const columns = [
+  const baseColumns = [
     {
       field: 'serialNo',
       headerName: 'S.No',
@@ -377,6 +408,36 @@ const UserManagement = () => {
         <StatusChip value={params.value ? 'Active' : 'Inactive'} />
       ),
     },
+  ];
+
+  const resetPasswordColumn =
+    currentUserRole === 'super_admin'
+      ? [
+        {
+          field: 'resetPassword',
+          headerName: 'Reset Password',
+          width: 160,
+          align: 'center',
+          headerAlign: 'center',
+          sortable: false,
+          filterable: false,
+          renderCell: (params) => (
+            <Button
+              size="small"
+              variant="contained"
+              color="warning"
+              onClick={() => handleResetPassword(params.row.UserId)}
+            >
+              Reset
+            </Button>
+          ),
+        },
+      ]
+      : [];
+
+  const columns = [
+    ...baseColumns,
+    ...resetPasswordColumn,
     {
       field: 'actions',
       headerName: 'Actions',
@@ -466,7 +527,13 @@ const UserManagement = () => {
           errorMessage={confirmState.errorMessage}
           onConfirm={confirmState.onConfirm}
           onCancel={handleCancelDelete}
+          actionLabel={confirmState.actionLabel}
+          loadingLabel={confirmState.loadingLabel}
+          buttonColor={confirmState.buttonColor}
+          icon={confirmState.icon}
         />
+
+
 
 
       </Card>

@@ -12,16 +12,19 @@ import {
 } from "@mui/material";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
-import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 
 const ConfirmDialog = ({
   open,
   title,
   message,
-  successMessage = "Deleted successfully.",
+  successMessage = "Success.",
   errorMessage = "Something went wrong.",
   onConfirm,
-  onCancel
+  onCancel,
+  actionLabel = "Delete",
+  loadingLabel = "Processing...",
+  icon,
+  buttonColor = "#ff6b6b"
 }) => {
   const [loading, setLoading] = React.useState(false);
   const [status, setStatus] = React.useState(null);
@@ -68,12 +71,11 @@ const ConfirmDialog = ({
       TransitionComponent={Fade}
     >
       <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-        <DeleteOutlineIcon sx={{ color: "#ff6b6b" }} />
+        {icon}
         <Typography fontWeight={600}>{title}</Typography>
       </DialogTitle>
 
       <DialogContent sx={{ pt: 1 }}>
-        {/* Status Message */}
         {status && (
           <Box
             sx={{
@@ -113,10 +115,7 @@ const ConfirmDialog = ({
         <Button
           onClick={handleClose}
           disabled={loading}
-          sx={{
-            textTransform: "none",
-            borderRadius: 2
-          }}
+          sx={{ textTransform: "none", borderRadius: 2 }}
         >
           Cancel
         </Button>
@@ -129,23 +128,25 @@ const ConfirmDialog = ({
             sx={{
               textTransform: "none",
               borderRadius: 2,
-              backgroundColor: "#ff6b6b",
+              backgroundColor: buttonColor,
               boxShadow: "none",
               "&:hover": {
-                backgroundColor: "#ff5252",
+                backgroundColor: buttonColor,
+                opacity: 0.9,
                 boxShadow: "none"
               }
             }}
             startIcon={
-              loading ? <CircularProgress size={18} color="inherit" /> : null
+              loading ? (
+                <CircularProgress size={18} color="inherit" />
+              ) : null
             }
           >
-            {loading ? "Deleting..." : "Delete"}
+            {loading ? loadingLabel : actionLabel}
           </Button>
         )}
       </DialogActions>
     </Dialog>
   );
 };
-
 export default ConfirmDialog;

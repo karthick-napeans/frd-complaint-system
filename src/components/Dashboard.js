@@ -197,7 +197,7 @@ export default function Dashboard() {
     },
   ];
   return (
-    <Box sx={{ background: "#f4f6f8", minHeight: "100vh", }}>
+    <Box sx={{ background: "#f4f6f8",  }}>
       {/* HEADER */}
       <Box
         sx={{

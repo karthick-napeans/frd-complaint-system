@@ -53,6 +53,7 @@ const WarrantyEntry = () => {
         filename: item.FileName,
         uploadDate: new Date(item.UploadDateTime).toLocaleDateString(),
         recordsProcessed: item.TotalRecords,
+        Sublet_Cost: item.Sublet_Cost,
         status: 'Success', // backend doesn’t send status
         downloadUrl: item.DownloadUrl,
       }));
@@ -194,7 +195,7 @@ const WarrantyEntry = () => {
       align: 'center',
     },
     {
-      field: 'subletRatio',
+      field: 'Sublet_Cost',
       headerName: 'Sublet Cost',
       width: 120,
       resizable: false,

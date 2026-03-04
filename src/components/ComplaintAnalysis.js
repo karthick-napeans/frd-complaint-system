@@ -1,241 +1,1086 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
+import { useSelector } from "react-redux";
 import {
     Box,
     Typography,
-    Grid,
     Paper,
     Table,
     TableBody,
     TableCell,
     TableContainer,
     TableHead,
-    TableRow,
-    FormControl,
-    Select,
-    MenuItem
+    TableRow, Grid,
+    TextField, Button, Dialog, DialogTitle, DialogContent, DialogActions
 } from "@mui/material";
 import {
     ResponsiveContainer,
-    BarChart,
-    Bar,
     LineChart,
     Line,
+    CartesianGrid,
     XAxis,
     YAxis,
-    CartesianGrid,
     Tooltip,
-    Legend
+    Legend,
+    BarChart, Area,
+    Bar, ReferenceLine
 } from "recharts";
+import html2canvas from "html2canvas";
+import DownloadIcon from "@mui/icons-material/Download";
+import IconButton from "@mui/material/IconButton";
+import * as XLSX from "xlsx-js-style";
+
+import { getPPMData, saveMonthlySalesData } from "../api/pageApi";
 
 const MONTHS = [
     "Jan", "Feb", "Mar", "Apr", "May", "Jun",
     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
 ];
 
-// 🔵 Replace with real sales API later
-const SALES_PER_MONTH = 10000;
+const PLAN_PPM = 50;
 
-const ComplaintAnalysis = ({ apiData }) => {
+const ComplaintAnalysis = ({ userRole }) => {
+    console.log("Rendering ComplaintAnalysis with userRole:", userRole);
+    const [salesInput, setSalesInput] = useState({});
+    const [editingCell, setEditingCell] = useState(null);
+    const [tempValue, setTempValue] = useState("");
+    const [ppmSourceData, setPpmSourceData] = useState([]);
+    const currentYear = new Date().getFullYear();
+    const previousYear = currentYear - 2;
+    const lastYear = currentYear - 1;
+    const [reasonDialogOpen, setReasonDialogOpen] = useState(false);
+    const [editReason, setEditReason] = useState("");
+    const [pendingEditCell, setPendingEditCell] = useState(null);
+    const inputRef = useRef(null);
+    const isQcAdmin = ["qc_admin", "super_admin"].includes(userRole?.toLowerCase());
 
-    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+    /* ================= FETCH PPM DATA ================= */
 
-    /* ================= FILTER BY YEAR ================= */
+    useEffect(() => {
+        loadPPM();
+    }, []);
 
-    const filteredData = useMemo(() => {
-        if (!apiData || !Array.isArray(apiData)) return [];
+    useEffect(() => {
+        if (editingCell && inputRef.current) {
+            inputRef.current.focus();
+            inputRef.current.select();
+        }
+    }, [editingCell]);
 
-        return apiData.filter(item => {
-            if (!item?.ComplaintDate) return false;
-            const year = new Date(item.ComplaintDate).getFullYear();
-            return year === selectedYear;
-        });
-    }, [apiData, selectedYear]);
+    const loadPPM = async () => {
 
-    /* ================= MODEL WISE PPM ================= */
+        try {
+
+            const res = await getPPMData();
+
+            const formatted = (res || []).map(item => ({
+
+                customerId: item.CustomerId,
+                customerName: item.CustomerName,
+
+                previousYearData: {
+                    sales: item.Data2024?.Sales || 0,
+                    rejection: item.Data2024?.Rejection || 0
+                },
+
+                lastYearData: {
+                    sales: item.Data2025?.Sales || 0,
+                    rejection: item.Data2025?.Rejection || 0
+                },
+
+                currentYearMonthlyData: {
+                    monthlySales: item.Data2026?.MonthlySales || Array(12).fill(0),
+                    monthlyRejection: item.Data2026?.MonthlyRejection || Array(12).fill(0)
+                }
+
+            }));
+
+            setPpmSourceData(formatted);
+
+        } catch (err) {
+            console.error("PPM API Error:", err);
+        }
+
+    };
+
+    const handleSalesChange = (customerId, monthIndex, value) => {
+        setSalesInput(prev => ({
+            ...prev,
+            [`${customerId}-${monthIndex}`]: Number(value)
+        }));
+    };
+
+    const saveSalesData = async (customerId, monthIndex, value) => {
+        console.log("Saving sales data:", { customerId, monthIndex, value });
+        const payload = {
+            CustomerId: customerId,
+            Year: currentYear,
+            Month: monthIndex + 1,
+            Value: Number(value)
+        };
+        try {
+            await saveMonthlySalesData(payload);
+            handleSalesChange(customerId, monthIndex, value);
+            console.log("Sales data saved successfully:", payload);
+            await loadPPM();
+
+        } catch (error) {
+            console.error("Error saving sales:", error);
+        }
+
+    };
 
     const ppmData = useMemo(() => {
-        const map = {};
 
-        filteredData.forEach(item => {
-            const date = new Date(item.ComplaintDate);
-            const month = date.getMonth();
-            const model = item.Model || "Unknown";
+        return (ppmSourceData || []).map(customer => {
 
-            if (!map[model]) {
-                map[model] = {
-                    model,
-                    complaints: Array(12).fill(0),
-                    totalComplaints: 0
-                };
-            }
+            const sales = customer?.currentYearMonthlyData?.monthlySales || Array(12).fill(0);
+            const rejection = customer?.currentYearMonthlyData?.monthlyRejection || Array(12).fill(0);
 
-            map[model].complaints[month] += 1;
-            map[model].totalComplaints += 1;
+            const ppmMonths = sales.map((s, i) =>
+                s === 0
+                    ? 0
+                    : Number(((rejection[i] * 1000000) / s).toFixed(1))
+            );
+
+            const totalSales = sales.reduce((a, b) => a + b, 0);
+            const totalRej = rejection.reduce((a, b) => a + b, 0);
+
+            const totalPPM =
+                totalSales === 0
+                    ? 0
+                    : Number(((totalRej * 1000000) / totalSales).toFixed(1));
+
+            const ppmPrev =
+                customer?.previousYearData?.sales === 0
+                    ? 0
+                    : Number(((customer.previousYearData.rejection * 1000000) /
+                        customer.previousYearData.sales).toFixed(1));
+
+            const ppmLast =
+                customer?.lastYearData?.sales === 0
+                    ? 0
+                    : Number(((customer.lastYearData.rejection * 1000000) /
+                        customer.lastYearData.sales).toFixed(1));
+
+            return {
+
+                customerId: customer.customerId,
+                customerName: customer.customerName,
+
+                sales,
+                rejection,
+                ppmMonths,
+
+                totalSales,
+                totalRej,
+                totalPPM,
+
+                salesPrev: customer?.previousYearData?.sales || 0,
+                salesLast: customer?.lastYearData?.sales || 0,
+
+                rejPrev: customer?.previousYearData?.rejection || 0,
+                rejLast: customer?.lastYearData?.rejection || 0,
+
+                ppmPrev,
+                ppmLast
+            };
+
         });
 
-        return Object.values(map).map(row => ({
-            ...row,
-            ppmMonths: row.complaints.map(qty =>
-                Math.round((qty * 1000000) / SALES_PER_MONTH)
-            ),
-            totalPPM: Math.round(
-                (row.totalComplaints * 1000000) /
-                (SALES_PER_MONTH * 12)
-            )
-        }));
-    }, [filteredData]);
+    }, [ppmSourceData]);
 
-    /* ================= MONTHLY TOTAL PPM ================= */
+    const totals = useMemo(() => {
 
-    const monthlyTrend = useMemo(() => {
-        const monthlyTotals = Array(12).fill(0);
+        if (!ppmData.length) return null;
+
+        const monthlySales = Array(12).fill(0);
+        const monthlyRejection = Array(12).fill(0);
+
+        let salesPrev = 0;
+        let salesLast = 0;
+
+        let rejPrev = 0;
+        let rejLast = 0;
 
         ppmData.forEach(row => {
-            row.complaints.forEach((qty, i) => {
-                monthlyTotals[i] += qty;
+
+            salesPrev += row.salesPrev || 0;
+            salesLast += row.salesLast || 0;
+
+            rejPrev += row.rejPrev || 0;
+            rejLast += row.rejLast || 0;
+
+            row.sales.forEach((s, i) => {
+                monthlySales[i] += Number(s) || 0;
             });
+
+            row.rejection.forEach((r, i) => {
+                monthlyRejection[i] += Number(r) || 0;
+            });
+
         });
 
-        return MONTHS.map((m, i) => ({
-            month: m,
-            actual: Math.round(
-                (monthlyTotals[i] * 1000000) / SALES_PER_MONTH
-            )
-        }));
-    }, [ppmData]);
+        const totalSales = monthlySales.reduce((a, b) => a + b, 0);
+        const totalRej = monthlyRejection.reduce((a, b) => a + b, 0);
 
-    /* ================= TOTAL ROW ================= */
+        const totalPPM =
+            totalSales === 0
+                ? 0
+                : Number(((totalRej * 1000000) / totalSales).toFixed(1));
 
-    const totalRow = useMemo(() => {
-        const monthlyTotals = Array(12).fill(0);
-        let grandTotal = 0;
-
-        ppmData.forEach(row => {
-            row.complaints.forEach((qty, i) => {
-                monthlyTotals[i] += qty;
-            });
-            grandTotal += row.totalComplaints;
-        });
+        const ppmMonths = monthlySales.map((s, i) =>
+            s === 0
+                ? 0
+                : Number(((monthlyRejection[i] * 1000000) / s).toFixed(1))
+        );
 
         return {
-            monthPPM: monthlyTotals.map(qty =>
-                Math.round((qty * 1000000) / SALES_PER_MONTH)
-            ),
-            totalPPM: Math.round(
-                (grandTotal * 1000000) /
-                (SALES_PER_MONTH * 12)
-            )
+            salesPrev,
+            salesLast,
+            rejPrev,
+            rejLast,
+
+            monthlySales,
+            monthlyRejection,
+
+            totalSales,
+            totalRej,
+            totalPPM,
+            ppmMonths
         };
+
     }, [ppmData]);
 
-    /* ================= YEARLY AVERAGE ================= */
+    const monthlyTrend = useMemo(() => {
 
-    const yearlyAveragePPM =
-        monthlyTrend.reduce((a, b) => a + b.actual, 0) / 12;
+        if (!ppmData.length) return [];
 
-    /* ================= UI ================= */
+        const monthlySales = Array(12).fill(0);
+        const monthlyRejection = Array(12).fill(0);
+
+        ppmData.forEach(row => {
+
+            (row.sales || []).forEach((s, i) => {
+                monthlySales[i] += Number(s) || 0;
+            });
+
+            (row.rejection || []).forEach((r, i) => {
+                monthlyRejection[i] += Number(r) || 0;
+            });
+
+        });
+
+        return MONTHS.map((month, i) => {
+
+            const actualPPM =
+                monthlySales[i] > 0
+                    ? (monthlyRejection[i] * 1000000) / monthlySales[i]
+                    : 0;
+
+            const percentOfPlan =
+                PLAN_PPM > 0
+                    ? Number(((actualPPM / PLAN_PPM) * 100).toFixed(1))
+                    : 0;
+
+            return {
+                month,
+                actual: percentOfPlan,
+                plan: 100
+            };
+
+        });
+
+    }, [ppmData]);
+
+    const yearlyTrend = useMemo(() => {
+
+        if (!ppmData.length) return [];
+
+        const previousYearAvg =
+            ppmData.reduce((sum, row) => sum + row.previousYearPPM, 0) / ppmData.length;
+
+        const lastYearAvg =
+            ppmData.reduce((sum, row) => sum + row.lastYearPPM, 0) / ppmData.length;
+
+        const currentYearAvg =
+            ppmData.reduce((sum, row) => sum + row.totalPPM, 0) / ppmData.length;
+
+        return [
+
+            { year: `${previousYear} ACT`, value: Number(previousYearAvg.toFixed(1)) },
+            { year: `${lastYear} ACT`, value: Number(lastYearAvg.toFixed(1)) },
+            { year: `${currentYear} ACT`, value: Number(currentYearAvg.toFixed(1)) }
+
+        ];
+
+    }, [ppmData]);
+
+    const exportRef = useRef(null);
+    const monthlyExportRef = useRef(null);
+
+    const handleDownload = async () => {
+        if (!exportRef.current) return;
+
+        try {
+            const canvas = await html2canvas(exportRef.current, {
+                backgroundColor: "#ffffff",
+                scale: 2, // higher quality
+                useCORS: true
+            });
+
+            const image = canvas.toDataURL("image/jpeg", 1.0);
+
+            const link = document.createElement("a");
+            link.href = image;
+            link.download = "Yearly-PPM-Trend.jpeg";
+            link.click();
+        } catch (error) {
+            console.error("Download failed:", error);
+        }
+    };
+
+    const handleMonthlyDownload = async () => {
+        if (!monthlyExportRef.current) return;
+
+        try {
+            const canvas = await html2canvas(monthlyExportRef.current, {
+                backgroundColor: "#ffffff",
+                scale: 2,
+                useCORS: true
+            });
+
+            const image = canvas.toDataURL("image/jpeg", 1.0);
+
+            const link = document.createElement("a");
+            link.href = image;
+            link.download = "Monthly-Performance-vs-Plan.jpeg";
+            link.click();
+        } catch (error) {
+            console.error("Download failed:", error);
+        }
+    };
+
+    const handleExcelDownload = () => {
+        const workbook = XLSX.utils.book_new();
+
+        const wsData = [];
+
+        // === HEADER ROW 1 ===
+        wsData.push([
+            "Customer",
+            "Type",
+            "2023",
+            "2024",
+            "2025 Avg",
+            "2025",
+            "", "", "", "", "", "", "", "", "", "", "",
+            "Remarks",
+            "Reduced %"
+        ]);
+
+        // === HEADER ROW 2 ===
+        wsData.push([
+            "",
+            "",
+            "ACT",
+            "ACT",
+            "AVG",
+            ...MONTHS,
+            "",
+            ""
+        ]);
+
+        // === BODY DATA ===
+        ppmData.forEach((row) => {
+            wsData.push([
+                row.customerName,
+                "REJ QTY",
+                row.rej2023,
+                row.rej2024,
+                row.totalRej,
+                ...row.rejection,
+                "",
+                "-100%"
+            ]);
+
+            wsData.push([
+                "",
+                "SALES QTY",
+                row.sales2023,
+                row.sales2024,
+                row.totalSales,
+                ...row.sales,
+                "",
+                ""
+            ]);
+
+            wsData.push([
+                "",
+                "PLAN PPM",
+                PLAN_PPM,
+                PLAN_PPM,
+                PLAN_PPM,
+                ...Array(12).fill(PLAN_PPM),
+                "",
+                ""
+            ]);
+
+            wsData.push([
+                "",
+                "ACTUAL PPM",
+                row.ppm2023,
+                row.ppm2024,
+                row.totalPPM,
+                ...row.ppmMonths,
+                "",
+                ""
+            ]);
+        });
+
+        const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+        // === MERGE CELLS ===
+        ws["!merges"] = [
+            { s: { r: 0, c: 0 }, e: { r: 1, c: 0 } }, // Customer
+            { s: { r: 0, c: 1 }, e: { r: 1, c: 1 } }, // Type
+            { s: { r: 0, c: 2 }, e: { r: 0, c: 2 } }, // 2023
+            { s: { r: 0, c: 3 }, e: { r: 0, c: 3 } }, // 2024
+            { s: { r: 0, c: 4 }, e: { r: 0, c: 4 } }, // 2025 Avg
+            { s: { r: 0, c: 5 }, e: { r: 0, c: 16 } }, // 2025 months merge
+            { s: { r: 0, c: 17 }, e: { r: 1, c: 17 } }, // Remarks
+            { s: { r: 0, c: 18 }, e: { r: 1, c: 18 } }, // Reduced %
+        ];
+
+        // === HEADER STYLE ===
+        const headerStyle = {
+            font: { bold: true, color: { rgb: "000000" } },
+            alignment: { horizontal: "center", vertical: "center" },
+            fill: { fgColor: { rgb: "C9DAEB" } },
+            border: {
+                top: { style: "thin" },
+                bottom: { style: "thin" },
+                left: { style: "thin" },
+                right: { style: "thin" }
+            }
+        };
+
+        const subHeaderStyle = {
+            font: { bold: true },
+            alignment: { horizontal: "center" },
+            fill: { fgColor: { rgb: "CADBEC" } },
+            border: {
+                top: { style: "thin" },
+                bottom: { style: "thin" },
+                left: { style: "thin" },
+                right: { style: "thin" }
+            }
+        };
+
+        // Apply styles
+        for (let col = 0; col <= 18; col++) {
+            const cell1 = XLSX.utils.encode_cell({ r: 0, c: col });
+            const cell2 = XLSX.utils.encode_cell({ r: 1, c: col });
+
+            if (ws[cell1]) ws[cell1].s = headerStyle;
+            if (ws[cell2]) ws[cell2].s = subHeaderStyle;
+        }
+
+        // Auto column width
+        ws["!cols"] = Array(19).fill({ wch: 14 });
+
+        XLSX.utils.book_append_sheet(workbook, ws, "PPM Report");
+
+        XLSX.writeFile(workbook, "PPM_Report_Styled.xlsx");
+    };
+
+    const handleCellClick = (row, val, i) => {
+
+        const cellKey = `${row.customerId}-${i}`;
+
+        if (val && val !== 0) {
+
+            if (!isQcAdmin) {
+                alert("Only QC Admin And Super Admin can modify existing sales data");
+                return;
+            }
+
+            setPendingEditCell({
+                cellKey,
+                value: val
+            });
+
+            setTempValue(val);
+            setReasonDialogOpen(true);
+            return;
+        }
+
+        setEditingCell(cellKey);
+        setTempValue(val ?? "");
+    };
+
+    const submitReason = () => {
+
+        if (!editReason.trim()) {
+            alert("Please enter reason");
+            return;
+        }
+
+        if (pendingEditCell) {
+            setEditingCell(pendingEditCell.cellKey);
+            setTempValue(pendingEditCell.value);
+        }
+
+        setReasonDialogOpen(false);
+        setPendingEditCell(null);
+    };
 
     return (
-        <Box sx={{ p: 3, backgroundColor: "#fff" }}>
+        <Box >
 
-            <Typography align="center" fontWeight="bold" fontSize={20} sx={{ color: "#3b3b3b" }}>
-                CUSTOMER COMPLAINT PPM TREND - {selectedYear}
+            <Typography align="left" fontWeight="bold" fontSize={20} mb={1} >
+                CUSTOMER PPM REPORT - {currentYear}
             </Typography>
 
-            {/* YEAR SELECTOR */}
-            <Box mt={2} mb={2} width={200}>
-                <FormControl fullWidth size="small">
-                    <Select
-                        value={selectedYear}
-                        onChange={(e) => setSelectedYear(e.target.value)}
+            {/* ===== CHART ===== */}
+            <Grid container spacing={4} mb={1}>
+
+                {/* ================= YEARLY COMPARISON ================= */}
+                <Grid item xs={12} md={4}>
+                    <Paper
+                        ref={exportRef}
+                        sx={{
+                            p: 2,
+                            borderRadius: 4,
+                            background: "linear-gradient(145deg,#ffffff,#f8fafc)",
+                            boxShadow: "0 12px 30px rgba(0,0,0,0.08)",
+                            position: "relative"
+                        }}
                     >
-                        {[2023, 2024, 2025, 2026].map(year => (
-                            <MenuItem key={year} value={year}>
-                                {year}
-                            </MenuItem>
-                        ))}
-                    </Select>
-                </FormControl>
-            </Box>
+                        {/* Download Button */}
+                        <IconButton
+                            onClick={handleDownload}
+                            sx={{
+                                position: "absolute",
+                                top: 12,
+                                right: 12,
+                                bgcolor: "#f1f5f9",
+                                "&:hover": { bgcolor: "#e2e8f0" }
+                            }}
+                        >
+                            <DownloadIcon fontSize="small" />
+                        </IconButton>
 
-            {/* CHART SECTION */}
-            <Grid container spacing={2}>
-
-                {/* Monthly Trend */}
-                <Grid item xs={12}>
-                    <Paper sx={{ p: 2 }}>
-                        <Typography fontWeight="bold" mb={1}>
-                            Monthly PPM Trend
+                        <Typography
+                            variant="subtitle1"
+                            fontWeight={600}
+                            mb={3}
+                            color="#1e293b"
+                        >
+                            Yearly PPM Trend
                         </Typography>
 
-                        <ResponsiveContainer width="100%" height={250}>
-                            <LineChart data={monthlyTrend}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="month" />
-                                <YAxis />
+                        <ResponsiveContainer width="100%" height={260}>
+                            <BarChart data={yearlyTrend}>
+                                <CartesianGrid stroke="#f1f5f9" vertical={false} />
+
+                                <XAxis
+                                    dataKey="year"
+                                    axisLine={false}
+                                    tickLine={false}
+                                    tick={{ fill: "#64748b", fontSize: 12 }}
+                                />
+
+                                <YAxis
+                                    axisLine={false}
+                                    tickLine={false}
+                                    tick={{ fill: "#64748b", fontSize: 12 }}
+                                />
+
+                                <Tooltip
+                                    contentStyle={{
+                                        borderRadius: "12px",
+                                        border: "none",
+                                        boxShadow: "0 10px 25px rgba(0,0,0,0.12)"
+                                    }}
+                                />
+
+                                <Bar
+                                    dataKey="value"
+                                    radius={[12, 12, 0, 0]}
+                                    fill="#6366f1"
+                                    barSize={40}
+                                />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </Paper>
+                </Grid>
+
+                {/* ================= MONTHLY TREND ================= */}
+                <Grid item xs={12} md={8}>
+                    <Paper
+                        ref={monthlyExportRef}
+                        sx={{
+                            p: 2,
+                            borderRadius: 4,
+                            background: "linear-gradient(145deg,#ffffff,#f8fafc)",
+                            boxShadow: "0 12px 30px rgba(0,0,0,0.08)",
+                            position: "relative"
+                        }}
+                    >
+                        {/* Download Button */}
+                        <IconButton
+                            onClick={handleMonthlyDownload}
+                            sx={{
+                                position: "absolute",
+                                top: 12,
+                                right: 12,
+                                bgcolor: "#f1f5f9",
+                                "&:hover": { bgcolor: "#e2e8f0" }
+                            }}
+                        >
+                            <DownloadIcon fontSize="small" />
+                        </IconButton>
+
+                        <Typography
+                            variant="subtitle1"
+                            fontWeight={600}
+                            mb={3}
+                            color="#1e293b"
+                        >
+                            Monthly Performance vs Plan
+                        </Typography>
+
+                        <ResponsiveContainer width="100%" height={260}>
+                            <LineChart
+                                data={monthlyTrend}
+                                margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                            >
+                                <CartesianGrid stroke="#e2e8f0" strokeDasharray="4 4" />
+
+                                <XAxis
+                                    dataKey="month"
+                                    tick={{ fill: "#64748b", fontSize: 12 }}
+                                />
+
+                                <YAxis
+                                    domain={[
+                                        0,
+                                        (dataMax) => (dataMax === 0 ? 5 : dataMax * 1.5)
+                                    ]}
+                                    tick={{ fill: "#64748b", fontSize: 12 }}
+                                />
+
                                 <Tooltip />
-                                <Legend />
+
+                                <ReferenceLine
+                                    y={PLAN_PPM}
+                                    stroke="#3b82f6"
+                                    strokeDasharray="6 6"
+                                    ifOverflow="extendDomain"
+                                    label={{
+                                        value: `Plan (${PLAN_PPM})`,
+                                        position: "right",
+                                        fill: "#3b82f6",
+                                        fontSize: 12
+                                    }}
+                                />
+
                                 <Line
                                     type="monotone"
                                     dataKey="actual"
-                                    stroke="#d32f2f"
+                                    stroke="#ef4444"
                                     strokeWidth={3}
+                                    dot={{ r: 4 }}
+                                    activeDot={{ r: 6 }}
                                 />
                             </LineChart>
                         </ResponsiveContainer>
                     </Paper>
                 </Grid>
+
             </Grid>
+            {/* ===== TABLE ===== */}
+            <Box sx={{ overflowX: "auto" }}>
+                <Button
+                    variant="contained"
+                    sx={{ mt: 1, mb: 1, float: "right" }}
+                    onClick={handleExcelDownload}
+                >
+                    Download Excel
+                </Button>
 
-            {/* TABLE */}
-            <TableContainer component={Paper} sx={{ mt: 3 }}>
-                <Table size="small">
-                    <TableHead>
-                        <TableRow>
-                            <TableCell><b>Model</b></TableCell>
-                            {MONTHS.map(m => (
-                                <TableCell key={m} align="center">
-                                    <b>{m}</b>
-                                </TableCell>
-                            ))}
-                            <TableCell align="center"><b>TOTAL</b></TableCell>
-                        </TableRow>
-                    </TableHead>
+                <TableContainer
+                    component={Paper}
+                    elevation={3}
+                    sx={{
+                        mt: 3,
+                        borderRadius: 3
+                    }}
+                >
+                    <Table
+                        size="small"
+                        sx={{
+                            minWidth: 1800,
+                            borderCollapse: "collapse",
 
-                    <TableBody>
-                        {ppmData.map(row => (
-                            <TableRow key={row.model}>
-                                <TableCell>{row.model}</TableCell>
-                                {row.ppmMonths.map((ppm, i) => (
-                                    <TableCell key={i} align="center">{ppm}</TableCell>
-                                ))}
-                                <TableCell align="center">{row.totalPPM}</TableCell>
+                            "& th, & td": {
+                                textAlign: "center",
+                                verticalAlign: "middle",
+                                fontSize: 13,
+                                border: "1px solid #d0d7de"
+                            },
+
+                            // Strong outer border
+                            border: "1px solid #90a4ae",
+
+                            // Header bottom border
+                            "& thead th": {
+                                borderBottom: "1px solid #78909c"
+                            }
+                        }}
+                    >
+                        {/* ================= HEADER ================= */}
+                        <TableHead>
+
+                            {/* Top Header */}
+                            <TableRow sx={{ backgroundColor: "#c9daeb" }}>
+                                <TableCell rowSpan={2}><b>Customer</b></TableCell>
+                                <TableCell rowSpan={2}><b>Type</b></TableCell>
+
+                                <TableCell><b>2023</b></TableCell>
+                                <TableCell><b>2024</b></TableCell>
+                                <TableCell><b>2025</b></TableCell>
+
+                                <TableCell colSpan={12}><b>2025</b></TableCell>
+
+                                <TableCell rowSpan={2}><b>Remarks</b></TableCell>
+                                <TableCell rowSpan={2}><b>Reduced %</b></TableCell>
                             </TableRow>
-                        ))}
 
-                        {/* TOTAL ROW */}
-                        <TableRow sx={{ backgroundColor: "#f2f2f2" }}>
-                            <TableCell><b>TOTAL</b></TableCell>
-                            {totalRow.monthPPM.map((val, i) => (
-                                <TableCell key={i} align="center">
-                                    <b>{val}</b>
-                                </TableCell>
+                            {/* Month Row */}
+                            <TableRow sx={{ backgroundColor: "#cadbec" }}>
+                                <TableCell><b>ACT</b></TableCell>
+                                <TableCell><b>ACT</b></TableCell>
+                                <TableCell><b>AVG</b></TableCell>
+
+                                {MONTHS.map(m => (
+                                    <TableCell
+                                        key={m}
+
+                                    >
+                                        {m}
+                                    </TableCell>
+                                ))}
+                            </TableRow>
+                        </TableHead>
+
+                        {/* ================= BODY ================= */}
+                        <TableBody>
+
+                            {(ppmData || []).map(row => (
+                                <React.Fragment key={row.customerId}>
+
+                                    {/* REJ QTY */}
+                                    <TableRow hover>
+                                        <TableCell rowSpan={4} sx={{ fontWeight: 600 }}>
+                                            {row.customerName}
+                                        </TableCell>
+
+                                        <TableCell sx={{ fontWeight: 600 }}>
+                                            REJ QTY
+                                        </TableCell>
+
+                                        <TableCell>{row.rejPrev ?? "-"}</TableCell>
+                                        <TableCell>{row.rejLast ?? "-"}</TableCell>
+                                        <TableCell>{row.totalRej ?? "-"}</TableCell>
+
+                                        {(row.rejection || []).map((val, i) => (
+                                            <TableCell
+                                                key={i}
+
+                                            >
+                                                {val ?? "-"}
+                                            </TableCell>
+                                        ))}
+
+                                        <TableCell rowSpan={4}>-</TableCell>
+
+                                        <TableCell
+                                            rowSpan={4}
+                                            sx={{
+                                                fontWeight: 600,
+                                                color: "#2e7d32"
+                                            }}
+                                        >
+                                            -100%
+                                        </TableCell>
+                                    </TableRow>
+
+
+                                    {/* SALES QTY */}
+                                    <TableRow hover>
+
+                                        <TableCell sx={{ fontWeight: 600 }}>
+                                            SALES QTY
+                                        </TableCell>
+
+                                        <TableCell>{row.salesPrev ?? "-"}</TableCell>
+                                        <TableCell>{row.salesLast ?? "-"}</TableCell>
+                                        <TableCell>{row.totalSales ?? "-"}</TableCell>
+
+                                        {(row.sales || []).map((val, i) => {
+
+                                            const cellKey = `${row.customerId}-${i}`;
+                                            const isEditing = editingCell === cellKey;
+
+                                            return (
+                                                <TableCell
+                                                    key={i}
+                                                    sx={{ cursor: "pointer" }}
+                                                    onDoubleClick={() => handleCellClick(row, val, i)}
+                                                >
+                                                    {isEditing ? (
+                                                        <TextField
+                                                            autoFocus
+                                                            size="small"
+                                                            type="number"
+                                                            inputRef={inputRef}
+                                                            value={tempValue}
+                                                            onChange={(e) => setTempValue(e.target.value)}
+                                                            onBlur={() => { }}
+                                                            onKeyDown={async (e) => {
+
+                                                                if (e.key === "Enter") {
+
+                                                                    await saveSalesData(
+                                                                        row.customerId,
+                                                                        i,
+                                                                        tempValue
+                                                                    );
+
+                                                                    setEditingCell(null);
+                                                                }
+
+                                                                if (e.key === "Escape") {
+                                                                    setEditingCell(null);
+                                                                }
+
+                                                            }}
+                                                            sx={{
+                                                                width: 80,
+                                                                "& input": {
+                                                                    textAlign: "center",
+                                                                    padding: "4px"
+                                                                }
+                                                            }}
+                                                        />
+                                                    ) : (
+                                                        val ?? "-"
+                                                    )}
+
+                                                </TableCell>
+                                            );
+
+                                        })}
+                                    </TableRow>
+
+
+                                    {/* PLAN */}
+                                    <TableRow hover>
+
+                                        <TableCell sx={{ fontWeight: 600 }}>
+                                            PLAN PPM
+                                        </TableCell>
+
+                                        <TableCell>{PLAN_PPM}</TableCell>
+                                        <TableCell>{PLAN_PPM}</TableCell>
+                                        <TableCell>{PLAN_PPM}</TableCell>
+
+                                        {MONTHS.map((_, i) => (
+                                            <TableCell
+                                                key={i}
+
+                                            >
+                                                {PLAN_PPM}
+                                            </TableCell>
+                                        ))}
+                                    </TableRow>
+
+
+                                    {/* ACTUAL */}
+                                    <TableRow hover>
+
+                                        <TableCell sx={{ fontWeight: 600 }}>
+                                            ACTUAL PPM
+                                        </TableCell>
+
+                                        <TableCell
+                                            sx={{
+                                                fontWeight: 600,
+                                                color: row.ppmPrev > PLAN_PPM ? "#d32f2f" : "#2e7d32"
+                                            }}
+                                        >
+                                            {row.ppmPrev ?? "-"}
+                                        </TableCell>
+
+                                        <TableCell
+                                            sx={{
+                                                fontWeight: 600,
+                                                color: row.ppmLast > PLAN_PPM ? "#d32f2f" : "#2e7d32"
+                                            }}
+                                        >
+                                            {row.ppmLast ?? "-"}
+                                        </TableCell>
+
+                                        <TableCell
+                                            sx={{
+                                                fontWeight: 600,
+                                                color:
+                                                    row.totalPPM > PLAN_PPM
+                                                        ? "#d32f2f"
+                                                        : "#2e7d32"
+                                            }}
+                                        >
+                                            {row.totalPPM ?? "-"}
+                                        </TableCell>
+
+                                        {(row.ppmMonths || []).map((val, i) => (
+                                            <TableCell
+                                                key={i}
+                                                sx={{
+                                                    fontWeight: 600,
+                                                    color:
+                                                        val > PLAN_PPM
+                                                            ? "#d32f2f"
+                                                            : "#2e7d32",
+
+                                                }}
+                                            >
+                                                {val ?? "-"}
+                                            </TableCell>
+                                        ))}
+
+                                    </TableRow>
+
+                                </React.Fragment>
                             ))}
-                            <TableCell align="center">
-                                <b>{totalRow.totalPPM}</b>
-                            </TableCell>
-                        </TableRow>
 
-                    </TableBody>
-                </Table>
-            </TableContainer>
 
-            {/* YEARLY SUMMARY */}
-            <Box mt={3}>
-                <Typography fontWeight="bold">
-                    Yearly Average PPM : {Math.round(yearlyAveragePPM)}
-                </Typography>
+                            {/* ================= TOTAL SECTION ================= */}
+
+                            {totals && (
+
+                                <>
+
+                                    <TableRow sx={{ background: "#f1f5f9", fontWeight: 700 }}>
+
+                                        <TableCell rowSpan={4}><b>TOTAL</b></TableCell>
+
+                                        <TableCell><b>REJ QTY</b></TableCell>
+
+                                        <TableCell>{totals.rejPrev}</TableCell>
+                                        <TableCell>{totals.rejLast}</TableCell>
+                                        <TableCell>{totals.totalRej}</TableCell>
+
+                                        {(totals.monthlyRejection || []).map((v, i) => (
+                                            <TableCell key={i}>{v}</TableCell>
+                                        ))}
+
+                                        <TableCell rowSpan={4}></TableCell>
+                                        <TableCell rowSpan={4}></TableCell>
+
+                                    </TableRow>
+
+
+                                    <TableRow sx={{ background: "#f1f5f9", fontWeight: 700 }}>
+
+                                        <TableCell><b>SALES QTY</b></TableCell>
+
+                                        <TableCell>{totals.salesPrev}</TableCell>
+                                        <TableCell>{totals.salesLast}</TableCell>
+                                        <TableCell>{totals.totalSales}</TableCell>
+
+                                        {(totals.monthlySales || []).map((v, i) => (
+                                            <TableCell key={i}>{v}</TableCell>
+                                        ))}
+
+                                    </TableRow>
+
+
+                                    <TableRow sx={{ background: "#f1f5f9", fontWeight: 700 }}>
+
+                                        <TableCell><b>PLAN PPM</b></TableCell>
+
+                                        <TableCell>{PLAN_PPM}</TableCell>
+                                        <TableCell>{PLAN_PPM}</TableCell>
+                                        <TableCell>{PLAN_PPM}</TableCell>
+
+                                        {MONTHS.map((_, i) => (
+                                            <TableCell key={i}>{PLAN_PPM}</TableCell>
+                                        ))}
+
+                                    </TableRow>
+
+
+                                    <TableRow sx={{ background: "#f1f5f9", fontWeight: 700 }}>
+
+                                        <TableCell><b>ACTUAL PPM</b></TableCell>
+
+                                        <TableCell>-</TableCell>
+                                        <TableCell>-</TableCell>
+                                        <TableCell>{totals.totalPPM}</TableCell>
+
+                                        {(totals.ppmMonths || []).map((v, i) => (
+                                            <TableCell key={i}>{v}</TableCell>
+                                        ))}
+
+                                    </TableRow>
+
+                                </>
+                            )}
+
+                        </TableBody>
+                    </Table>
+                </TableContainer>
             </Box>
+
+            <Dialog open={reasonDialogOpen} onClose={() => setReasonDialogOpen(false)}>
+
+                <DialogTitle>
+                    Reason to Modify Sales Data
+                </DialogTitle>
+
+                <DialogContent>
+
+                    <TextField
+                        fullWidth
+                        multiline
+                        rows={3}
+                        label="Reason"
+                        value={editReason}
+                        onChange={(e) => setEditReason(e.target.value)}
+                    />
+
+                </DialogContent>
+
+                <DialogActions>
+
+                    <Button
+                        onClick={() => setReasonDialogOpen(false)}
+                    >
+                        Cancel
+                    </Button>
+
+                    <Button
+                        variant="contained"
+                        onClick={submitReason}
+                    >
+                        Submit
+                    </Button>
+
+                </DialogActions>
+
+            </Dialog>
 
         </Box>
     );

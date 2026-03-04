@@ -51,7 +51,7 @@ export const MASTER_CONFIG = {
             PartId: data.PartId,
             PartName: data.PartName,
             PartNumber: data.PartNumber,
-            PartDescription: data.PartDescription,  
+            PartDescription: data.PartDescription,
         }),
 
         mapDelete: (id) => ({
@@ -78,4 +78,24 @@ export const MASTER_CONFIG = {
             RepairCauseCodeId: id,
         }),
     },
+
+    attachment: {
+        baseUrl: "/masters/checklist",
+
+        mapCreate: (data) => ({
+            Name: data.Name,
+            IsMandatory: data.IsMandatory,
+        }),
+
+        mapUpdate: (data) => ({
+            Id: data.Id,
+            Name: data.Name,
+            IsMandatory: data.IsMandatory,
+        }),
+
+        mapDelete: (id) => ({
+            Id: id,
+        }),
+    }
+
 };

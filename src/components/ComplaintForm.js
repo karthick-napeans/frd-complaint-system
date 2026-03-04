@@ -25,7 +25,10 @@ import {
   TableCell,
   TableContainer,
   TableHead,
-  TableRow,
+  TableRow, FormLabel,
+  RadioGroup,
+  FormControlLabel,
+  Radio
 } from "@mui/material";
 import ClearIcon from "@mui/icons-material/Clear";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
@@ -34,6 +37,7 @@ import SaveIcon from "@mui/icons-material/Save";
 import { useSelector } from "react-redux";
 import CircularProgress from "@mui/material/CircularProgress";
 import { submitCustomerComplaint, getCustomerComplaints, getAttachmentChecklist } from "../api/pageApi";
+import { Email } from "@mui/icons-material";
 
 
 
@@ -60,7 +64,7 @@ const ComplaintForm = () => {
   ];
   const today = new Date().toISOString().split("T")[0];
   const [attachmentList, setAttachmentList] = useState([])
-
+  const [attachmentsLoaded, setAttachmentsLoaded] = useState(false);
   const [attachmentRows, setAttachmentRows] = useState(
     attachmentList.map(item => ({
       ...item,
@@ -69,16 +73,18 @@ const ComplaintForm = () => {
       expiryDate: ""
     }))
   );
+
   const INITIAL_FORM_STATE = {
     complaintId: "",
     customerSelected: "",
     customerEmail: "",
+    IsRegistered: true,
     complaintDate: today,
     modelSelected: "",
     partSelected: "",
     problemStatement: "",
     causeCode: "",
-    severityLevel: SEVERITY_LEVELS[0], // default back to Low
+    severityLevel: SEVERITY_LEVELS[0],
     attachments: [],
     status: "",
   };
@@ -99,18 +105,19 @@ const ComplaintForm = () => {
       try {
         const res = await getAttachmentChecklist();
 
-        setAttachmentRows(
-          res.map(item => ({
-            id: item.Id,
-            listName: item.Name,
-            isMandatory: item.Ismandatory,  // 🔥 important
-            checked: item.Ismandatory,
-            file: null,
-            expiryDate: "",
-            emails: "",
-          }))
-        );
+        const rows = res.map(item => ({
+          id: item.Id,
+          listName: item.Name,
+          isMandatory: item.Ismandatory,
+          checked: item.Ismandatory,
+          file: null,
+          expiryDate: "",
+          emails: "",
+        }));
 
+        setAttachmentList(rows);
+        setAttachmentRows(rows);
+        setAttachmentsLoaded(true);
       } catch (err) {
         console.error("Error While Fetch Attachments List", err);
       }
@@ -172,33 +179,114 @@ const ComplaintForm = () => {
   };
 
   const handleDraftClick = (draft) => {
-    console.log("Draft clicked:", draft);
+
+    if (!attachmentsLoaded) {
+      console.warn("Attachments not loaded yet");
+      return;
+    }
 
     setActiveDraftId(draft.ComplaintId);
 
+    // Split API values
+    const checklistIds = draft.CheckListIds
+      ? draft.CheckListIds.split(",").map(Number)
+      : [];
+
+    const attachmentNames = draft.AttachmentNames
+      ? draft.AttachmentNames.split(",")
+      : [];
+
+    const emails = draft.NotificationEmails
+      ? draft.NotificationEmails.split(",")
+      : [];
+
+    const dueDates = draft.DueDates
+      ? draft.DueDates.split(",").map((d) => d.trim())
+      : [];
+
+    // Convert API date -> YYYY-MM-DD
+    const formatDateForInput = (dateStr) => {
+      if (!dateStr) return "";
+
+      const cleaned = dateStr.replace(/\s+/g, " ").trim();
+
+      if (/^\d{4}-\d{2}-\d{2}$/.test(cleaned)) {
+        return cleaned;
+      }
+
+      // Treat slash dates from API as dd/mm/yyyy.
+      const dmyMatch = cleaned.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (dmyMatch) {
+        const day = String(Number(dmyMatch[1])).padStart(2, "0");
+        const month = String(Number(dmyMatch[2])).padStart(2, "0");
+        const year = dmyMatch[3];
+        return `${year}-${month}-${day}`;
+      }
+
+      // API sometimes returns "May  3 2026 12:00AM" (no space before AM/PM).
+      const normalized = cleaned.replace(/(\d)(AM|PM)$/i, "$1 $2");
+      const parsed = new Date(normalized);
+
+      if (Number.isNaN(parsed.getTime())) {
+        return "";
+      }
+
+      const year = parsed.getFullYear();
+      const month = String(parsed.getMonth() + 1).padStart(2, "0");
+      const day = String(parsed.getDate()).padStart(2, "0");
+
+      return `${year}-${month}-${day}`;
+    };
+
+    const updatedRows = attachmentRows.map((row) => {
+
+      let fileName = "";
+      let email = "";
+      let expiryDate = "";
+      let checked = false;
+
+      checklistIds.forEach((id, index) => {
+
+        if (id === row.id) {
+
+          checked = true;
+
+          fileName = attachmentNames[index] || "";
+          email = emails[index] || "";
+
+          expiryDate = formatDateForInput(dueDates[index]);
+
+        }
+
+      });
+
+      return {
+        ...row,
+        checked,
+        fileName,
+        emails: email,
+        expiryDate
+      };
+
+    });
+
+    setAttachmentRows(updatedRows);
+
     setFormData({
       complaintId: draft.ComplaintId || "",
-
-      customerSelected: draft.CustomerId || "",   // ✅ IMPORTANT
+      customerSelected: draft.CustomerId || "",
       customerEmail: draft.CustomerEmail || "",
-
-      complaintDate:
-        draft.ComplaintDate?.split("T")[0] || "",
-
-      modelSelected: draft.Model || "",           // ✅ must match Select value
-      partSelected: draft.Part || "",             // ✅ must match Select value
-
+      IsRegistered: draft.IsRegistred ?? true,
+      complaintDate: draft.ComplaintDate?.split("T")[0] || "",
+      modelSelected: draft.Model || "",
+      partSelected: draft.Part || "",
       problemStatement: draft.ProblemStatement || "",
       causeCode: draft.CauseCode || "",
-
       severityLevel: draft.Severity || SEVERITY_LEVELS[0],
-
-      attachments: [],
       status: draft.Status || "DRAFT",
     });
 
     setActiveStep(0);
-    setExpandedPanel("drafts");
   };
 
   const handleInputChange = (e) => {
@@ -206,18 +294,14 @@ const ComplaintForm = () => {
 
     if (name === "customerEmail") {
 
-      if (!/^[a-zA-Z0-9@._,\s-]*$/.test(value)) {
+      // Allow only valid email characters
+      if (!/^[a-zA-Z0-9@._-]*$/.test(value)) {
         return;
       }
 
-      const emails = value.split(",").map((email) => email.trim());
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-      const hasInvalid = emails.some(
-        (email) => email !== "" && !emailRegex.test(email)
-      );
-
-      if (hasInvalid) {
+      if (value && !emailRegex.test(value)) {
         setErrors((prev) => ({
           ...prev,
           customerEmail: "Invalid Email",
@@ -230,10 +314,10 @@ const ComplaintForm = () => {
       }
     }
 
-    setFormData({
-      ...formData,
+    setFormData((prev) => ({
+      ...prev,
       [name]: value,
-    });
+    }));
 
     if (name !== "customerEmail" && value) {
       setErrors((prev) => ({
@@ -241,8 +325,6 @@ const ComplaintForm = () => {
         [name]: "",
       }));
     }
-
-
   };
 
   const handleSelectChange = (e) => {
@@ -265,8 +347,12 @@ const ComplaintForm = () => {
   const isStep2Valid = () => {
     return !attachmentRows.some(
       (row) =>
-        row.isMandatory &&
-        (!row.file || !row.expiryDate)
+        row.checked &&
+        (
+          !row.expiryDate ||
+          !row.emails?.trim() ||
+          !!validateEmails(row.emails)
+        )
     );
   };
 
@@ -365,6 +451,7 @@ const ComplaintForm = () => {
   };
 
   const buildComplaintFormData = (status) => {
+
     const fd = new FormData();
 
     // 🔹 Normal Fields
@@ -376,28 +463,90 @@ const ComplaintForm = () => {
     fd.append("part", formData.partSelected || "");
     fd.append("problemStatement", formData.problemStatement || "");
     fd.append("causeCode", formData.causeCode || "");
+    fd.append("IsRegistred", String(formData.IsRegistered ?? true));
     fd.append("severity", formData.severityLevel || "");
     fd.append("status", status);
 
-    // 🔥 Attachments
-    let attachmentIndex = 0;
+    // 🔥 Build Checklist JSON 
+    const checklist = [];
+    const attachmentErrors = {};
 
     attachmentRows.forEach((row) => {
-      if (row.file) {
 
-        // Clean comma separated emails
-        const cleanEmails = row.emails
-          ? row.emails.split(",").map(e => e.trim()).join(",")
+      const hasFile = !!(row.file || row.fileName);
+      const hasEmail = !!row.emails?.trim();
+      const hasExpiryDate = !!row.expiryDate;
+
+      const shouldIncludeRow =
+        row.isMandatory ||
+        row.checked ||
+        hasFile ||
+        hasEmail ||
+        hasExpiryDate;
+
+      const shouldEnforceRowRequired = row.checked;
+
+      if (shouldEnforceRowRequired) {
+        if (!hasEmail) attachmentErrors[`email_${row.id}`] = "Required";
+        if (!hasExpiryDate) attachmentErrors[`expiry_${row.id}`] = "Required";
+      }
+
+      if (hasEmail) {
+        const emailError = validateEmails(row.emails);
+        if (emailError) attachmentErrors[`email_${row.id}`] = emailError;
+      }
+
+      if (shouldIncludeRow) {
+
+        const formattedDate = row.expiryDate
+          ? new Date(row.expiryDate)
+            .toLocaleDateString("en-GB")
+            .replace(/\//g, "-")
           : "";
 
-        fd.append(`attachments[${attachmentIndex}].checklistId`, row.id);
-        fd.append(`attachments[${attachmentIndex}].file`, row.file);
-        fd.append(`attachments[${attachmentIndex}].emails`, cleanEmails);
-        fd.append(`attachments[${attachmentIndex}].expiryDate`, row.expiryDate || "");
+        checklist.push({
+          CheckListId: row.id,
+          Name: row.listName,
+          IsMandatory: row.isMandatory,
+          IsChecked: !!row.checked,
+          Duedate: formattedDate,
+          NotificationEmails: row.emails?.trim() || ""
+        });
 
-        attachmentIndex++;
+        if (row.file) {
+          fd.append(`file_${row.id}`, row.file);
+        }
       }
     });
+
+    if (Object.keys(attachmentErrors).length > 0) {
+      setErrors((prev) => ({
+        ...Object.fromEntries(
+          Object.entries(prev).filter(
+            ([key]) =>
+              !key.startsWith("file_") &&
+              !key.startsWith("email_") &&
+              !key.startsWith("expiry_")
+          )
+        ),
+        ...attachmentErrors
+      }));
+      setMessage("Please fill required attachment details");
+      return null;
+    }
+
+    setErrors((prev) =>
+      Object.fromEntries(
+        Object.entries(prev).filter(
+          ([key]) =>
+            !key.startsWith("file_") &&
+            !key.startsWith("email_") &&
+            !key.startsWith("expiry_")
+        )
+      )
+    );
+
+    fd.append("checklist", JSON.stringify(checklist));
 
     return fd;
   };
@@ -410,6 +559,7 @@ const ComplaintForm = () => {
       attachmentList.map(item => ({
         ...item,
         checked: item.isMandatory,
+        emails: "",
         file: null,
         expiryDate: ""
       }))
@@ -446,9 +596,26 @@ const ComplaintForm = () => {
 
     try {
       setDraftLoading(true);
-
       const fd = buildComplaintFormData("DRAFT");
+      if (!fd) return;
 
+      console.log("------ FormData Start ------");
+
+      for (const [key, value] of fd.entries()) {
+
+        if (value instanceof File) {
+          console.log(`${key}:`, {
+            fileName: value.name,
+            fileSize: value.size,
+            fileType: value.type
+          });
+        } else {
+          console.log(`${key}:`, value);
+        }
+
+      }
+
+      console.log("------ FormData End ------");
       await submitCustomerComplaint(fd);
 
       if (formData.complaintId) {
@@ -456,6 +623,7 @@ const ComplaintForm = () => {
       } else {
         setMessage("✓ Draft saved successfully");
       }
+      
       resetForm();
       await fetchComplaints();
 
@@ -474,10 +642,25 @@ const ComplaintForm = () => {
     try {
       setSubmitLoading(true);
       const fd = buildComplaintFormData("SUBMITTED");
+      if (!fd) return;
 
-      for (let pair of fd.entries()) {
-        console.log(pair[0], pair[1]);
+      console.log("------ FormData Start ------");
+
+      for (const [key, value] of fd.entries()) {
+
+        if (value instanceof File) {
+          console.log(`${key}:`, {
+            fileName: value.name,
+            fileSize: value.size,
+            fileType: value.type
+          });
+        } else {
+          console.log(`${key}:`, value);
+        }
+
       }
+
+      console.log("------ FormData End ------");
       await submitCustomerComplaint(fd);
       setMessage("✓ Complaint submitted successfully!");
       await fetchComplaints();
@@ -618,14 +801,69 @@ const ComplaintForm = () => {
                   {/* Customer Email */}
                   <Grid item xs={12}>
                     <TextField
-                      label="Customer Email"
+                      label="Internal Staff Email"
                       fullWidth
                       name="customerEmail"
                       value={formData.customerEmail || ""}
                       onChange={handleInputChange}
-                      error={!!errors.customerEmail}
+                      error={!!errors.customerEmail} F
                       helperText={errors.customerEmail || " "}
                     />
+                  </Grid>
+
+                  <Grid item xs={12} mb={3}>
+                    <Box
+                      sx={{
+                        border: "1px solid #c4c4c4",
+                        borderRadius: 1,
+                        px: 2,
+                        py: 1,
+                        position: "relative",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 2
+                      }}
+                    >
+                      {/* Floating Label */}
+                      <Typography
+                        sx={{
+                          position: "absolute",
+                          top: -9,
+                          left: 12,
+                          fontSize: 12,
+                          background: "#fff",
+                          px: 0.5,
+                          color: "#1976d2",
+                          fontWeight: 500
+                        }}
+                      >
+                        Customer Type
+                      </Typography>
+
+                      <RadioGroup
+                        row
+                        name="IsRegistered"
+                        value={String(formData.IsRegistered ?? "true")}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            IsRegistered: e.target.value === "true"
+                          })
+                        }
+                      >
+                        <FormControlLabel
+                          value="true"
+                          control={<Radio size="small" />}
+                          label="Registered"
+                        />
+
+                        <FormControlLabel
+                          value="false"
+                          control={<Radio size="small" />}
+                          label="Unregistered"
+                        />
+                      </RadioGroup>
+                    </Box>
                   </Grid>
 
                   {/* Complaint Date */}
@@ -819,7 +1057,7 @@ const ComplaintForm = () => {
                                     textAlign: "left",
                                   }}
                                 >
-                                  {row.file ? row.file.name : "Upload File"}
+                                  {row.file ? row.file.name : row.fileName || "Upload File"}
                                 </Box>
 
                                 <input
@@ -861,7 +1099,8 @@ const ComplaintForm = () => {
                                   type="date"
                                   fullWidth
                                   size="small"
-                                  value={row.expiryDate}
+                                  value={row.expiryDate || ""}
+                                  InputLabelProps={{ shrink: true }}
                                   onChange={(e) =>
                                     handleDateChange(row.id, e.target.value)
                                   }

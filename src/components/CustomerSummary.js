@@ -90,6 +90,7 @@ const CustomerSummary = () => {
 
         return errors;
     };
+
     useEffect(() => {
         fetchComplaints();
     }, []);
@@ -103,7 +104,7 @@ const CustomerSummary = () => {
             // Add serial number
             const formattedData = response.map((item, index) => ({
                 ...item,
-                id: item.ComplaintId, // required for DataGrid
+                id: item.ComplaintId, 
                 serialNo: index + 1
             }));
 
@@ -205,6 +206,14 @@ const CustomerSummary = () => {
             field: 'Part',
             headerName: 'Part',
             width: 100,
+            resizable: false,
+            headerAlign: 'center',
+            align: 'center',
+        },
+        {
+            field: 'ProblemStatement',
+            headerName: 'Description',
+            width: 250,
             resizable: false,
             headerAlign: 'center',
             align: 'center',

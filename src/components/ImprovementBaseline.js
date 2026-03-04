@@ -8,17 +8,21 @@ import {
     Button,
     Grid,
     Chip,
-    Stack,
+    Stack, MenuItem
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import ConfirmDialog from "./ConfirmDialog";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
+import { useSelector } from "react-redux";
 import { saveImprovementBaseline, getAllImprovementList, deleteImprovementBaseline } from "../api/pageApi";
 
 const ImprovementBaselinePage = () => {
+    const { models } = useSelector((state) => state.masters);
+    const activeModels = models?.filter(m => m.IsActive);
     const [config, setConfig] = useState({
         lastImprovementDate: new Date().toISOString().split("T")[0],
+        modelId: "",
         improvementDescription: "",
     })
     const [confirmState, setConfirmState] = useState({
@@ -29,6 +33,7 @@ const ImprovementBaselinePage = () => {
         errorMessage: "",
         onConfirm: null
     });
+    const [selectedModel, setSelectedModel] = useState("");
     const [saving, setSaving] = useState(false);
     const [errors, setErrors] = useState({});
     const [rows, setRows] = useState([]);
@@ -53,7 +58,8 @@ const ImprovementBaselinePage = () => {
                     rawDate: item.ImprovementDate,   // 🔥 keep original
                     date: new Date(item.ImprovementDate)
                         .toLocaleDateString("en-GB")
-                        .replace(/\//g, "-"),           // DD-MM-YYYY
+                        .replace(/\//g, "-"),
+                    model: item.ModelName,
                     description: item.Details,
                 }))
                 // 🔥 Sort using raw date
@@ -105,13 +111,14 @@ const ImprovementBaselinePage = () => {
     const handleCreate = async () => {
         const newErrors = {};
 
-        if (!config.lastImprovementDate) {
-            newErrors.lastImprovementDate = "Date is required";
+        if (!config.modelId) {
+            newErrors.modelId = "Model selection is required";
         }
 
         if (!config.improvementDescription?.trim()) {
             newErrors.improvementDescription = "Description is required";
         }
+
 
         if (Object.keys(newErrors).length > 0) {
             setErrors(newErrors);
@@ -123,9 +130,10 @@ const ImprovementBaselinePage = () => {
 
             const payload = {
                 ImprovementDate: config.lastImprovementDate,
+                ModelId: config.modelId,
                 Details: config.improvementDescription,
             };
-
+            console.log("Creating improvement with payload:", payload);
             await saveImprovementBaseline(payload);
 
             setConfig({
@@ -146,38 +154,33 @@ const ImprovementBaselinePage = () => {
 
     return (
         <Box >
-
             <Typography variant="h5" fontWeight={700} mb={2} sx={{ color: "#3b3b3b" }}>
                 Improvement Baseline Configuration
             </Typography>
 
-            <Card sx={{ mb: 3, borderRadius: 2 }}>
+            <Card sx={{ mb: 3, borderRadius: 3 }}>
                 <CardContent>
+
                     {/* Header */}
-                    <Box
-                        sx={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            mb: 2,
-                        }}
+                    <Typography
+                        variant="h6"
+                        fontWeight={600}
+                        mb={3}
+                        color="primary"
                     >
-                        <Box>
-                            <Typography fontWeight={600}>
-                                Improvement Baseline
-                            </Typography>
-                        </Box>
-                    </Box>
+                        Create New Improvement Record
+                    </Typography>
 
                     {/* Form */}
-                    <Grid container spacing={2}>
-                        <Grid item xs={12} sm={6}>
-                            <Typography variant="caption" fontWeight={600}>
-                                Improvement Date
-                            </Typography>
+                    <Grid container spacing={3}>
+
+                        <Grid item xs={12} md={6}>
                             <TextField
                                 type="date"
                                 fullWidth
                                 size="small"
+                                label="Improvement Date"
+                                InputLabelProps={{ shrink: true }}
                                 value={config.lastImprovementDate}
                                 onChange={(e) =>
                                     setConfig({
@@ -190,15 +193,39 @@ const ImprovementBaselinePage = () => {
                             />
                         </Grid>
 
-                        <Grid item xs={12} sm={6}>
-                            <Typography variant="caption" fontWeight={600}>
-                                Description
-                            </Typography>
+                        <Grid item xs={12} md={6}>
+                            <TextField
+                                select
+                                fullWidth
+                                size="small"
+                                label="Select Model"
+                                value={config.modelId || ""}
+                                onChange={(e) =>
+                                    setConfig({ ...config, modelId: e.target.value })
+                                }
+                                error={!!errors.modelId}
+                                helperText={errors.modelId}
+                            >
+                                <MenuItem value="">
+                                    <em>Select Model</em>
+                                </MenuItem>
+
+                                {activeModels?.map((model) => (
+                                    <MenuItem key={model.ModelId} value={model.ModelId}>
+                                        {model.ModelCode} - {model.ModelName}
+                                    </MenuItem>
+                                ))}
+                            </TextField>
+                        </Grid>
+
+                        {/* Description */}
+                        <Grid item xs={12}>
                             <TextField
                                 fullWidth
                                 size="small"
+                                label="Description"
                                 multiline
-                                rows={2}
+                                rows={3}
                                 value={config.improvementDescription}
                                 onChange={(e) =>
                                     setConfig({
@@ -212,15 +239,18 @@ const ImprovementBaselinePage = () => {
                         </Grid>
                     </Grid>
 
-                    <Stack direction="row" justifyContent="flex-end" mt={2}>
+                    {/* Save Button */}
+                    <Stack direction="row" justifyContent="flex-end" mt={3}>
                         <Button
                             variant="contained"
+                            size="medium"
                             onClick={handleCreate}
                             disabled={saving}
                         >
                             {saving ? "Saving..." : "Save Configuration"}
                         </Button>
                     </Stack>
+
                 </CardContent>
             </Card>
 
@@ -269,7 +299,16 @@ const ImprovementBaselinePage = () => {
                                 headerName: "Improvement Date",
                                 flex: 1,
                                 minWidth: 180,
-                                editable: true,
+                                editable: false,
+                                align: "center",
+                                headerAlign: "center",
+                            },
+                            {
+                                field: "model",
+                                headerName: "Model",
+                                flex: 2,
+                                minWidth: 300,
+                                editable: false,
                                 align: "center",
                                 headerAlign: "center",
                             },
@@ -278,7 +317,7 @@ const ImprovementBaselinePage = () => {
                                 headerName: "Description",
                                 flex: 2,
                                 minWidth: 300,
-                                editable: true,
+                                editable: false,
                                 align: "center",
                                 headerAlign: "center",
                             },

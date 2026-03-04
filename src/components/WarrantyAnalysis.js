@@ -36,8 +36,6 @@ import Collapse from "@mui/material/Collapse";
 
 const WarrantyAnalysis = () => {
   const { customers, models, parts } = useSelector((state) => state.masters);
-  // console.log("Models in WarrantyAnalysis:", models);
-  // console.log("Parts in WarrantyAnalysis:", parts);
   const activeCustomers = customers.filter((c) => c.IsActive);
   const [customerSelected, setCustomerSelected] = useState("");
   const [rawData, setRawData] = useState([]);
@@ -68,6 +66,21 @@ const WarrantyAnalysis = () => {
   const [errors, setErrors] = useState({});
   const hasFetchedOnce = useRef(false);
   const [latestImprovement, setLatestImprovement] = useState(null);
+  const [improvementList, setImprovementList] = useState([]);
+
+  const baselineColors = [
+    "#ff0000", // red
+    "#ffbe0b", // green
+    "#51ff01", // orange
+    "#5007fa", // purple
+    "#00d9ff", // cyan
+  ];
+ 
+  const filteredBaselines = improvementList?.filter(b =>
+    selectedModels.includes(b.modelCode)
+  );
+
+
 
   useEffect(() => {
     fetchImprovementList();
@@ -79,20 +92,23 @@ const WarrantyAnalysis = () => {
 
       if (!res || res.length === 0) return;
 
-      // Sort latest first
-      const sorted = res.sort(
+      // sort latest first
+      const sorted = [...res].sort(
         (a, b) =>
           new Date(b.ImprovementDate) - new Date(a.ImprovementDate)
       );
 
-      const latest = sorted[0];
+      // convert API format → UI format
+      const mapped = sorted.map((item) => ({
+        id: item.ImprovementId,
+        modelCode: item.ModelName,
+        yearMonth: item.ImprovementDate.slice(0, 7),
+        description: item.Details,
+        date: item.ImprovementDate,
+      }));
 
-      setLatestImprovement({
-        id: latest.ImprovementId,
-        date: latest.ImprovementDate,
-        yearMonth: latest.ImprovementDate.slice(0, 7), // YYYY-MM
-        description: latest.Details,
-      });
+      setLatestImprovement(mapped[0]); // latest record
+      setImprovementList(mapped);      // optional if you need full list
 
     } catch (err) {
       console.error("Error fetching improvement list", err);
@@ -374,8 +390,6 @@ const WarrantyAnalysis = () => {
   const sortedData = [...prodRepairData].sort((a, b) => {
     return new Date(a.month) - new Date(b.month);
   });
-
-
 
   // ---------- UI ----------
   return (
@@ -709,16 +723,18 @@ const WarrantyAnalysis = () => {
 
                     <YAxis
                       allowDecimals={false}
-                      domain={[5, (dataMax) => dataMax + 2]}
+                      domain={[5, (dataMax) => dataMax + 20]}
                       interval={0}
                       tickMargin={8}
                     />
+
                     <Tooltip
                       content={({ active, payload, label }) => {
                         if (!active || !payload || payload.length === 0) return null;
 
-                        const isBaseline =
-                          latestImprovement?.yearMonth === label;
+                        const matchedBaseline = filteredBaselines?.find(
+                          (b) => b.yearMonth === label
+                        );
 
                         return (
                           <div
@@ -740,15 +756,16 @@ const WarrantyAnalysis = () => {
                               </p>
                             ))}
 
-                            {isBaseline && (
+                            {matchedBaseline && (
                               <p
                                 style={{
                                   marginTop: 6,
                                   fontWeight: 600,
-                                  color: "red",
+                                  color: "#ef4444",
                                 }}
                               >
-                                Improvement: {latestImprovement.description}
+                                {matchedBaseline.modelCode} Improvement:{" "}
+                                {matchedBaseline.description || ""}
                               </p>
                             )}
                           </div>
@@ -776,32 +793,88 @@ const WarrantyAnalysis = () => {
                       />
                     </Line>
 
-                    <ReferenceLine
-                      x={latestImprovement?.yearMonth}
-                      stroke="red"
-                      strokeDasharray="5 5"
-                      label={({ viewBox }) => {
-                        const { x, y } = viewBox;
+                    {filteredBaselines?.length > 0 &&
+                      filteredBaselines.map((baseline, index) => {
+                        const color = baselineColors[index % baselineColors.length];
+
                         return (
-                          <text
-                            x={x}
-                            y={y - 5}
-                            textAnchor="middle"
-                            fill="red"
-                            fontWeight="bold"     // 🔥 bold
-                            fontSize={12}
-                          >
-                            Latest Improvement
-                          </text>
+                          <ReferenceLine
+                            key={baseline.modelCode}
+                            x={baseline.yearMonth}
+                            stroke={color}
+                            strokeWidth={4}              // 🔥 Increase thickness here
+                            strokeDasharray="6 3"        // Slightly stronger dash
+                            isFront={true}               // Bring to front of chart
+                            label={({ viewBox }) => {
+                              const { x, y } = viewBox;
+
+                              return (
+                                <text
+                                  x={x}
+                                  y={y - 8}
+                                  textAnchor="middle"
+                                  fill={color}
+                                  fontSize={13}
+                                  fontWeight={700}
+                                  style={{
+                                    pointerEvents: "none",
+                                    paintOrder: "stroke",
+                                    stroke: "#ffffff",
+                                    strokeWidth: 4
+                                  }}
+                                >
+                                  {baseline.modelCode} BASELINE
+                                </text>
+                              );
+                            }}
+                          />
                         );
-                      }}
-                    />
-
-
+                      })}
                   </ComposedChart>
-                </ResponsiveContainer>
 
+
+                </ResponsiveContainer>
+                {filteredBaselines?.length > 0 && (
+                  <Box
+                    display="flex"
+                    justifyContent="center"
+                    gap={3}
+                    mt={2}
+                    flexWrap="wrap"
+                  >
+                    {filteredBaselines.map((baseline, index) => {
+                      const color = baselineColors[index % baselineColors.length];
+
+                      return (
+                        <Box
+                          key={baseline.modelCode}
+                          display="flex"
+                          alignItems="center"
+                          gap={1}
+                        >
+                          {/* Colored Line Indicator */}
+                          <Box
+                            sx={{
+                              width: 30,
+                              height: 3,
+                              backgroundColor: color,
+                              borderRadius: 1
+                            }}
+                          />
+
+                          <Typography
+                            variant="caption"
+                            sx={{ fontWeight: 600, color }}
+                          >
+                            {baseline.modelCode} BASELINE
+                          </Typography>
+                        </Box>
+                      );
+                    })}
+                  </Box>
+                )}
               </CardContent>
+
             </div>
           </Card>
         </Grid>
@@ -829,7 +902,7 @@ const WarrantyAnalysis = () => {
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={usedMonthData}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="label" />
+                    <XAxis dataKey="label" interval={1} />
                     <YAxis
                       domain={[
                         0,
@@ -880,7 +953,7 @@ const WarrantyAnalysis = () => {
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={mileageData}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="label" />
+                    <XAxis dataKey="label" interval={1} />
                     <YAxis
                       domain={[
                         0,
@@ -943,7 +1016,7 @@ const WarrantyAnalysis = () => {
                       ]}
                       allowDecimals={false}
                     />
-                    <YAxis dataKey="name" type="category" interval={0} />
+                    <YAxis dataKey="name" type="category" interval={3} />
                     <Tooltip />
                     <Bar dataKey="count" fill="#6366f1">
                       <LabelList
