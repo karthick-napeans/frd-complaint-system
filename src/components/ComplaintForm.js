@@ -92,7 +92,7 @@ const ComplaintForm = () => {
   const [submitLoading, setSubmitLoading] = useState(false);
   const [draftLoading, setDraftLoading] = useState(false);
   const [errors, setErrors] = useState({});
-
+  const [originalChecklist, setOriginalChecklist] = useState([]);
   useEffect(() => {
     if (message) {
       const timer = setTimeout(() => setMessage(''), 3000);
@@ -271,7 +271,7 @@ const ComplaintForm = () => {
     });
 
     setAttachmentRows(updatedRows);
-
+    setOriginalChecklist(JSON.parse(JSON.stringify(updatedRows)));
     setFormData({
       complaintId: draft.ComplaintId || "",
       customerSelected: draft.CustomerId || "",
@@ -467,26 +467,30 @@ const ComplaintForm = () => {
     fd.append("severity", formData.severityLevel || "");
     fd.append("status", status);
 
-    // 🔥 Build Checklist JSON 
     const checklist = [];
     const attachmentErrors = {};
 
     attachmentRows.forEach((row) => {
 
-      const hasFile = !!(row.file || row.fileName);
+      const originalRow = originalChecklist.find(o => o.id === row.id) || {
+        checked: row.isMandatory,
+        emails: "",
+        expiryDate: ""
+      };
+
+      const hasChanged =
+        originalRow.checked !== row.checked ||
+        (originalRow.emails || "").trim() !== (row.emails || "").trim() ||
+        (originalRow.expiryDate || "") !== (row.expiryDate || "") ||
+        !!row.file;
+
+      // 🚀 skip unchanged rows
+      if (!hasChanged) return;
+
       const hasEmail = !!row.emails?.trim();
       const hasExpiryDate = !!row.expiryDate;
 
-      const shouldIncludeRow =
-        row.isMandatory ||
-        row.checked ||
-        hasFile ||
-        hasEmail ||
-        hasExpiryDate;
-
-      const shouldEnforceRowRequired = row.checked;
-
-      if (shouldEnforceRowRequired) {
+      if (row.checked) {
         if (!hasEmail) attachmentErrors[`email_${row.id}`] = "Required";
         if (!hasExpiryDate) attachmentErrors[`expiry_${row.id}`] = "Required";
       }
@@ -496,30 +500,27 @@ const ComplaintForm = () => {
         if (emailError) attachmentErrors[`email_${row.id}`] = emailError;
       }
 
-      if (shouldIncludeRow) {
+      const formattedDate = row.expiryDate
+        ? row.expiryDate.split("-").reverse().join("-")
+        : "";
 
-        const formattedDate = row.expiryDate
-          ? new Date(row.expiryDate)
-            .toLocaleDateString("en-GB")
-            .replace(/\//g, "-")
-          : "";
+      checklist.push({
+        CheckListId: row.id,
+        Name: row.listName,
+        IsMandatory: row.isMandatory,
+        IsChecked: !!row.checked,
+        Duedate: formattedDate,
+        NotificationEmails: row.emails?.trim() || ""
+      });
 
-        checklist.push({
-          CheckListId: row.id,
-          Name: row.listName,
-          IsMandatory: row.isMandatory,
-          IsChecked: !!row.checked,
-          Duedate: formattedDate,
-          NotificationEmails: row.emails?.trim() || ""
-        });
-
-        if (row.file) {
-          fd.append(`file_${row.id}`, row.file);
-        }
+      if (row.file) {
+        fd.append(`file_${row.id}`, row.file);
       }
+
     });
 
     if (Object.keys(attachmentErrors).length > 0) {
+
       setErrors((prev) => ({
         ...Object.fromEntries(
           Object.entries(prev).filter(
@@ -531,6 +532,7 @@ const ComplaintForm = () => {
         ),
         ...attachmentErrors
       }));
+
       setMessage("Please fill required attachment details");
       return null;
     }
@@ -546,13 +548,16 @@ const ComplaintForm = () => {
       )
     );
 
-    fd.append("checklist", JSON.stringify(checklist));
+    // ✅ Send checklist only if updated
+    if (checklist.length > 0) {
+      fd.append("checklist", JSON.stringify(checklist));
+    }
 
     return fd;
   };
-
   const resetForm = () => {
     setFormData({ ...INITIAL_FORM_STATE });
+    setOriginalChecklist([]);
 
     // ✅ Reset attachments properly
     setAttachmentRows(
@@ -623,7 +628,7 @@ const ComplaintForm = () => {
       } else {
         setMessage("✓ Draft saved successfully");
       }
-      
+
       resetForm();
       await fetchComplaints();
 

@@ -154,7 +154,7 @@ const CustomerSummary = () => {
         },
         {
             field: 'CustomerEmail',
-            headerName: 'Customer Email',
+            headerName: 'Internal Staff Email',
             width: 230,
             resizable: false,
             headerAlign: 'center',

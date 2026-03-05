@@ -221,7 +221,7 @@ const UserManagement = ({ userRole }) => {
       open: false
     }));
   };
-  
+
   const validateUserForm = () => {
     let tempErrors = {};
 
@@ -411,28 +411,27 @@ const UserManagement = ({ userRole }) => {
   ];
 
   const resetPasswordColumn =
-    currentUserRole === 'super_admin'
-      ? [
-        {
-          field: 'resetPassword',
-          headerName: 'Reset Password',
-          width: 160,
-          align: 'center',
-          headerAlign: 'center',
-          sortable: false,
-          filterable: false,
-          renderCell: (params) => (
-            <Button
-              size="small"
-              variant="contained"
-              color="warning"
-              onClick={() => handleResetPassword(params.row.UserId)}
-            >
-              Reset
-            </Button>
-          ),
-        },
-      ]
+    currentUserRole === "super_admin" || currentUserRole === "qcadmin" ? [
+      {
+        field: 'resetPassword',
+        headerName: 'Reset Password',
+        width: 160,
+        align: 'center',
+        headerAlign: 'center',
+        sortable: false,
+        filterable: false,
+        renderCell: (params) => (
+          <Button
+            size="small"
+            variant="contained"
+            color="warning"
+            onClick={() => handleResetPassword(params.row.UserId)}
+          >
+            Reset
+          </Button>
+        ),
+      },
+    ]
       : [];
 
   const columns = [
