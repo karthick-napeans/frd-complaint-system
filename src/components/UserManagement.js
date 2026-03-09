@@ -62,6 +62,7 @@ const UserManagement = ({ userRole }) => {
     page: 0,
     pageSize: 10,
   });
+  const [message, setMessage] = useState("");
 
   const patterns = {
     char: /^[A-Za-z ]+$/,                 // letters + space
@@ -100,7 +101,6 @@ const UserManagement = ({ userRole }) => {
     setErrors({});        // ✅ clear all validation errors
     setSubmitError("");   // ✅ clear API error
   };
-
 
   useEffect(() => {
     fetchUsers();
@@ -171,6 +171,7 @@ const UserManagement = ({ userRole }) => {
   };
 
   const handleDelete = (user) => {
+    console.log("Delete user:", user);
     setConfirmState({
       open: true,
       title: "Delete User",
@@ -181,7 +182,7 @@ const UserManagement = ({ userRole }) => {
       loadingLabel: "Deleting...",
       buttonColor: "#ff6b6b",
       icon: <DeleteOutlineIcon sx={{ color: "#ff6b6b" }} />,
-      onConfirm: () => confirmDeleteUser(user.id)
+      onConfirm: () => confirmDeleteUser(user)
     });
   };
 
@@ -279,23 +280,28 @@ const UserManagement = ({ userRole }) => {
   const handleCreateEditUser = async () => {
 
     setSubmitError("");
+    setMessage("");
 
     const isValid = validateUserForm();
     if (!isValid) {
-      setSubmitLoading(false); // ✅ stop loader if validation fails
+      setSubmitLoading(false);
       return;
     }
 
-    setSubmitLoading(true); // start loader AFTER validation
+    setSubmitLoading(true);
 
     try {
       if (editingUser) {
         const payload = buildUpdatePayload(formData, editingUser);
         await updateUser(payload);
+
+        setMessage("✓ User updated successfully");
+
         handleResetUserForm();
         await fetchUsers();
 
       } else {
+
         const newUser = {
           UserName: formData.username,
           EmailId: formData.email,
@@ -308,6 +314,9 @@ const UserManagement = ({ userRole }) => {
         };
 
         await createUser(newUser);
+
+        setMessage("✓ User created successfully");
+
         handleResetUserForm();
         await fetchUsers();
       }
@@ -316,8 +325,9 @@ const UserManagement = ({ userRole }) => {
       setEditingUser(null);
 
     } catch (error) {
-      const message = getErrorMessage(error);
-      setSubmitError(message);
+
+      const msg = getErrorMessage(error);
+      setMessage(msg || "User operation failed");
 
     } finally {
       setSubmitLoading(false);
@@ -488,7 +498,8 @@ const UserManagement = ({ userRole }) => {
               getRowId={(row) => row.UserId}
               loading={loading}
               pageSizeOptions={[10, 20, 50]}
-
+              disableColumnSelector
+              disableColumnSorting
 
               pagination
               autoHeight
@@ -547,13 +558,18 @@ const UserManagement = ({ userRole }) => {
           {editingUser ? 'Edit User' : 'Add New User'}
         </DialogTitle>
 
-        {/* 🔥 TOP ERROR MESSAGE */}
         {submitError && (
           <Box sx={{ px: 3 }}>
             <Alert severity="error">
               {submitError}
             </Alert>
           </Box>
+        )}
+
+        {message && (
+          <Alert severity={message.includes('✓') ? 'success' : 'info'} sx={{ mt: 1 }}>
+            {message}
+          </Alert>
         )}
 
         <DialogContent sx={{ display: 'flex', flexDirection: 'column' }}>

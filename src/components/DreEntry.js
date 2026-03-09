@@ -134,8 +134,9 @@ const DREEntry = () => {
   };
 
   const handleDraftClick = (draft) => {
-    setActiveDraftId(draft.DreId);
+    setErrors({});
 
+    setActiveDraftId(draft.DreId);
     setFormData({
       dreId: draft.DreId,
       dreNumber: draft.DreNumber,
@@ -195,9 +196,9 @@ const DREEntry = () => {
   };
 
   const validateStep0 = () => {
-    let tempErrors = {}; 
+    let tempErrors = {};
 
- 
+
 
     if (!formData.model)
       tempErrors.model = "Required";
@@ -211,10 +212,10 @@ const DREEntry = () => {
   };
 
   const handleSaveDraft = async () => {
-     const isValid = validateStep0();
+    const isValid = validateStep0();
 
     if (!isValid) {
-      return; 
+      return;
     }
 
     try {
@@ -326,7 +327,7 @@ const DREEntry = () => {
 
   return (
     <Box>
-      <Typography variant="h5" fontWeight={700} sx={{ mb: 2 , color: "#3b3b3b" }}>
+      <Typography variant="h5" fontWeight={700} sx={{ mb: 2, color: "#3b3b3b" }}>
         DRE Entry
       </Typography>
 
