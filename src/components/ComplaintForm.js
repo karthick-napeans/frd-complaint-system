@@ -421,25 +421,29 @@ const ComplaintForm = () => {
     }
 
     /* ================= STEP 2 ================= */
-    // if (activeStep === 2) {
-    //   const newAttachmentErrors = {};
+    if (activeStep === 2) {
+      const newAttachmentErrors = {};
 
-    //   attachmentRows.forEach((row) => {
-    //     if (row.isMandatory) {
-    //       if (!row.file)
-    //         newAttachmentErrors[`file_${row.id}`] = "Required";
+      attachmentRows.forEach((row) => {
+        if (row.isMandatory) {
+          if (!row.file)
+            newAttachmentErrors[`file_${row.id}`] = "Required";
 
-    //       if (!row.expiryDate)
-    //         newAttachmentErrors[`expiry_${row.id}`] =
-    //           "Required";
-    //     }
-    //   });
+          if (!row.emails?.trim())
+            newAttachmentErrors[`email_${row.id}`] = "Required";
+          
 
-    //   if (Object.keys(newAttachmentErrors).length > 0) {
-    //     setErrors(newAttachmentErrors);
-    //     return;
-    //   }
-    // }
+          if (!row.expiryDate)
+            newAttachmentErrors[`expiry_${row.id}`] =
+              "Required";
+        }
+      });
+
+      if (Object.keys(newAttachmentErrors).length > 0) {
+        setErrors(newAttachmentErrors);
+        return;
+      }
+    }
 
     setErrors({});
     setMessage("");
@@ -898,8 +902,8 @@ const ComplaintForm = () => {
                         onChange={handleSelectChange}
                       >
                         {activeModels.map((m) => (
-                          <MenuItem key={m.ModelId} value={m.ModelCode}>
-                            {m.ModelCode}
+                          <MenuItem key={m.ModelId} value={m.ModelName}>
+                            {m.ModelName}
                           </MenuItem>
                         ))}
                       </Select>

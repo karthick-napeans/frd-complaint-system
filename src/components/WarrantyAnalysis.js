@@ -204,7 +204,7 @@ const WarrantyAnalysis = () => {
 
     try {
       await fetchWarrantyReport();
-      setFiltersOpen(false); // collapse after success
+      setFiltersOpen(false);  
     } finally {
       setLoading(false);
     }
@@ -505,10 +505,10 @@ const WarrantyAnalysis = () => {
                       .map((model) => (
                         <MenuItem
                           key={model.ModelId}
-                          value={model.ModelCode}   // ✅ send ModelCode
+                          value={model.ModelName}   // ✅ send ModelName
                         >
                           <Checkbox
-                            checked={selectedModels.includes(model.ModelCode)}
+                            checked={selectedModels.includes(model.ModelName)}
                           />
                           <ListItemText
                             primary={`${model.ModelCode} - ${model.ModelName}`}

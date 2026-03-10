@@ -415,8 +415,8 @@ const DREEntry = () => {
                         label="Model *"
                       >
                         {activeModels.map((m) => (
-                          <MenuItem key={m.ModelId} value={m.ModelCode}>
-                            {m.ModelCode}
+                          <MenuItem key={m.ModelId} value={m.ModelName}>
+                            {m.ModelName}
                           </MenuItem>
                         ))}
                       </Select>

@@ -72,69 +72,104 @@ const ComplaintAnalysis = ({ userRole }) => {
 
             const res = await getPPMData();
 
-            const formatted = (res || []).map(item => ({
+            const formatted = (res || []).map(item => {
 
-                customerId: item.CustomerId,
-                customerName: item.CustomerName,
+                const monthlySales =
+                    item.Data2026?.MonthlySales || Array(12).fill(0);
 
-                previousYearData: {
-                    sales: item.Data2024?.Sales || 0,
-                    rejection: item.Data2024?.Rejection || 0
-                },
+                const monthlyRejection =
+                    item.Data2026?.MonthlyRejection || Array(12).fill(0);
 
-                lastYearData: {
-                    sales: item.Data2025?.Sales || 0,
-                    rejection: item.Data2025?.Rejection || 0
-                },
+                const monthlyPlan =
+                    item.Data2026?.monthlyPlannedPPM || Array(12).fill(0);
 
-                currentYearMonthlyData: {
-                    monthlySales: item.Data2026?.MonthlySales || Array(12).fill(0),
-                    monthlyRejection: item.Data2026?.MonthlyRejection || Array(12).fill(0)
-                }
+                return {
 
-            }));
+                    customerId: item.CustomerId,
+                    customerName: item.CustomerName,
+
+                    salesPrev: item.Data2024?.Sales || 0,
+                    rejPrev: item.Data2024?.Rejection || 0,
+                    ppmPrev: item.Data2024?.ppm || 0,
+
+                    salesLast: item.Data2025?.Sales || 0,
+                    rejLast: item.Data2025?.Rejection || 0,
+                    ppmLast: item.Data2025?.ppm || 0,
+
+                    sales: monthlySales,
+                    rejection: monthlyRejection,
+                    planPPM: monthlyPlan
+
+                };
+
+            });
 
             setPpmSourceData(formatted);
 
         } catch (err) {
+
             console.error("PPM API Error:", err);
+
         }
 
     };
 
-    const handleSalesChange = (customerId, monthIndex, value) => {
-        setSalesInput(prev => ({
-            ...prev,
-            [`${customerId}-${monthIndex}`]: Number(value)
-        }));
+    const handleSalesCellClick = (row, value, index) => {
+        const key = `sales-${row.customerId}-${index}`;
+        setEditingCell(key);
+        setTempValue(value ?? "");
     };
 
-    const saveSalesData = async (customerId, monthIndex, value) => {
-        console.log("Saving sales data:", { customerId, monthIndex, value });
+    const handlePlanCellClick = (row, value, index) => {
+        const key = `plan-${row.customerId}-${index}`;
+        setEditingCell(key);
+        setTempValue(value ?? "");
+    };
+
+    const saveMonthlyData = async (
+        type,
+        customerId,
+        monthIndex,
+        value,
+        row
+    ) => {
+
         const payload = {
             CustomerId: customerId,
             Year: currentYear,
             Month: monthIndex + 1,
-            Value: Number(value)
+            Value: type === "sales" ? Number(value) : (row.sales?.[monthIndex] ?? 0),
+            PlannedPPM: type === "plan" ? Number(value) : (row.planPPM?.[monthIndex] ?? 0)
         };
+
+        console.log("Saving payload:", payload);
+
         try {
+
             await saveMonthlySalesData(payload);
-            handleSalesChange(customerId, monthIndex, value);
-            console.log("Sales data saved successfully:", payload);
+
+            if (type === "sales") {
+                handleSalesCellClick(customerId, monthIndex, value);
+            }
+
+            console.log("Saved successfully");
+
             await loadPPM();
 
         } catch (error) {
-            console.error("Error saving sales:", error);
-        }
 
+            console.error("Save failed:", error);
+
+        }
     };
 
     const ppmData = useMemo(() => {
 
         return (ppmSourceData || []).map(customer => {
 
-            const sales = customer?.currentYearMonthlyData?.monthlySales || Array(12).fill(0);
-            const rejection = customer?.currentYearMonthlyData?.monthlyRejection || Array(12).fill(0);
+            const sales = customer?.sales || Array(12).fill(0);
+            const rejection = customer?.rejection || Array(12).fill(0);
+            const planPPM = customer?.planPPM || Array(12).fill(0);
 
             const ppmMonths = sales.map((s, i) =>
                 s === 0
@@ -150,36 +185,32 @@ const ComplaintAnalysis = ({ userRole }) => {
                     ? 0
                     : Number(((totalRej * 1000000) / totalSales).toFixed(1));
 
-            const ppmPrev =
-                customer?.previousYearData?.sales === 0
-                    ? 0
-                    : Number(((customer.previousYearData.rejection * 1000000) /
-                        customer.previousYearData.sales).toFixed(1));
+            const ppmPrev = customer.salesPrev === 0
+                ? 0
+                : Number(((customer.rejPrev * 1000000) / customer.salesPrev).toFixed(1));
 
-            const ppmLast =
-                customer?.lastYearData?.sales === 0
-                    ? 0
-                    : Number(((customer.lastYearData.rejection * 1000000) /
-                        customer.lastYearData.sales).toFixed(1));
+            const ppmLast = customer.salesLast === 0
+                ? 0
+                : Number(((customer.rejLast * 1000000) / customer.salesLast).toFixed(1));
 
             return {
-
                 customerId: customer.customerId,
                 customerName: customer.customerName,
 
                 sales,
                 rejection,
+                planPPM,
                 ppmMonths,
 
                 totalSales,
                 totalRej,
                 totalPPM,
 
-                salesPrev: customer?.previousYearData?.sales || 0,
-                salesLast: customer?.lastYearData?.sales || 0,
+                salesPrev: customer.salesPrev,
+                salesLast: customer.salesLast,
 
-                rejPrev: customer?.previousYearData?.rejection || 0,
-                rejLast: customer?.lastYearData?.rejection || 0,
+                rejPrev: customer.rejPrev,
+                rejLast: customer.rejLast,
 
                 ppmPrev,
                 ppmLast
@@ -257,6 +288,7 @@ const ComplaintAnalysis = ({ userRole }) => {
 
         const monthlySales = Array(12).fill(0);
         const monthlyRejection = Array(12).fill(0);
+        const monthlyPlan = Array(12).fill(0);
 
         ppmData.forEach(row => {
 
@@ -268,6 +300,12 @@ const ComplaintAnalysis = ({ userRole }) => {
                 monthlyRejection[i] += Number(r) || 0;
             });
 
+            (row.planPPM || []).forEach((p, i) => {
+                if (!monthlyPlan[i] && p) {
+                    monthlyPlan[i] = Number(p);
+                }
+            });
+
         });
 
         return MONTHS.map((month, i) => {
@@ -277,15 +315,10 @@ const ComplaintAnalysis = ({ userRole }) => {
                     ? (monthlyRejection[i] * 1000000) / monthlySales[i]
                     : 0;
 
-            const percentOfPlan =
-                PLAN_PPM > 0
-                    ? Number(((actualPPM / PLAN_PPM) * 100).toFixed(1))
-                    : 0;
-
             return {
                 month,
-                actual: percentOfPlan,
-                plan: 100
+                actual: Number(actualPPM.toFixed(1)),
+                plan: monthlyPlan[i] || 0
             };
 
         });
@@ -297,20 +330,18 @@ const ComplaintAnalysis = ({ userRole }) => {
         if (!ppmData.length) return [];
 
         const previousYearAvg =
-            ppmData.reduce((sum, row) => sum + row.previousYearPPM, 0) / ppmData.length;
+            ppmData.reduce((sum, row) => sum + row.ppmPrev, 0) / ppmData.length;
 
         const lastYearAvg =
-            ppmData.reduce((sum, row) => sum + row.lastYearPPM, 0) / ppmData.length;
+            ppmData.reduce((sum, row) => sum + row.ppmLast, 0) / ppmData.length;
 
         const currentYearAvg =
             ppmData.reduce((sum, row) => sum + row.totalPPM, 0) / ppmData.length;
 
         return [
-
             { year: `${previousYear} ACT`, value: Number(previousYearAvg.toFixed(1)) },
             { year: `${lastYear} ACT`, value: Number(lastYearAvg.toFixed(1)) },
             { year: `${currentYear} ACT`, value: Number(currentYearAvg.toFixed(1)) }
-
         ];
 
     }, [ppmData]);
@@ -493,31 +524,6 @@ const ComplaintAnalysis = ({ userRole }) => {
         XLSX.writeFile(workbook, "PPM_Report_Styled.xlsx");
     };
 
-    const handleCellClick = (row, val, i) => {
-
-        const cellKey = `${row.customerId}-${i}`;
-
-        if (val && val !== 0) {
-
-            if (!isQcAdmin) {
-                alert("Only QC Admin And Super Admin can modify existing sales data");
-                return;
-            }
-
-            setPendingEditCell({
-                cellKey,
-                value: val
-            });
-
-            setTempValue(val);
-            setReasonDialogOpen(true);
-            return;
-        }
-
-        setEditingCell(cellKey);
-        setTempValue(val ?? "");
-    };
-
     const submitReason = () => {
 
         if (!editReason.trim()) {
@@ -541,7 +547,6 @@ const ComplaintAnalysis = ({ userRole }) => {
                 CUSTOMER PPM REPORT - {currentYear}
             </Typography>
 
-            {/* ===== CHART ===== */}
             <Grid container spacing={4} mb={1}>
 
                 {/* ================= YEARLY COMPARISON ================= */}
@@ -672,17 +677,13 @@ const ComplaintAnalysis = ({ userRole }) => {
 
                                 <Tooltip />
 
-                                <ReferenceLine
-                                    y={PLAN_PPM}
+                                <Line
+                                    type="monotone"
+                                    dataKey="plan"
                                     stroke="#3b82f6"
                                     strokeDasharray="6 6"
-                                    ifOverflow="extendDomain"
-                                    label={{
-                                        value: `Plan (${PLAN_PPM})`,
-                                        position: "right",
-                                        fill: "#3b82f6",
-                                        fontSize: 12
-                                    }}
+                                    strokeWidth={2}
+                                    dot={{ r: 3 }}
                                 />
 
                                 <Line
@@ -699,7 +700,7 @@ const ComplaintAnalysis = ({ userRole }) => {
                 </Grid>
 
             </Grid>
-            {/* ===== TABLE ===== */}
+
             <Box sx={{ overflowX: "auto" }}>
                 <Button
                     variant="contained"
@@ -751,10 +752,7 @@ const ComplaintAnalysis = ({ userRole }) => {
                                 <TableCell><b>2024</b></TableCell>
                                 <TableCell><b>2025</b></TableCell>
 
-                                <TableCell colSpan={12}><b>2025</b></TableCell>
-
-                                <TableCell rowSpan={2}><b>Remarks</b></TableCell>
-                                <TableCell rowSpan={2}><b>Reduced %</b></TableCell>
+                                <TableCell colSpan={13}><b>2025</b></TableCell>
                             </TableRow>
 
                             {/* Month Row */}
@@ -763,15 +761,13 @@ const ComplaintAnalysis = ({ userRole }) => {
                                 <TableCell><b>ACT</b></TableCell>
                                 <TableCell><b>AVG</b></TableCell>
 
-                                {MONTHS.map(m => (
-                                    <TableCell
-                                        key={m}
-
-                                    >
-                                        {m}
+                                {MONTHS.map((m) => (
+                                    <TableCell key={m}>
+                                        <b>{m}</b>
                                     </TableCell>
                                 ))}
                             </TableRow>
+
                         </TableHead>
 
                         {/* ================= BODY ================= */}
@@ -803,17 +799,6 @@ const ComplaintAnalysis = ({ userRole }) => {
                                             </TableCell>
                                         ))}
 
-                                        <TableCell rowSpan={4}>-</TableCell>
-
-                                        <TableCell
-                                            rowSpan={4}
-                                            sx={{
-                                                fontWeight: 600,
-                                                color: "#2e7d32"
-                                            }}
-                                        >
-                                            -100%
-                                        </TableCell>
                                     </TableRow>
 
 
@@ -830,14 +815,14 @@ const ComplaintAnalysis = ({ userRole }) => {
 
                                         {(row.sales || []).map((val, i) => {
 
-                                            const cellKey = `${row.customerId}-${i}`;
+                                            const cellKey = `sales-${row.customerId}-${i}`;
                                             const isEditing = editingCell === cellKey;
 
                                             return (
                                                 <TableCell
                                                     key={i}
                                                     sx={{ cursor: "pointer" }}
-                                                    onDoubleClick={() => handleCellClick(row, val, i)}
+                                                    onDoubleClick={() => handleSalesCellClick(row, val, i)}
                                                 >
                                                     {isEditing ? (
                                                         <TextField
@@ -847,15 +832,16 @@ const ComplaintAnalysis = ({ userRole }) => {
                                                             inputRef={inputRef}
                                                             value={tempValue}
                                                             onChange={(e) => setTempValue(e.target.value)}
-                                                            onBlur={() => { }}
                                                             onKeyDown={async (e) => {
 
                                                                 if (e.key === "Enter") {
 
-                                                                    await saveSalesData(
+                                                                    await saveMonthlyData(
+                                                                        "sales",
                                                                         row.customerId,
                                                                         i,
-                                                                        tempValue
+                                                                        tempValue,
+                                                                        row
                                                                     );
 
                                                                     setEditingCell(null);
@@ -892,18 +878,68 @@ const ComplaintAnalysis = ({ userRole }) => {
                                             PLAN PPM
                                         </TableCell>
 
-                                        <TableCell>{PLAN_PPM}</TableCell>
-                                        <TableCell>{PLAN_PPM}</TableCell>
-                                        <TableCell>{PLAN_PPM}</TableCell>
+                                        <TableCell>-</TableCell>
+                                        <TableCell>-</TableCell>
+                                        <TableCell>-</TableCell>
 
-                                        {MONTHS.map((_, i) => (
-                                            <TableCell
-                                                key={i}
+                                        {MONTHS.map((_, i) => {
 
-                                            >
-                                                {PLAN_PPM}
-                                            </TableCell>
-                                        ))}
+                                            const val = row.planPPM?.[i] ?? 0;
+
+                                            const cellKey = `plan-${row.customerId}-${i}`;
+                                            const isEditing = editingCell === cellKey;
+
+                                            return (
+                                                <TableCell
+                                                    key={i}
+                                                    sx={{ cursor: "pointer" }}
+                                                    onDoubleClick={() =>
+                                                        handlePlanCellClick(row, val, i)
+                                                    }
+                                                >
+                                                    {isEditing ? (
+                                                        <TextField
+                                                            autoFocus
+                                                            size="small"
+                                                            type="number"
+                                                            inputRef={inputRef}
+                                                            value={tempValue}
+                                                            onChange={(e) => setTempValue(e.target.value)}
+                                                            onKeyDown={async (e) => {
+
+                                                                if (e.key === "Enter") {
+
+                                                                    await saveMonthlyData(
+                                                                        "plan",
+                                                                        row.customerId,
+                                                                        i,
+                                                                        tempValue,
+                                                                        row
+                                                                    );
+
+                                                                    setEditingCell(null);
+                                                                }
+
+                                                                if (e.key === "Escape") {
+                                                                    setEditingCell(null);
+                                                                }
+
+                                                            }}
+                                                            sx={{
+                                                                width: 80,
+                                                                "& input": {
+                                                                    textAlign: "center",
+                                                                    padding: "4px"
+                                                                }
+                                                            }}
+                                                        />
+                                                    ) : (
+                                                        val
+                                                    )}
+                                                </TableCell>
+                                            );
+
+                                        })}
                                     </TableRow>
 
 
@@ -969,11 +1005,8 @@ const ComplaintAnalysis = ({ userRole }) => {
                             {/* ================= TOTAL SECTION ================= */}
 
                             {totals && (
-
                                 <>
-
                                     <TableRow sx={{ background: "#f1f5f9", fontWeight: 700 }}>
-
                                         <TableCell rowSpan={4}><b>TOTAL</b></TableCell>
 
                                         <TableCell><b>REJ QTY</b></TableCell>
@@ -985,15 +1018,10 @@ const ComplaintAnalysis = ({ userRole }) => {
                                         {(totals.monthlyRejection || []).map((v, i) => (
                                             <TableCell key={i}>{v}</TableCell>
                                         ))}
-
-                                        <TableCell rowSpan={4}></TableCell>
-                                        <TableCell rowSpan={4}></TableCell>
-
                                     </TableRow>
 
 
                                     <TableRow sx={{ background: "#f1f5f9", fontWeight: 700 }}>
-
                                         <TableCell><b>SALES QTY</b></TableCell>
 
                                         <TableCell>{totals.salesPrev}</TableCell>
@@ -1003,12 +1031,10 @@ const ComplaintAnalysis = ({ userRole }) => {
                                         {(totals.monthlySales || []).map((v, i) => (
                                             <TableCell key={i}>{v}</TableCell>
                                         ))}
-
                                     </TableRow>
 
 
                                     <TableRow sx={{ background: "#f1f5f9", fontWeight: 700 }}>
-
                                         <TableCell><b>PLAN PPM</b></TableCell>
 
                                         <TableCell>{PLAN_PPM}</TableCell>
@@ -1018,12 +1044,10 @@ const ComplaintAnalysis = ({ userRole }) => {
                                         {MONTHS.map((_, i) => (
                                             <TableCell key={i}>{PLAN_PPM}</TableCell>
                                         ))}
-
                                     </TableRow>
 
 
                                     <TableRow sx={{ background: "#f1f5f9", fontWeight: 700 }}>
-
                                         <TableCell><b>ACTUAL PPM</b></TableCell>
 
                                         <TableCell>-</TableCell>
@@ -1033,9 +1057,7 @@ const ComplaintAnalysis = ({ userRole }) => {
                                         {(totals.ppmMonths || []).map((v, i) => (
                                             <TableCell key={i}>{v}</TableCell>
                                         ))}
-
                                     </TableRow>
-
                                 </>
                             )}
 
@@ -1086,4 +1108,4 @@ const ComplaintAnalysis = ({ userRole }) => {
     );
 };
 
-export default ComplaintAnalysis;
+export default ComplaintAnalysis;   
