@@ -227,11 +227,16 @@ const ComplaintAnalysis = ({ userRole }) => {
         const monthlySales = Array(12).fill(0);
         const monthlyRejection = Array(12).fill(0);
 
+        const monthlyPlanPPM = Array(12).fill(0);
+
         let salesPrev = 0;
         let salesLast = 0;
 
         let rejPrev = 0;
         let rejLast = 0;
+
+        let totalPlanPPMSum = 0;
+        let planCount = 0;
 
         ppmData.forEach(row => {
 
@@ -241,29 +246,58 @@ const ComplaintAnalysis = ({ userRole }) => {
             rejPrev += row.rejPrev || 0;
             rejLast += row.rejLast || 0;
 
-            row.sales.forEach((s, i) => {
+            // SALES
+            (row.sales || []).forEach((s, i) => {
                 monthlySales[i] += Number(s) || 0;
             });
 
-            row.rejection.forEach((r, i) => {
+            // REJECTION
+            (row.rejection || []).forEach((r, i) => {
                 monthlyRejection[i] += Number(r) || 0;
+            });
+
+            // ✅ PLAN PPM
+            (row.planPPM || []).forEach((p, i) => {
+                const val = Number(p) || 0;
+
+                monthlyPlanPPM[i] += val;
+
+                if (val > 0) {
+                    totalPlanPPMSum += val;
+                    planCount++;
+                }
             });
 
         });
 
+        // TOTAL SALES & REJECTION
         const totalSales = monthlySales.reduce((a, b) => a + b, 0);
         const totalRej = monthlyRejection.reduce((a, b) => a + b, 0);
 
+        // ACTUAL TOTAL PPM
         const totalPPM =
             totalSales === 0
                 ? 0
                 : Number(((totalRej * 1000000) / totalSales).toFixed(1));
 
+        // MONTHLY ACTUAL PPM
         const ppmMonths = monthlySales.map((s, i) =>
             s === 0
                 ? 0
                 : Number(((monthlyRejection[i] * 1000000) / s).toFixed(1))
         );
+
+        // ✅ MONTHLY PLAN PPM (AVERAGE)
+        const planPPMMonths = monthlyPlanPPM.map((total, i) => {
+            const count = ppmData.filter(row => (row.planPPM?.[i] ?? 0) > 0).length;
+            return count === 0 ? 0 : Number((total / count).toFixed(1));
+        });
+
+        // ✅ TOTAL PLAN PPM (AVERAGE)
+        const totalPlanPPM =
+            planCount === 0
+                ? 0
+                : Number((totalPlanPPMSum / planCount).toFixed(1));
 
         return {
             salesPrev,
@@ -276,8 +310,14 @@ const ComplaintAnalysis = ({ userRole }) => {
 
             totalSales,
             totalRej,
+
             totalPPM,
-            ppmMonths
+            ppmMonths,
+
+            // ✅ NEW
+            monthlyPlanPPM,
+            planPPMMonths,
+            totalPlanPPM
         };
 
     }, [ppmData]);
@@ -1041,8 +1081,8 @@ const ComplaintAnalysis = ({ userRole }) => {
                                         <TableCell>{PLAN_PPM}</TableCell>
                                         <TableCell>{PLAN_PPM}</TableCell>
 
-                                        {MONTHS.map((_, i) => (
-                                            <TableCell key={i}>{PLAN_PPM}</TableCell>
+                                        {(totals.monthlyPlanPPM || []).map((v, i) => (
+                                            <TableCell key={i}>{v}</TableCell>
                                         ))}
                                     </TableRow>
 

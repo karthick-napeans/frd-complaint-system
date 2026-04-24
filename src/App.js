@@ -440,8 +440,7 @@ function App() {
   }, []);
 
 
-  /* API HEALTH CHECK */
-  useEffect(() => {
+   useEffect(() => {
 
     const checkHealth = async () => {
       try {
