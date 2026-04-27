@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { Box, Container, TextField, Button, Typography, Card, CardContent, Alert, Link } from '@mui/material';
+import { Box, Container, TextField, Button, Typography, Card, CardContent, Alert, Link, InputAdornment, IconButton } from '@mui/material';
 import LoginIcon from '@mui/icons-material/Login';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import { loginApi } from '../api/pageApi';
 import { useNavigate } from 'react-router-dom';
 import LoginIconImg from "../assets/iljin-logo.png";
@@ -10,6 +12,7 @@ import LoginIconImg from "../assets/iljin-logo.png";
 const Login = ({ onLogin }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -70,7 +73,7 @@ const Login = ({ onLogin }) => {
                 }}
               />
               <Typography variant="h5" fontWeight="bold">
-                QA/QC Dashboard
+                Quality Assurance Dashboard
               </Typography>
               {/* <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
                 Warranty Claim Management System
@@ -88,28 +91,28 @@ const Login = ({ onLogin }) => {
                 disabled={loading}
                 onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
               />
+
               <TextField
                 label="Password"
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 fullWidth
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={loading}
                 onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        onClick={() => setShowPassword(!showPassword)}
+                        edge="end"
+                      >
+                        {showPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
               />
-
-              <Box sx={{ textAlign: "right" }}>
-                <Link
-                  component="button"
-                  variant="body2"
-                  underline="hover"
-                  disabled={loading}
-                  onClick={() => navigate("/forgot-password")}
-                  sx={{ cursor: "pointer" }}
-                >
-                  Forgot password?
-                </Link>
-              </Box>
 
               <Button
                 variant="contained"

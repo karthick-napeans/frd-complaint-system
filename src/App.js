@@ -15,17 +15,17 @@ import {
   DialogActions,
   TextField,
 
-} from "@mui/material";  
+} from "@mui/material";
 import SettingsIcon from "@mui/icons-material/Settings";
 import LogoutIcon from "@mui/icons-material/Logout";
-import MenuIcon from "@mui/icons-material/Menu"; 
+import MenuIcon from "@mui/icons-material/Menu";
 import {
   BrowserRouter,
   Routes,
   Route,
   useNavigate,
   Navigate,
-} from "react-router-dom"; 
+} from "react-router-dom";
 import Login from "./components/Login";
 import Dashboard from "./components/Dashboard";
 import UserManagement from "./components/UserManagement";
@@ -55,7 +55,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import InputAdornment from "@mui/material/InputAdornment";
- 
+
 const drawerWidth = 280;
 
 
@@ -149,7 +149,7 @@ const AppLayout = ({ userRole, username, onLogout }) => {
           </IconButton>
 
           <Typography variant="h6" sx={{ flexGrow: 1 }}>
-            QA/QC Dashboard
+            Quality Assurance Dashboard
           </Typography>
 
           <IconButton onClick={(e) => setAnchorEl(e.currentTarget)}>
@@ -225,9 +225,9 @@ const AppLayout = ({ userRole, username, onLogout }) => {
           <Route path="/dre/summary" element={<DreSummary />} />
 
           {/* Complaints */}
-          <Route path="/complaints/entry" element={<ComplaintForm  />} />
+          <Route path="/complaints/entry" element={<ComplaintForm />} />
           <Route path="/complaints/summary" element={<CustomerSummary />} />
-          <Route path="/complaints/analysis" element={<ComplaintAnalysis  userRole={userRole} />} />
+          <Route path="/complaints/analysis" element={<ComplaintAnalysis userRole={userRole} />} />
 
           {/* Admin */}
           <Route path="/users" element={<UserManagement userRole={userRole} />} />
@@ -440,7 +440,7 @@ function App() {
   }, []);
 
 
-   useEffect(() => {
+  useEffect(() => {
 
     const checkHealth = async () => {
       try {

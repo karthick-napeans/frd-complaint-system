@@ -367,10 +367,7 @@ const ComplaintAnalysis = ({ userRole }) => {
 
     const yearlyTrend = useMemo(() => {
 
-        if (!ppmData.length) return [];
-
-        const previousYearAvg =
-            ppmData.reduce((sum, row) => sum + row.ppmPrev, 0) / ppmData.length;
+        if (!ppmData.length || !totals) return [];
 
         const lastYearAvg =
             ppmData.reduce((sum, row) => sum + row.ppmLast, 0) / ppmData.length;
@@ -379,12 +376,19 @@ const ComplaintAnalysis = ({ userRole }) => {
             ppmData.reduce((sum, row) => sum + row.totalPPM, 0) / ppmData.length;
 
         return [
-            { year: `${previousYear} ACT`, value: Number(previousYearAvg.toFixed(1)) },
-            { year: `${lastYear} ACT`, value: Number(lastYearAvg.toFixed(1)) },
-            { year: `${currentYear} ACT`, value: Number(currentYearAvg.toFixed(1)) }
+            {
+                year: lastYear,
+                actual: Number(lastYearAvg.toFixed(1)),
+                plan: PLAN_PPM
+            },
+            {
+                year: currentYear,
+                actual: Number(currentYearAvg.toFixed(1)),
+                plan: totals.totalPlanPPM
+            }
         ];
 
-    }, [ppmData]);
+    }, [ppmData, totals]);
 
     const exportRef = useRef(null);
     const monthlyExportRef = useRef(null);
@@ -625,7 +629,7 @@ const ComplaintAnalysis = ({ userRole }) => {
                         </Typography>
 
                         <ResponsiveContainer width="100%" height={260}>
-                            <BarChart data={yearlyTrend}>
+                            <BarChart data={yearlyTrend} barGap={8}>
                                 <CartesianGrid stroke="#f1f5f9" vertical={false} />
 
                                 <XAxis
@@ -649,11 +653,26 @@ const ComplaintAnalysis = ({ userRole }) => {
                                     }}
                                 />
 
+                                <Legend 
+                                    verticalAlign="top" 
+                                    align="right" 
+                                    iconType="circle"
+                                    wrapperStyle={{ paddingBottom: 20, fontSize: 12 }}
+                                />
+
                                 <Bar
-                                    dataKey="value"
-                                    radius={[12, 12, 0, 0]}
+                                    dataKey="plan"
+                                    name="Plan PPM"
+                                    radius={[4, 4, 0, 0]}
+                                    fill="#94a3b8"
+                                    barSize={32}
+                                />
+                                <Bar
+                                    dataKey="actual"
+                                    name="Actual PPM"
+                                    radius={[4, 4, 0, 0]}
                                     fill="#6366f1"
-                                    barSize={40}
+                                    barSize={32}
                                 />
                             </BarChart>
                         </ResponsiveContainer>

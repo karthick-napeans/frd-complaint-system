@@ -34,10 +34,13 @@ import ClearIcon from "@mui/icons-material/Clear";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import SaveIcon from "@mui/icons-material/Save";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import { useSelector } from "react-redux";
 import CircularProgress from "@mui/material/CircularProgress";
 import { submitCustomerComplaint, getCustomerComplaints, getAttachmentChecklist } from "../api/pageApi";
+import Visibility from "@mui/icons-material/Visibility";
 import { Email } from "@mui/icons-material";
+import IconButton from "@mui/material/IconButton";
 
 
 
@@ -360,7 +363,7 @@ const ComplaintForm = () => {
     if (!emailString) return "Email is required";
 
     const emails = emailString
-      .split(",")
+      .split(/[,\n]/)
       .map(e => e.trim())
       .filter(e => e !== "");
 
@@ -431,7 +434,7 @@ const ComplaintForm = () => {
 
           if (!row.emails?.trim())
             newAttachmentErrors[`email_${row.id}`] = "Required";
-          
+
 
           if (!row.expiryDate)
             newAttachmentErrors[`expiry_${row.id}`] =
@@ -716,6 +719,26 @@ const ComplaintForm = () => {
     }, 0);
   };
 
+  const handleViewFile = (row) => {
+    if (row.file) {
+      const fileUrl = URL.createObjectURL(row.file);
+      window.open(fileUrl, "_blank");
+    } else if (row.fileName) {
+      const base = process.env.REACT_APP_API_BASE_URL || "";
+      const separator = base.endsWith("/") ? "" : "/";
+      const fileUrl = `${base}${separator}uploads/${row.fileName}`;
+      window.open(fileUrl, "_blank");
+    }
+  };
+
+  const handleCopyEmails = (emails) => {
+    if (emails) {
+      const copyText = emails.replace(/\n/g, ", ");
+      navigator.clipboard.writeText(copyText);
+      setMessage("✓ Emails copied to clipboard");
+    }
+  };
+
   const handleDateChange = (id, date) => {
     setAttachmentRows((prev) =>
       prev.map((row) =>
@@ -740,12 +763,15 @@ const ComplaintForm = () => {
   };
 
   const handleEmailChange = (id, value) => {
+    // Replace commas with newlines to show one email per line
+    const formattedValue = value.replace(/,/g, "\n");
+
     setAttachmentRows(prev =>
       prev.map(row =>
-        row.id === id ? { ...row, emails: value } : row
+        row.id === id ? { ...row, emails: formattedValue } : row
       )
     );
-    const errorMessage = validateEmails(value);
+    const errorMessage = validateEmails(formattedValue);
 
     setErrors(prev => ({
       ...prev,
@@ -815,7 +841,7 @@ const ComplaintForm = () => {
                       name="customerEmail"
                       value={formData.customerEmail || ""}
                       onChange={handleInputChange}
-                      error={!!errors.customerEmail} F
+                      error={!!errors.customerEmail}
                       helperText={errors.customerEmail || " "}
                     />
                   </Grid>
@@ -1047,37 +1073,50 @@ const ComplaintForm = () => {
                               width="25%"
                               sx={{ verticalAlign: "middle" }}
                             >
-                              <Button
-                                component="label"
-                                variant="outlined"
-                                startIcon={<CloudUploadIcon />}
-                                fullWidth
-                                sx={{
-                                  justifyContent: "flex-start",
-                                  textTransform: "none",
-                                }}
-                              >
-                                <Box
+                              <Box display="flex" alignItems="center" gap={1}>
+                                <Button
+                                  component="label"
+                                  variant="outlined"
+                                  startIcon={<CloudUploadIcon />}
+                                  fullWidth
                                   sx={{
-                                    overflow: "hidden",
-                                    textOverflow: "ellipsis",
-                                    whiteSpace: "nowrap",
-                                    width: "100%",
-                                    textAlign: "left",
+                                    justifyContent: "flex-start",
+                                    textTransform: "none",
                                   }}
                                 >
-                                  {row.file ? row.file.name : row.fileName || "Upload File"}
-                                </Box>
+                                  <Box
+                                    sx={{
+                                      overflow: "hidden",
+                                      textOverflow: "ellipsis",
+                                      whiteSpace: "nowrap",
+                                      width: "100%",
+                                      textAlign: "left",
+                                    }}
+                                  >
+                                    {row.file ? row.file.name : row.fileName || "Upload File"}
+                                  </Box>
 
-                                <input
-                                  type="file"
-                                  hidden
-                                  accept=".pdf,.jpg,.jpeg,.png"
-                                  onChange={(e) =>
-                                    handleFileChange(row.id, e.target.files[0])
-                                  }
-                                />
-                              </Button>
+                                  <input
+                                    type="file"
+                                    hidden
+                                    accept=".pdf,.jpg,.jpeg,.png"
+                                    onChange={(e) =>
+                                      handleFileChange(row.id, e.target.files[0])
+                                    }
+                                  />
+                                </Button>
+
+                                {(row.file || row.fileName) && (
+                                  <IconButton
+                                    size="small"
+                                    color="primary"
+                                    onClick={() => handleViewFile(row)}
+                                    title="View File"
+                                  >
+                                    <Visibility fontSize="small" />
+                                  </IconButton>
+                                )}
+                              </Box>
                             </TableCell>
 
                             {/* Email Input */}
@@ -1086,13 +1125,27 @@ const ComplaintForm = () => {
                                 <TextField
                                   fullWidth
                                   size="small"
-                                  placeholder="test@mail.com"
+                                  multiline
+                                  minRows={1}
+                                  placeholder={"test1@mail.com\ntest2@mail.com"}
                                   value={row.emails || ""}
                                   onChange={(e) =>
                                     handleEmailChange(row.id, e.target.value)
                                   }
                                   error={!!errors[`email_${row.id}`]}
                                   helperText={errors[`email_${row.id}`]}
+                                  InputProps={{
+                                    endAdornment: row.emails?.trim() && (
+                                      <IconButton
+                                        size="small"
+                                        onClick={() => handleCopyEmails(row.emails)}
+                                        title="Copy Emails"
+                                        sx={{ alignSelf: "flex-start", mt: 0.5 }}
+                                      >
+                                        <ContentCopyIcon fontSize="small" />
+                                      </IconButton>
+                                    ),
+                                  }}
                                 />
                               </Box>
                             </TableCell>
@@ -1199,11 +1252,36 @@ const ComplaintForm = () => {
                                       <TableCell>{row.listName}</TableCell>
 
                                       <TableCell>
-                                        {row.file ? row.file.name : "Not Uploaded"}
+                                        <Box display="flex" alignItems="center" gap={1}>
+                                          {row.file ? row.file.name : row.fileName || "Not Uploaded"}
+                                          {(row.file || row.fileName) && (
+                                            <IconButton
+                                              size="small"
+                                              color="primary"
+                                              onClick={() => handleViewFile(row)}
+                                              title="View File"
+                                            >
+                                              <Visibility fontSize="small" />
+                                            </IconButton>
+                                          )}
+                                        </Box>
                                       </TableCell>
 
-                                      <TableCell>
-                                        {row.emails || "-"}
+                                      <TableCell sx={{ whiteSpace: "pre-line" }}>
+                                        <Box display="flex" alignItems="flex-start" gap={1}>
+                                          <Box sx={{ flexGrow: 1 }}>
+                                            {row.emails || "-"}
+                                          </Box>
+                                          {row.emails?.trim() && (
+                                            <IconButton
+                                              size="small"
+                                              onClick={() => handleCopyEmails(row.emails)}
+                                              title="Copy Emails"
+                                            >
+                                              <ContentCopyIcon fontSize="small" />
+                                            </IconButton>
+                                          )}
+                                        </Box>
                                       </TableCell>
 
                                       <TableCell>
@@ -1230,8 +1308,6 @@ const ComplaintForm = () => {
                 </Button>
 
                 <Box sx={{ gap: 1, display: "flex" }}>
-
-                  {/* 🔴 Reset Button */}
                   <Button
                     variant="outlined"
                     color="error"

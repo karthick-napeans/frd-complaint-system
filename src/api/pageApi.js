@@ -43,8 +43,8 @@ export const getDreList = () => {
     return getRequest("/dre/list");
 }
 
-export const getComplaintsList = () => {
-    return getRequest("/complaints/list");
+export const getComplaintsList = (payload) => {
+    return getRequest("/complaints/list", payload);
 }
 
 export const getCustomerColumnMapping = (customerId) => {
@@ -60,7 +60,7 @@ export const getAllImprovementList = () => {
 }
 
 export const getPPMData = (payload) => {
-    return getRequestWithBody("/complaints/ppm");
+    return getRequestWithBody("/complaints/ppm", payload);
 }
 
 

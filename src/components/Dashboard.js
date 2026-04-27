@@ -23,7 +23,7 @@ import {
   Cell,
   Legend,
 } from "recharts";
-import { getDashboardData } from "../api/pageApi";
+import { getDashboardData, getPPMData, getComplaintsList } from "../api/pageApi";
 import { useDispatch, useSelector } from "react-redux";
 import { loadMasters } from "../store/masterSlice";
 
@@ -46,6 +46,12 @@ export default function Dashboard() {
   const [totalParts, setTotalParts] = useState(0);
   const [totalModels, setTotalModels] = useState(0);
   const [totalAttachmentDue, setTotalAttachmentDue] = useState(0);
+
+  // Distribution data
+  const [customerPpmDist, setCustomerPpmDist] = useState([]);
+  const [modelPpmDist, setModelPpmDist] = useState([]);
+  const [partPpmDist, setPartPpmDist] = useState([]);
+  const [causePpmDist, setCausePpmDist] = useState([]);
 
   useEffect(() => {
     if (!loaded) dispatch(loadMasters());
@@ -117,6 +123,8 @@ export default function Dashboard() {
     return errors;
   };
 
+  const { repairCauses, customers } = useSelector((s) => s.masters);
+
   const loadDashboardStats = async (from, to) => {
     const errors = validateDates(from, to);
     if (errors.fromDate || errors.toDate) return;
@@ -126,7 +134,18 @@ export default function Dashboard() {
         FromDate: from,
         ToDate: to,
       };
-      const res = await getDashboardData(payload);
+
+      // Fetch data in parallel
+      const [res, ppmRes, complaintsRes] = await Promise.all([
+        getDashboardData(payload),
+        getPPMData(payload),
+        getComplaintsList(payload)
+      ]);
+
+      const rawPpmData = Array.isArray(ppmRes) ? ppmRes : (ppmRes?.data || []);
+      const rawComplaintsData = Array.isArray(complaintsRes) ? complaintsRes : (complaintsRes?.data || []);
+
+      // 1. Basic Stats
       setTotalFieldReports(res?.TotalFieldReports || 0);
       setTotalComplaints(res?.TotalCustomerComplaints || 0);
       setTotalDreReports(res?.TotalDreEntry || 0);
@@ -134,9 +153,64 @@ export default function Dashboard() {
       setTotalDreDraft(res?.TotalDreInDraft || 0);
       setTotalParts(res?.TotalParts || 0);
       setTotalModels(res?.TotalModels || 0);
-      setTotalAttachmentDue(
-        res?.TotalCustomerComplaintsAttachmentsInDue || 0
-      );
+      setTotalAttachmentDue(res?.TotalCustomerComplaintsAttachmentsInDue || 0);
+
+      // 2. Customer wise Rejection Distribution
+      // Primary: Aggregate from PPM data (requested by user)
+      let cDist = rawPpmData
+        .map(item => {
+          let totalRejections = 0;
+          Object.keys(item).forEach(key => {
+            if (key.startsWith('Data') && item[key]) {
+              const yearData = item[key];
+              // Try to get direct total first
+              if (typeof yearData.Rejection === 'number' && yearData.Rejection > 0) {
+                totalRejections += yearData.Rejection;
+              } else if (Array.isArray(yearData.MonthlyRejection)) {
+                // Fallback to summing monthly array
+                totalRejections += yearData.MonthlyRejection.reduce((a, b) => a + (Number(b) || 0), 0);
+              }
+            }
+          });
+          return { name: item.CustomerName, value: totalRejections };
+        })
+        .filter(i => i.value > 0)
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 5);
+
+      // Fallback: If PPM data is empty, use complaints list
+      if (cDist.length === 0) {
+        const mapped = rawComplaintsData.map(c => {
+          const cust = customers.find(cust => cust.CustomerId === c.CustomerId);
+          return { ...c, CustName: cust ? cust.CustomerName : (c.CustomerName || c.CustomerEmail || "Unknown") };
+        });
+        cDist = processDist(mapped, "CustName");
+      }
+      setCustomerPpmDist(cDist);
+
+      // 3. Model, Part, Cause Distribution (Rejection based)
+      const processDist = (data, key) => {
+        const counts = (data || []).reduce((acc, curr) => {
+          const val = curr[key];
+          if (val) acc[val] = (acc[val] || 0) + 1;
+          return acc;
+        }, {});
+        return Object.entries(counts)
+          .map(([name, value]) => ({ name, value }))
+          .sort((a, b) => b.value - a.value)
+          .slice(0, 5);
+      };
+
+      setModelPpmDist(processDist(rawComplaintsData, "Model"));
+      setPartPpmDist(processDist(rawComplaintsData, "Part"));
+
+      // Map Cause IDs to Names if necessary, or use ProblemStatement
+      const causeData = rawComplaintsData.map(c => {
+        const cause = repairCauses.find(rc => rc.RepairCauseCodeId === c.RepairCauseCodeId);
+        return { ...c, CauseName: cause ? cause.RepairCauseCodeName : c.ProblemStatement };
+      });
+      setCausePpmDist(processDist(causeData, "CauseName"));
+
     } catch (error) {
       console.error("Dashboard Error:", error);
     }
@@ -177,7 +251,7 @@ export default function Dashboard() {
     },
   ];
 
-  const COLORS = ["#1976d2", "#ff9800", "#4caf50"];
+  const PIE_COLORS = ["#1976d2", "#ff9800", "#4caf50", "#f44336", "#9c27b0"];
 
   const submittedComplaints =
     totalComplaints - totalComplaintDraft;
@@ -197,7 +271,7 @@ export default function Dashboard() {
     },
   ];
   return (
-    <Box sx={{ background: "#f4f6f8",  }}>
+    <Box sx={{ background: "#f4f6f8", }}>
       {/* HEADER */}
       <Box
         sx={{
@@ -377,99 +451,124 @@ export default function Dashboard() {
 
 
       {/* CHARTS */}
-      <Grid container spacing={1}>
+      <Grid container spacing={2}>
 
-        {/* 1️⃣ Module Comparison */}
-        <Grid item xs={12} md={6}>
-          <Card sx={{ borderRadius: 5 }}>
+        {/* 1️⃣ Customer Based PPM */}
+        <Grid item xs={12} sm={6} md={3}>
+          <Card sx={{ borderRadius: 5, height: '100%' }}>
             <CardContent>
-              <Typography fontWeight={600} mb={2}>
-                Module Comparison
+              <Typography fontWeight={600} mb={1} variant="subtitle2" color="primary">
+                Customer wise Rejections
               </Typography>
-
-              <ResponsiveContainer height={230}>
-                <BarChart data={moduleData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar
-                    dataKey="value"
-                    fill="#1976d2"
-                    radius={[8, 8, 0, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* 2️⃣ Customer Breakdown */}
-        <Grid item xs={12} md={3}>
-          <Card sx={{ borderRadius: 5 }}>
-            <CardContent>
-              <Typography fontWeight={600} mb={2}>
-                Customer Breakdown
-              </Typography>
-
-              <ResponsiveContainer height={230}>
-                <PieChart width={350} height={300}>
-                  <Pie
-                    data={customerData}
-                    dataKey="value"
-                    nameKey="name"
-                    outerRadius={90}
-                    innerRadius={50}
-                    paddingAngle={4}
-                  >
-                    {customerData.map((entry, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={COLORS[index % COLORS.length]}
-                      />
-                    ))}
-                  </Pie>
-
-                  <Tooltip />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* 3️⃣ DRE Breakdown */}
-        <Grid item xs={12} md={3}>
-          <Card sx={{ borderRadius: 5 }}>
-            <CardContent>
-              <Typography fontWeight={600} mb={2}>
-                DRE Breakdown
-              </Typography>
-
-              <ResponsiveContainer height={230}>
+              <ResponsiveContainer height={250}>
                 <PieChart>
                   <Pie
-                    data={dreData}
+                    data={customerPpmDist}
                     dataKey="value"
                     nameKey="name"
-                    outerRadius={90}
-                    innerRadius={50}
-                    paddingAngle={4}
+                    outerRadius={80}
+                    innerRadius={40}
+                    paddingAngle={5}
                   >
-                    {dreData.map((entry, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={COLORS[index % COLORS.length]}
-                      />
+                    {customerPpmDist.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
                     ))}
                   </Pie>
                   <Tooltip />
-                  <Legend />
+                  <Legend verticalAlign="bottom" height={36} />
                 </PieChart>
               </ResponsiveContainer>
             </CardContent>
           </Card>
         </Grid>
+
+        {/* 2️⃣ Model wise PPM */}
+        <Grid item xs={12} sm={6} md={3}>
+          <Card sx={{ borderRadius: 5, height: '100%' }}>
+            <CardContent>
+              <Typography fontWeight={600} mb={1} variant="subtitle2" color="secondary">
+                Model wise Rejections
+              </Typography>
+              <ResponsiveContainer height={250}>
+                <PieChart>
+                  <Pie
+                    data={modelPpmDist}
+                    dataKey="value"
+                    nameKey="name"
+                    outerRadius={80}
+                    innerRadius={40}
+                    paddingAngle={5}
+                  >
+                    {modelPpmDist.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend verticalAlign="bottom" height={36} />
+                </PieChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* 3️⃣ Part wise PPM */}
+        <Grid item xs={12} sm={6} md={3}>
+          <Card sx={{ borderRadius: 5, height: '100%' }}>
+            <CardContent>
+              <Typography fontWeight={600} mb={1} variant="subtitle2" color="success.main">
+                Part wise Rejections
+              </Typography>
+              <ResponsiveContainer height={250}>
+                <PieChart>
+                  <Pie
+                    data={partPpmDist}
+                    dataKey="value"
+                    nameKey="name"
+                    outerRadius={80}
+                    innerRadius={40}
+                    paddingAngle={5}
+                  >
+                    {partPpmDist.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend verticalAlign="bottom" height={36} />
+                </PieChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* 4️⃣ Cause wise PPM */}
+        <Grid item xs={12} sm={6} md={3}>
+          <Card sx={{ borderRadius: 5, height: '100%' }}>
+            <CardContent>
+              <Typography fontWeight={600} mb={1} variant="subtitle2" color="warning.main">
+                Cause Code wise Rejections
+              </Typography>
+              <ResponsiveContainer height={250}>
+                <PieChart>
+                  <Pie
+                    data={causePpmDist}
+                    dataKey="value"
+                    nameKey="name"
+                    outerRadius={80}
+                    innerRadius={40}
+                    paddingAngle={5}
+                  >
+                    {causePpmDist.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend verticalAlign="bottom" height={36} />
+                </PieChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </Grid>
+
       </Grid>
     </Box>
   );
