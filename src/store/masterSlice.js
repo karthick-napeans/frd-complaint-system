@@ -11,7 +11,7 @@ export const loadMasters = createAsyncThunk(
       parts,
       models,
       repairCauses,
-    ] = await Promise.all([
+    ] = await Promise.all([ 
       api.getMstCustomers(),
       api.getMstParts(),
       api.getMstModels(),

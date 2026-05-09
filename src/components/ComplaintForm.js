@@ -29,10 +29,12 @@ import {
   RadioGroup,
   FormControlLabel,
   Radio
+
 } from "@mui/material";
 import ClearIcon from "@mui/icons-material/Clear";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
+import DownloadIcon from '@mui/icons-material/Download';
 import SaveIcon from "@mui/icons-material/Save";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import { useSelector } from "react-redux";
@@ -246,7 +248,7 @@ const ComplaintForm = () => {
       let fileName = "";
       let email = "";
       let expiryDate = "";
-      let checked = false;
+      let checked = row.isMandatory; // Ensure mandatory items are always checked
 
       checklistIds.forEach((id, index) => {
 
@@ -262,6 +264,11 @@ const ComplaintForm = () => {
         }
 
       });
+
+      // If a file is attached, ensure it is checked
+      if (fileName) {
+        checked = true;
+      }
 
       return {
         ...row,
@@ -302,12 +309,12 @@ const ComplaintForm = () => {
         return;
       }
 
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const emailRegex = /^[^\s@]+@iljin\.com$/i;
 
       if (value && !emailRegex.test(value)) {
         setErrors((prev) => ({
           ...prev,
-          customerEmail: "Invalid Email",
+          customerEmail: "Only @iljin.com emails allowed",
         }));
       } else {
         setErrors((prev) => ({
@@ -367,15 +374,14 @@ const ComplaintForm = () => {
       .map(e => e.trim())
       .filter(e => e !== "");
 
-    const emailRegex =
-      /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailRegex = /^[^\s@]+@iljin\.com$/i;
 
     const invalidEmails = emails.filter(
       email => !emailRegex.test(email)
     );
 
     if (invalidEmails.length > 0) {
-      return `Invalid email(s): ${invalidEmails.join(", ")}`;
+      return `Only @iljin.com emails allowed: ${invalidEmails.join(", ")}`;
     }
 
     return "";
@@ -517,7 +523,11 @@ const ComplaintForm = () => {
         IsMandatory: row.isMandatory,
         IsChecked: !!row.checked,
         Duedate: formattedDate,
-        NotificationEmails: row.emails?.trim() || ""
+        NotificationEmails: (row.emails || "")
+          .split(/[,\n]/)
+          .map(e => e.trim())
+          .filter(e => e !== "")
+          .join(",")
       });
 
       if (row.file) {
@@ -698,7 +708,7 @@ const ComplaintForm = () => {
   const handleFileChange = (id, file) => {
     setAttachmentRows((prev) =>
       prev.map((row) =>
-        row.id === id ? { ...row, file } : row
+        row.id === id ? { ...row, file, checked: file ? true : row.checked } : row
       )
     );
 
@@ -1111,9 +1121,9 @@ const ComplaintForm = () => {
                                     size="small"
                                     color="primary"
                                     onClick={() => handleViewFile(row)}
-                                    title="View File"
+                                    title="Download File"
                                   >
-                                    <Visibility fontSize="small" />
+                                    <DownloadIcon fontSize="small" />
                                   </IconButton>
                                 )}
                               </Box>
@@ -1127,7 +1137,7 @@ const ComplaintForm = () => {
                                   size="small"
                                   multiline
                                   minRows={1}
-                                  placeholder={"test1@mail.com\ntest2@mail.com"}
+                                  placeholder={"user1@iljin.com\nuser2@iljin.com"}
                                   value={row.emails || ""}
                                   onChange={(e) =>
                                     handleEmailChange(row.id, e.target.value)
@@ -1261,7 +1271,7 @@ const ComplaintForm = () => {
                                               onClick={() => handleViewFile(row)}
                                               title="View File"
                                             >
-                                              <Visibility fontSize="small" />
+                                              <DownloadIcon fontSize="small" />
                                             </IconButton>
                                           )}
                                         </Box>

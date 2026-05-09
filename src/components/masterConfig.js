@@ -13,8 +13,9 @@ export const MASTER_CONFIG = {
             CustomerCode: data.CustomerCode,
         }),
 
-        mapDelete: (id) => ({
+        mapDelete: (id, isActive) => ({
             CustomerId: id,
+            IsActive: isActive,
         }),
     },
 
@@ -33,8 +34,9 @@ export const MASTER_CONFIG = {
         }),
 
 
-        mapDelete: (id) => ({
+        mapDelete: (id, isActive) => ({
             ModelId: id,
+            IsActive: isActive,
         }),
     },
 
@@ -44,7 +46,7 @@ export const MASTER_CONFIG = {
         mapCreate: (data) => ({
             PartName: data.PartName,
             PartNumber: data.PartNumber,
-            PartDescription: data.PartDescription,  // ✅ FIXED
+            PartDescription: data.PartDescription,
         }),
 
         mapUpdate: (data) => ({
@@ -54,8 +56,9 @@ export const MASTER_CONFIG = {
             PartDescription: data.PartDescription,
         }),
 
-        mapDelete: (id) => ({
+        mapDelete: (id, isActive) => ({
             PartId: id,
+            IsActive: isActive,
         }),
     },
 
@@ -74,8 +77,9 @@ export const MASTER_CONFIG = {
             CodeDescription: data.CodeDescription,
         }),
 
-        mapDelete: (id) => ({
+        mapDelete: (id, isActive) => ({
             RepairCauseCodeId: id,
+            IsActive: isActive,
         }),
     },
 
@@ -93,8 +97,9 @@ export const MASTER_CONFIG = {
             IsMandatory: data.IsMandatory,
         }),
 
-        mapDelete: (id) => ({
+        mapDelete: (id, isActive) => ({
             Id: id,
+            IsActive: isActive,
         }),
     }
 

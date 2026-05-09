@@ -74,27 +74,26 @@ const ComplaintAnalysis = ({ userRole }) => {
 
             const formatted = (res || []).map(item => {
 
-                const monthlySales =
-                    item.Data2026?.MonthlySales || Array(12).fill(0);
+                const dataCurrent = item[`Data${currentYear}`] || {};
+                const dataLast = item[`Data${lastYear}`] || {};
+                const dataPrev = item[`Data${previousYear}`] || {};
 
-                const monthlyRejection =
-                    item.Data2026?.MonthlyRejection || Array(12).fill(0);
-
-                const monthlyPlan =
-                    item.Data2026?.monthlyPlannedPPM || Array(12).fill(0);
+                const monthlySales = dataCurrent.MonthlySales || Array(12).fill(0);
+                const monthlyRejection = dataCurrent.MonthlyRejection || Array(12).fill(0);
+                const monthlyPlan = dataCurrent.monthlyPlannedPPM || Array(12).fill(0);
 
                 return {
 
                     customerId: item.CustomerId,
                     customerName: item.CustomerName,
 
-                    salesPrev: item.Data2024?.Sales || 0,
-                    rejPrev: item.Data2024?.Rejection || 0,
-                    ppmPrev: item.Data2024?.ppm || 0,
+                    salesPrev: dataPrev.Sales || 0,
+                    rejPrev: dataPrev.Rejection || 0,
+                    ppmPrev: dataPrev.ppm || 0,
 
-                    salesLast: item.Data2025?.Sales || 0,
-                    rejLast: item.Data2025?.Rejection || 0,
-                    ppmLast: item.Data2025?.ppm || 0,
+                    salesLast: dataLast.Sales || 0,
+                    rejLast: dataLast.Rejection || 0,
+                    ppmLast: dataLast.ppm || 0,
 
                     sales: monthlySales,
                     rejection: monthlyRejection,
@@ -170,6 +169,7 @@ const ComplaintAnalysis = ({ userRole }) => {
             const sales = customer?.sales || Array(12).fill(0);
             const rejection = customer?.rejection || Array(12).fill(0);
             const planPPM = customer?.planPPM || Array(12).fill(0);
+            const activePlans = planPPM.filter(p => p > 0);
 
             const ppmMonths = sales.map((s, i) =>
                 s === 0
@@ -200,6 +200,7 @@ const ComplaintAnalysis = ({ userRole }) => {
                 sales,
                 rejection,
                 planPPM,
+                avgPlanPPM: activePlans.length === 0 ? 0 : Number((activePlans.reduce((a, b) => a + b, 0) / activePlans.length).toFixed(1)),
                 ppmMonths,
 
                 totalSales,
@@ -293,11 +294,16 @@ const ComplaintAnalysis = ({ userRole }) => {
             return count === 0 ? 0 : Number((total / count).toFixed(1));
         });
 
-        // ✅ TOTAL PLAN PPM (AVERAGE)
-        const totalPlanPPM =
-            planCount === 0
+        // ✅ TOTAL PLAN PPM (AVERAGE OF MONTHLY AVERAGES)
+        const activeMonths = planPPMMonths.filter(p => p > 0);
+        const totalPlanPPM = activeMonths.length === 0 
+            ? 0 
+            : Number((activeMonths.reduce((a, b) => a + b, 0) / activeMonths.length).toFixed(1));
+
+        const totalPPMLast =
+            salesLast === 0
                 ? 0
-                : Number((totalPlanPPMSum / planCount).toFixed(1));
+                : Number(((rejLast * 1000000) / salesLast).toFixed(1));
 
         return {
             salesPrev,
@@ -317,7 +323,8 @@ const ComplaintAnalysis = ({ userRole }) => {
             // ✅ NEW
             monthlyPlanPPM,
             planPPMMonths,
-            totalPlanPPM
+            totalPlanPPM,
+            totalPPMLast
         };
 
     }, [ppmData]);
@@ -369,21 +376,15 @@ const ComplaintAnalysis = ({ userRole }) => {
 
         if (!ppmData.length || !totals) return [];
 
-        const lastYearAvg =
-            ppmData.reduce((sum, row) => sum + row.ppmLast, 0) / ppmData.length;
-
-        const currentYearAvg =
-            ppmData.reduce((sum, row) => sum + row.totalPPM, 0) / ppmData.length;
-
         return [
             {
                 year: lastYear,
-                actual: Number(lastYearAvg.toFixed(1)),
+                actual: totals.totalPPMLast,
                 plan: PLAN_PPM
             },
             {
                 year: currentYear,
-                actual: Number(currentYearAvg.toFixed(1)),
+                actual: totals.totalPPM,
                 plan: totals.totalPlanPPM
             }
         ];
@@ -444,10 +445,10 @@ const ComplaintAnalysis = ({ userRole }) => {
         wsData.push([
             "Customer",
             "Type",
-            "2023",
-            "2024",
-            "2025 Avg",
-            "2025",
+            String(previousYear),
+            String(lastYear),
+            `${currentYear} Avg`,
+            String(currentYear),
             "", "", "", "", "", "", "", "", "", "", "",
             "Remarks",
             "Reduced %"
@@ -494,8 +495,8 @@ const ComplaintAnalysis = ({ userRole }) => {
                 "PLAN PPM",
                 PLAN_PPM,
                 PLAN_PPM,
-                PLAN_PPM,
-                ...Array(12).fill(PLAN_PPM),
+                totals.totalPlanPPM,
+                ...totals.planPPMMonths,
                 "",
                 ""
             ]);
@@ -807,11 +808,11 @@ const ComplaintAnalysis = ({ userRole }) => {
                                 <TableCell rowSpan={2}><b>Customer</b></TableCell>
                                 <TableCell rowSpan={2}><b>Type</b></TableCell>
 
-                                <TableCell><b>2023</b></TableCell>
-                                <TableCell><b>2024</b></TableCell>
-                                <TableCell><b>2025</b></TableCell>
+                                <TableCell><b>{previousYear}</b></TableCell>
+                                <TableCell><b>{lastYear}</b></TableCell>
+                                <TableCell><b>{currentYear}</b></TableCell>
 
-                                <TableCell colSpan={13}><b>2025</b></TableCell>
+                                <TableCell colSpan={13}><b>{currentYear}</b></TableCell>
                             </TableRow>
 
                             {/* Month Row */}
@@ -937,9 +938,9 @@ const ComplaintAnalysis = ({ userRole }) => {
                                             PLAN PPM
                                         </TableCell>
 
-                                        <TableCell>-</TableCell>
-                                        <TableCell>-</TableCell>
-                                        <TableCell>-</TableCell>
+                                        <TableCell>{PLAN_PPM}</TableCell>
+                                        <TableCell>{PLAN_PPM}</TableCell>
+                                        <TableCell>{row.avgPlanPPM}</TableCell>
 
                                         {MONTHS.map((_, i) => {
 
@@ -1098,7 +1099,7 @@ const ComplaintAnalysis = ({ userRole }) => {
 
                                         <TableCell>{PLAN_PPM}</TableCell>
                                         <TableCell>{PLAN_PPM}</TableCell>
-                                        <TableCell>{PLAN_PPM}</TableCell>
+                                        <TableCell>{totals.totalPlanPPM}</TableCell>
 
                                         {(totals.monthlyPlanPPM || []).map((v, i) => (
                                             <TableCell key={i}>{v}</TableCell>

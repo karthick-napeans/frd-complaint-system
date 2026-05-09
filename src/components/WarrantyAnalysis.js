@@ -121,7 +121,13 @@ const WarrantyAnalysis = () => {
 
     hasFetchedOnce.current = true;
 
-    fetchWarrantyReport();
+    const initLoad = async () => {
+      const hasData = await fetchWarrantyReport();
+      if (!hasData) {
+        setFiltersOpen(true);
+      }
+    };
+    initLoad();
   }, [customerSelected]);
 
   const handleDateChange = (field, value) => {
@@ -203,8 +209,10 @@ const WarrantyAnalysis = () => {
     setLoading(true);
 
     try {
-      await fetchWarrantyReport();
-      setFiltersOpen(false);  
+      const hasData = await fetchWarrantyReport();
+      if (hasData) {
+        setFiltersOpen(false);
+      }
     } finally {
       setLoading(false);
     }
@@ -247,11 +255,16 @@ const WarrantyAnalysis = () => {
       console.log("Sending Payload:", payload);
 
       const response = await getWrantyReport(payload);
+      const data = response?.data || response || null;
 
-      setApiData(response?.data || response || null);
+      setApiData(data);
+
+      const hasData = !!(data?.Trend && data.Trend.length > 0);
+      return hasData;
 
     } catch (error) {
       console.error("API ERROR:", error?.response?.data || error);
+      return false;
     }
   };
 
@@ -332,7 +345,7 @@ const WarrantyAnalysis = () => {
       repair: item.RepairCount,
     }));
   }, [apiData]);
-
+ 
   // 2️⃣ Used Month
   const usedMonthData = useMemo(() => {
     if (!apiData?.UsedMonthDistribution) return [];

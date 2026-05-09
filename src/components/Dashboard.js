@@ -30,7 +30,7 @@ import { loadMasters } from "../store/masterSlice";
 export default function Dashboard() {
   const dispatch = useDispatch();
   const loaded = useSelector((s) => s.masters.loaded);
-  const [filterDays, setFilterDays] = useState(7);
+  const [filterDays, setFilterDays] = useState(30);
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
   const today = new Date().toISOString().split("T")[0];
@@ -188,6 +188,15 @@ export default function Dashboard() {
       }
       setCustomerPpmDist(cDist);
 
+      // 1.5 Filter Complaints by Date & Status (to match history table)
+      const filteredComplaints = rawComplaintsData.filter(c => {
+        const cDate = new Date(c.ComplaintDate);
+        const matchFrom = !from || cDate >= new Date(from);
+        const matchTo = !to || cDate <= new Date(to);
+        const isNotDraft = c.Status && c.Status.toUpperCase() !== 'DRAFT';
+        return matchFrom && matchTo && isNotDraft;
+      });
+
       // 3. Model, Part, Cause Distribution (Rejection based)
       const processDist = (data, key) => {
         const counts = (data || []).reduce((acc, curr) => {
@@ -201,11 +210,11 @@ export default function Dashboard() {
           .slice(0, 5);
       };
 
-      setModelPpmDist(processDist(rawComplaintsData, "Model"));
-      setPartPpmDist(processDist(rawComplaintsData, "Part"));
+      setModelPpmDist(processDist(filteredComplaints, "Model"));
+      setPartPpmDist(processDist(filteredComplaints, "Part"));
 
       // Map Cause IDs to Names if necessary, or use ProblemStatement
-      const causeData = rawComplaintsData.map(c => {
+      const causeData = filteredComplaints.map(c => {
         const cause = repairCauses.find(rc => rc.RepairCauseCodeId === c.RepairCauseCodeId);
         return { ...c, CauseName: cause ? cause.RepairCauseCodeName : c.ProblemStatement };
       });
@@ -342,38 +351,32 @@ export default function Dashboard() {
       <Grid container spacing={3} mb={2}>
         {[
           {
-            title: "Field Reports",
-            main: totalFieldReports,
-            sub: [],
-            bg: "rgba(25,118,210,0.08)",
-            accent: "#1976d2",
-          },
-          {
             title: "Customer Complaints",
             main: totalComplaints,
             sub: [
               { label: "Draft", value: totalComplaintDraft },
               { label: "Attachment Due", value: totalAttachmentDue },
             ],
-            bg: "rgba(255,152,0,0.08)",
-            accent: "#f57c00",
-          },
-          {
-            title: "DRE Entry",
-            main: totalDreReports,
-            sub: [{ label: "Draft", value: totalDreDraft }],
             bg: "rgba(76,175,80,0.08)",
             accent: "#2e7d32",
           },
           {
-            title: "Masters Data",
-            main: totalParts + totalModels,
-            sub: [{ label: "Models", value: totalModels }, { label: "Parts", value: totalParts }],
-            bg: "rgba(156,39,176,0.08)",
-            accent: "#8e24aa",
+            title: "Field Reports",
+            main: totalFieldReports,
+            sub: [],
+            bg: "rgba(25,118,210,0.08)",
+            accent: "#1976d2",
+          },
+
+          {
+            title: "DRE Entry",
+            main: totalDreReports,
+            sub: [{ label: "Draft", value: totalDreDraft }],
+            bg: "rgba(255,152,0,0.08)",
+            accent: "#f57c00",
           },
         ].map((card, index) => (
-          <Grid item xs={12} sm={6} md={3} key={index}>
+          <Grid item xs={12} sm={6} md={4} key={index}>
             <Card
               sx={{
                 height: 200,
@@ -454,7 +457,7 @@ export default function Dashboard() {
       <Grid container spacing={2}>
 
         {/* 1️⃣ Customer Based PPM */}
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={12} sm={6} md={6}>
           <Card sx={{ borderRadius: 5, height: '100%' }}>
             <CardContent>
               <Typography fontWeight={600} mb={1} variant="subtitle2" color="primary">
@@ -483,7 +486,7 @@ export default function Dashboard() {
         </Grid>
 
         {/* 2️⃣ Model wise PPM */}
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={12} sm={6} md={6}>
           <Card sx={{ borderRadius: 5, height: '100%' }}>
             <CardContent>
               <Typography fontWeight={600} mb={1} variant="subtitle2" color="secondary">
@@ -512,7 +515,7 @@ export default function Dashboard() {
         </Grid>
 
         {/* 3️⃣ Part wise PPM */}
-        <Grid item xs={12} sm={6} md={3}>
+        {/* <Grid item xs={12} sm={6} md={6}>
           <Card sx={{ borderRadius: 5, height: '100%' }}>
             <CardContent>
               <Typography fontWeight={600} mb={1} variant="subtitle2" color="success.main">
@@ -538,10 +541,10 @@ export default function Dashboard() {
               </ResponsiveContainer>
             </CardContent>
           </Card>
-        </Grid>
+        </Grid> */}
 
         {/* 4️⃣ Cause wise PPM */}
-        <Grid item xs={12} sm={6} md={3}>
+        {/* <Grid item xs={12} sm={6} md={3}>
           <Card sx={{ borderRadius: 5, height: '100%' }}>
             <CardContent>
               <Typography fontWeight={600} mb={1} variant="subtitle2" color="warning.main">
@@ -567,7 +570,7 @@ export default function Dashboard() {
               </ResponsiveContainer>
             </CardContent>
           </Card>
-        </Grid>
+        </Grid> */}
 
       </Grid>
     </Box>

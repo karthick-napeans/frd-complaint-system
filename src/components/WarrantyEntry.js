@@ -49,11 +49,12 @@ const WarrantyEntry = () => {
       const response = await getUploadHistory(); // already response.data because interceptor
       const rows = response.map((item) => ({
         id: item.UploadHeadId, // DataGrid requires `id`
-        customer: item.CustomerId,
+        customer: item.CustomerName,
         filename: item.FileName,
         uploadDate: new Date(item.UploadDateTime).toLocaleDateString(),
         recordsProcessed: item.TotalRecords,
         Sublet_Cost: item.Sublet_Cost,
+        Total_Cost: item.Total_Cost,
         status: 'Success', // backend doesn’t send status
         downloadUrl: item.DownloadUrl,
       }));
@@ -197,6 +198,14 @@ const WarrantyEntry = () => {
     {
       field: 'Sublet_Cost',
       headerName: 'Sublet Cost',
+      width: 120,
+      resizable: false,
+      headerAlign: 'center',
+      align: 'center',
+    },
+    {
+      field: 'Total_Cost',
+      headerName: 'Total Cost',
       width: 120,
       resizable: false,
       headerAlign: 'center',

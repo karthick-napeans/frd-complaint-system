@@ -67,7 +67,7 @@ const UserManagement = ({ userRole }) => {
   const patterns = {
     char: /^[A-Za-z ]+$/,                 // letters + space
     charNum: /^[A-Za-z0-9]+$/,           // letters + numbers
-    email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, // valid email
+    email: /^[^\s@]+@iljin\.com$/i, // enforce @iljin.com
     number: /^[0-9]+$/,                  // numbers only
   };
 
@@ -197,12 +197,13 @@ const UserManagement = ({ userRole }) => {
       loadingLabel: "Resetting...",
       buttonColor: "#f59e0b",
       icon: <LockResetIcon sx={{ color: "#f59e0b" }} />,
-      onConfirm: () => confirmResetPassword(user.id)
+      onConfirm: () => confirmResetPassword(user)
     });
   };
-
+ 
   const confirmResetPassword = async (userId) => {
     setConfirmLoading(true);
+    console.log("Resetting password for user with ID:", userId);
     await resetPassword(userId);
   }
 
@@ -234,8 +235,8 @@ const UserManagement = ({ userRole }) => {
 
     if (!formData.email?.trim()) {
       tempErrors.email = "Email is required";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      tempErrors.email = "Invalid Format";
+    } else if (!/^[^\s@]+@iljin\.com$/i.test(formData.email)) {
+      tempErrors.email = "Only @iljin.com emails allowed";
     }
 
     if (!editingUser && !formData.password?.trim())

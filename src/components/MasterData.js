@@ -156,7 +156,11 @@ const MasterData = ({ userRole = "Admin" }) => {
     message: "",
     successMessage: "",
     errorMessage: "",
-    onConfirm: null
+    onConfirm: null,
+    actionLabel: "",
+    loadingLabel: "",
+    buttonColor: "",
+    icon: null
   });
 
   useEffect(() => {
@@ -178,7 +182,6 @@ const MasterData = ({ userRole = "Admin" }) => {
 
       const sortedData = Array.isArray(data)
         ? [...data]
-          .filter(item => item.IsActive === "true" || item.IsActive === true)
 
           .sort((a, b) => {
             const idKey = Object.keys(a).find(key =>
@@ -287,25 +290,27 @@ const MasterData = ({ userRole = "Admin" }) => {
     }
   };
 
-  const handleDelete = (row) => {
+  const handleToggleStatus = (row) => {
     const idField = MASTER_ID_FIELD[masterType];
+    const isCurrentlyActive = row.IsActive === true || row.IsActive === "true";
+    const newStatus = !isCurrentlyActive;
 
     setConfirmState({
       open: true,
-      title: "Delete User",
-      message: `Are you sure you want to delete ${row.Name || row.CustomerName || row.ModelName || row.PartNumber || row.Code}?`,
-      successMessage: "Record deleted successfully.",
-      errorMessage: "Failed to delete record. Please try again.",
-      actionLabel: "Delete",
-      loadingLabel: "Deleting...",
-      buttonColor: "#ff6b6b",
-      icon: <DeleteOutlineIcon sx={{ color: "#ff6b6b" }} />,
-      onConfirm: () => confirmDelete(row[idField])
+      title: `${newStatus ? "Activate" : "Deactivate"} ${MASTER_LABEL[masterType]}`,
+      message: `Are you sure you want to ${newStatus ? "activate" : "deactivate"} ${row.Name || row.CustomerName || row.ModelName || row.PartNumber || row.Code}?`,
+      successMessage: `Record ${newStatus ? "activated" : "deactivated"} successfully.`,
+      errorMessage: `Failed to ${newStatus ? "activate" : "deactivate"} record. Please try again.`,
+      actionLabel: newStatus ? "Activate" : "Deactivate",
+      loadingLabel: "Processing...",
+      buttonColor: newStatus ? "#4caf50" : "#ff6b6b",
+      icon: newStatus ? <AddIcon sx={{ color: "#4caf50" }} /> : <DeleteOutlineIcon sx={{ color: "#ff6b6b" }} />,
+      onConfirm: () => confirmToggleStatus(row[idField], newStatus)
     });
   };
 
-  const confirmDelete = async (id) => {
-    await deleteMaster(masterType, id);
+  const confirmToggleStatus = async (id, newStatus) => {
+    await deleteMaster(masterType, id, newStatus);
     await dispatch(loadMasters());
     await fetchMasterData();
   };
@@ -314,14 +319,17 @@ const MasterData = ({ userRole = "Admin" }) => {
     setConfirmState(prev => ({ ...prev, open: false }));
   };
 
-  const StatusChip = ({ value }) => (
-    <Chip
-      label={value ? "Active" : "Inactive"}
-      size="small"
-      color={value ? "success" : "default"}
-      sx={{ fontWeight: 600 }}
-    />
-  );
+  const StatusChip = ({ value }) => {
+    const isActive = value === true || value === "true";
+    return (
+      <Chip
+        label={isActive ? "Active" : "Inactive"}
+        size="small"
+        color={isActive ? "success" : "default"}
+        sx={{ fontWeight: 600 }}
+      />
+    );
+  };
 
   const actionColumn = {
     field: "actions",
@@ -329,23 +337,27 @@ const MasterData = ({ userRole = "Admin" }) => {
     width: 120,
     align: "center",
     sortable: false,
-    renderCell: (params) => (
-      <Box sx={{ display: "flex", gap: 0.5 }}>
-        <IconButton
-          size="small"
-          onClick={() => handleEdit(params.row)}
-        >
-          <EditIcon fontSize="small" />
-        </IconButton>
-        <IconButton
-          size="small"
-          color="error"
-          onClick={() => handleDelete(params.row)}
-        >
-          <DeleteIcon fontSize="small" />
-        </IconButton>
-      </Box>
-    ),
+    renderCell: (params) => {
+      const isCurrentlyActive = params.row.IsActive === true || params.row.IsActive === "true";
+      return (
+        <Box sx={{ display: "flex", gap: 0.5 }}>
+          <IconButton
+            size="small"
+            onClick={() => handleEdit(params.row)}
+          >
+            <EditIcon fontSize="small" />
+          </IconButton>
+          <IconButton
+            size="small"
+            color={isCurrentlyActive ? "error" : "success"}
+            onClick={() => handleToggleStatus(params.row)}
+            title={isCurrentlyActive ? "Deactivate" : "Activate"}
+          >
+            {isCurrentlyActive ? <DeleteIcon fontSize="small" /> : <AddIcon fontSize="small" />}
+          </IconButton>
+        </Box>
+      );
+    },
   };
 
   const columnsMap = useMemo(() => {
@@ -564,6 +576,10 @@ const MasterData = ({ userRole = "Admin" }) => {
             errorMessage={confirmState.errorMessage}
             onConfirm={confirmState.onConfirm}
             onCancel={handleCancelDelete}
+            actionLabel={confirmState.actionLabel}
+            loadingLabel={confirmState.loadingLabel}
+            buttonColor={confirmState.buttonColor}
+            icon={confirmState.icon}
           />
         </CardContent>
       </Card>

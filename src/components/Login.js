@@ -5,6 +5,8 @@ import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import { loginApi } from '../api/pageApi';
 import { useNavigate } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
+import { loadMasters } from '../store/masterSlice';
 import LoginIconImg from "../assets/iljin-logo.png";
 
 
@@ -16,6 +18,7 @@ const Login = ({ onLogin }) => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
 
   const handleLogin = async () => {
@@ -32,6 +35,8 @@ const Login = ({ onLogin }) => {
 
       localStorage.setItem("authToken", Token);
       localStorage.setItem("username", UserName);
+
+      await dispatch(loadMasters());
 
       onLogin(UserRole, UserName);
       navigate("/dashboard", { replace: true });

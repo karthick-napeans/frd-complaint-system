@@ -102,11 +102,18 @@ const CustomerSummary = () => {
             const response = await getComplaintsList(); // 👈 your API call
 
             // Add serial number
-            const formattedData = response.map((item, index) => ({
-                ...item,
-                id: item.ComplaintId, 
-                serialNo: index + 1
-            }));
+            const formattedData = response.map((item, index) => {
+                let status = item.Status;
+                if (status && (status.toUpperCase() === 'SUBMITED' || status.toUpperCase() === 'SUBMITTED')) {
+                    status = 'Completed';
+                }
+                return {
+                    ...item,
+                    Status: status,
+                    id: item.ComplaintId,
+                    serialNo: index + 1
+                };
+            });
 
             setRows(formattedData);
         } catch (error) {
@@ -236,33 +243,41 @@ const CustomerSummary = () => {
                                 : 'success'
                     }
                     size="small"
-                    sx={{ margin: '0 auto' }}
+                    sx={{ margin: '0 auto', color: '#fff' }}
                 />
             ),
         },
         {
             field: 'Status',
             headerName: 'Status',
-            width: 100,
+            width: 140,
             resizable: false,
             headerAlign: 'center',
             align: 'center',
-            renderCell: (params) => (
-                <Chip
-                    label={params.value}
-                    color={
-                        params.value === 'DRAFT'
-                            ? 'default'
-                            : params.value === 'OPEN'
-                                ? 'info'
-                                : params.value === 'CLOSED'
-                                    ? 'success'
-                                    : 'warning'
-                    }
-                    size="small"
-                    sx={{ margin: '0 auto' }}
-                />
-            ),
+            renderCell: (params) => {
+                const upperStatus = params.value ? params.value.toUpperCase() : '';
+                let chipColor = 'default';
+                let chipSx = { margin: '0 auto', color: '#fff' };
+
+                if (upperStatus === 'DRAFT') {
+                    chipSx = { ...chipSx, backgroundColor: '#f44336' }; // Light red background with white text
+                } else if (upperStatus === 'OPEN') {
+                    chipColor = 'info';
+                } else if (upperStatus === 'CLOSED' || upperStatus === 'COMPLETED') {
+                    chipColor = 'success';
+                } else {
+                    chipColor = 'warning';
+                }
+
+                return (
+                    <Chip
+                        label={params.value}
+                        color={chipColor !== 'default' ? chipColor : undefined}
+                        size="small"
+                        sx={chipSx}
+                    />
+                );
+            },
         },
     ];
 
