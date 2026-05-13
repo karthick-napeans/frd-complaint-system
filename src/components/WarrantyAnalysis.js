@@ -75,7 +75,7 @@ const WarrantyAnalysis = () => {
     "#5007fa", // purple
     "#00d9ff", // cyan
   ];
- 
+
   const filteredBaselines = improvementList?.filter(b =>
     selectedModels.includes(b.modelCode)
   );
@@ -345,7 +345,7 @@ const WarrantyAnalysis = () => {
       repair: item.RepairCount,
     }));
   }, [apiData]);
- 
+
   // 2️⃣ Used Month
   const usedMonthData = useMemo(() => {
     if (!apiData?.UsedMonthDistribution) return [];

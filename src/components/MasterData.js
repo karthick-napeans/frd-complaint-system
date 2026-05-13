@@ -44,7 +44,7 @@ const MASTER_LABEL = {
   customer: "Customer",
   model: "Model",
   part: "Part",
-  cause: "Repair Cause",
+  cause: "Nature Code",
   attachment: "Checklist Attachment",
 };
 
@@ -109,14 +109,14 @@ const MASTER_FORM_CONFIG = {
   cause: [
     {
       name: "Code",
-      label: "Cause Code",
+      label: "Nature Code",
       required: true,
       pattern: /^[A-Za-z0-9 ]+$/,
       patternMessage: "Only letters and numbers allowed",
     },
     {
       name: "CodeDescription",
-      label: "Description",
+      label: "Nature Code Description",
       multiline: true,
       required: true,
     },
@@ -242,7 +242,7 @@ const MasterData = ({ userRole = "Admin" }) => {
 
     return Object.keys(tempErrors).length === 0;
   };
-  
+
   const handleEdit = (row) => {
     setEditingRow(row);
     setFormData(row);
@@ -405,8 +405,17 @@ const MasterData = ({ userRole = "Admin" }) => {
 
 
       cause: [
-        { field: "Code", headerName: "Cause Code", width: 180 },
-        { field: "CodeDescription", headerName: "Description", width: 320 },
+        { field: "Code", headerName: "Nature Code", width: 180 },
+        {
+          field: "CodeDescription",
+          headerName: "Nature Code Description",
+          width: 500,
+          renderCell: (params) => (
+            <Box sx={{ whiteSpace: "normal", lineHeight: "1.4", py: 1, textAlign: "left", width: "100%" }}>
+              {params.value}
+            </Box>
+          ),
+        },
         {
           field: "IsActive",
           headerName: "Status",
@@ -471,7 +480,7 @@ const MasterData = ({ userRole = "Admin" }) => {
             <option value="customer">Customer</option>
             <option value="model">Model</option>
             <option value="part">Part</option>
-            {/* <option value="cause">Repair Cause</option> */}
+            <option value="cause">Nature Code</option>
             <option value="attachment">Checklist Attachment</option>
           </TextField>
         </CardContent>
@@ -512,7 +521,7 @@ const MasterData = ({ userRole = "Admin" }) => {
 
               getRowId={(row) => row[MASTER_ID_FIELD[masterType]]}
               loading={loading}
-
+              getRowHeight={masterType === 'cause' ? () => 'auto' : () => 70}
               pagination
               pageSizeOptions={[10, 20, 50]}
               initialState={{

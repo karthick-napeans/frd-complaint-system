@@ -21,7 +21,7 @@ import ConfirmDialog from './ConfirmDialog';
 
 
 
-const CustomerSummary = () => {
+const CustomerSummary = ({ userRole }) => {
     const [rows, setRows] = useState([]);
     const [loading, setLoading] = useState(false);
     const [filterPart, setFilterPart] = useState('');
@@ -137,6 +137,11 @@ const CustomerSummary = () => {
             setLoading(false);
         }
     };
+
+    const normalizeRole = (role) =>
+        role?.toLowerCase().replace(/[_\s]+/g, "");
+
+    const isQCUser = normalizeRole(userRole) === "qcuser";
 
     const handleExportExcel = () => {
         const exportData = filteredRows.map((row) => ({
@@ -327,7 +332,7 @@ const CustomerSummary = () => {
                 <Tooltip title="Delete Complaint">
                     <IconButton
                         size="small"
-                        color="#fc4343"
+                        sx={{ color: "#fc4343" }}
                         onClick={() => handleDelete(params.row)}
                     >
                         <Delete />
@@ -348,7 +353,7 @@ const CustomerSummary = () => {
                 <Tooltip title="Download ZIP">
                     <IconButton
                         size="small"
-                        color="#1860fc"
+                        sx={{ color: "#1860fc" }}
                         onClick={() => handleDownload(params.row)}
                     >
                         <Download />
@@ -635,9 +640,10 @@ const CustomerSummary = () => {
                     <Box sx={{ width: "100%", overflowX: "auto" }}>
                         <DataGrid
                             rows={filteredRows}
-                            columns={columns}
+                            columns={isQCUser ? columns.filter(col => col.field !== 'actions') : columns}
                             loading={loading}
                             autoHeight
+                            rowHeight={70}
                             pageSizeOptions={[10, 20, 50]}
                             initialState={{
                                 pagination: {
@@ -654,7 +660,7 @@ const CustomerSummary = () => {
                             hideFooterSelectedRowCount
                             sx={{
                                 border: "none",
-                                minWidth: 1600, // Set according to total column widths
+                                minWidth: 1890, // Sum of all column widths (60+170+170+230+120+100+100+250+250+100+140+100+100)
 
                                 /* Header Styling */
                                 "& .MuiDataGrid-columnHeaders": {

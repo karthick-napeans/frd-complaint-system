@@ -226,7 +226,7 @@ const AppLayout = ({ userRole, username, onLogout }) => {
 
           {/* Complaints */}
           <Route path="/complaints/entry" element={<ComplaintForm />} />
-          <Route path="/complaints/summary" element={<CustomerSummary />} />
+          <Route path="/complaints/summary" element={<CustomerSummary userRole={userRole} />} />
           <Route path="/complaints/analysis" element={<ComplaintAnalysis userRole={userRole} />} />
 
           {/* Admin */}

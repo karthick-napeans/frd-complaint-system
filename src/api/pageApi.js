@@ -58,7 +58,29 @@ export const downloadZip = async (complaintID) => {
         {
             responseType: "blob",
         }
-    ); 
+    );
+    return blob;
+};
+
+export const downloadAttachment = async (attachmentID) => {
+    const blob = await getRequest(
+        `complaints/download-attachment/${attachmentID}`,
+        {},
+        {
+            responseType: "blob",
+        }
+    );
+    return blob;
+};
+
+export const downloadDREAttachment = async (attachmentID) => {
+    const blob = await getRequest(
+        `dre/download/${attachmentID}`,
+        {},
+        {
+            responseType: "blob",
+        }
+    );
     return blob;
 };
 
@@ -89,7 +111,7 @@ export const updateUser = (payload) => {
 }
 
 export const deleteUser = (id) => {
-    return postRequest(`/users/active`,{ UserId: id });
+    return postRequest(`/users/active`, { UserId: id });
 }
 
 export const saveDreDraft = (payload) => {

@@ -146,6 +146,7 @@ export default function Dashboard() {
       const rawComplaintsData = Array.isArray(complaintsRes) ? complaintsRes : (complaintsRes?.data || []);
 
       // 1. Basic Stats
+      // 1. Basic Stats
       setTotalFieldReports(res?.TotalFieldReports || 0);
       setTotalComplaints(res?.TotalCustomerComplaints || 0);
       setTotalDreReports(res?.TotalDreEntry || 0);
@@ -155,49 +156,17 @@ export default function Dashboard() {
       setTotalModels(res?.TotalModels || 0);
       setTotalAttachmentDue(res?.TotalCustomerComplaintsAttachmentsInDue || 0);
 
-      // 2. Customer wise Rejection Distribution
-      // Primary: Aggregate from PPM data (requested by user)
-      let cDist = rawPpmData
-        .map(item => {
-          let totalRejections = 0;
-          Object.keys(item).forEach(key => {
-            if (key.startsWith('Data') && item[key]) {
-              const yearData = item[key];
-              // Try to get direct total first
-              if (typeof yearData.Rejection === 'number' && yearData.Rejection > 0) {
-                totalRejections += yearData.Rejection;
-              } else if (Array.isArray(yearData.MonthlyRejection)) {
-                // Fallback to summing monthly array
-                totalRejections += yearData.MonthlyRejection.reduce((a, b) => a + (Number(b) || 0), 0);
-              }
-            }
-          });
-          return { name: item.CustomerName, value: totalRejections };
-        })
-        .filter(i => i.value > 0)
-        .sort((a, b) => b.value - a.value)
-        .slice(0, 5);
-
-      // Fallback: If PPM data is empty, use complaints list
-      if (cDist.length === 0) {
-        const mapped = rawComplaintsData.map(c => {
-          const cust = customers.find(cust => cust.CustomerId === c.CustomerId);
-          return { ...c, CustName: cust ? cust.CustomerName : (c.CustomerName || c.CustomerEmail || "Unknown") };
-        });
-        cDist = processDist(mapped, "CustName");
-      }
-      setCustomerPpmDist(cDist);
-
-      // 1.5 Filter Complaints by Date & Status (to match history table)
+      // 1.5 Filter Complaints by Date & Status (Core filtered data for all charts)
       const filteredComplaints = rawComplaintsData.filter(c => {
         const cDate = new Date(c.ComplaintDate);
         const matchFrom = !from || cDate >= new Date(from);
         const matchTo = !to || cDate <= new Date(to);
+        // Only show submitted/completed complaints in charts
         const isNotDraft = c.Status && c.Status.toUpperCase() !== 'DRAFT';
         return matchFrom && matchTo && isNotDraft;
       });
 
-      // 3. Model, Part, Cause Distribution (Rejection based)
+      // Helper for distribution
       const processDist = (data, key) => {
         const counts = (data || []).reduce((acc, curr) => {
           const val = curr[key];
@@ -210,13 +179,45 @@ export default function Dashboard() {
           .slice(0, 5);
       };
 
+      // 2. Customer wise Rejection Distribution
+      // Primary: Aggregate from PPM data
+      let cDist = rawPpmData
+        .map(item => {
+          let totalRejections = 0;
+          Object.keys(item).forEach(key => {
+            if (key.startsWith('Data') && item[key]) {
+              const yearData = item[key];
+              if (typeof yearData.Rejection === 'number' && yearData.Rejection > 0) {
+                totalRejections += yearData.Rejection;
+              } else if (Array.isArray(yearData.MonthlyRejection)) {
+                totalRejections += yearData.MonthlyRejection.reduce((a, b) => a + (Number(b) || 0), 0);
+              }
+            }
+          });
+          return { name: item.CustomerName, value: totalRejections };
+        })
+        .filter(i => i.value > 0)
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 5);
+
+      // Fallback: If PPM data is empty, use the filtered complaints list (Date sensitive)
+      if (cDist.length === 0) {
+        const mapped = filteredComplaints.map(c => {
+          const cust = customers.find(cust => cust.CustomerId === c.CustomerId);
+          return { ...c, CustName: cust ? cust.CustomerName : (c.CustomerName || c.CauseCode || c.CustomerEmail || "Unknown") };
+        });
+        cDist = processDist(mapped, "CustName");
+      }
+      setCustomerPpmDist(cDist);
+
+      // 3. Model, Part, Cause Distribution (All based on filteredComplaints)
       setModelPpmDist(processDist(filteredComplaints, "Model"));
       setPartPpmDist(processDist(filteredComplaints, "Part"));
 
-      // Map Cause IDs to Names if necessary, or use ProblemStatement
+      // Map Cause IDs to Names
       const causeData = filteredComplaints.map(c => {
         const cause = repairCauses.find(rc => rc.RepairCauseCodeId === c.RepairCauseCodeId);
-        return { ...c, CauseName: cause ? cause.RepairCauseCodeName : c.ProblemStatement };
+        return { ...c, CauseName: cause ? cause.RepairCauseCodeName : (c.RepairCause || c.CauseCode || c.ProblemStatement || "Unknown") };
       });
       setCausePpmDist(processDist(causeData, "CauseName"));
 

@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { loadMasters } from '../store/masterSlice';
 import LoginIconImg from "../assets/iljin-logo.png";
+import ILJIN_BG from "../assets/iljin_bg.jpg";
 
 
 
@@ -54,6 +55,20 @@ const Login = ({ onLogin }) => {
 
   return (
     <Container maxWidth="sm">
+      <Box
+        sx={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundImage: `url(${ILJIN_BG})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          opacity: 0.08, // Low opacity as requested
+          zIndex: -1,
+        }}
+      />
       <Box
         sx={{
           display: 'flex',

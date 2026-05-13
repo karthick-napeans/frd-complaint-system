@@ -111,7 +111,6 @@ const DREEntry = () => {
     setActiveStep(0);
     setMessage("");
     setShowHeaderError(false);
-
     setErrors({});
   };
 
@@ -130,7 +129,7 @@ const DREEntry = () => {
 
     if (formData.dreId) {
       fd.append("DreId", formData.dreId);
-    } 
+    }
 
     attachments.forEach((file, index) => {
       fd.append(`file${index + 1}`, file);
@@ -151,8 +150,8 @@ const DREEntry = () => {
       part: draft.Part,
       problem: draft.ProblemDescription || '',
       dreEngineerName: draft.DreEngineerName || '',
-      analysis: draft.AnalysisDetails || '',
-      conclusion: draft.Conclusion || '',
+      analysis: draft.DreAnalysis || '',
+      conclusion: draft.ResultConclusion || '',
       status: draft.Status,
     });
 
@@ -236,6 +235,12 @@ const DREEntry = () => {
       setDraftLoading(true);
 
       const fd = buildDreFormData("DRAFT", attachments);
+
+      console.log("Saving DRE Draft Data:");
+      for (let [key, value] of fd.entries()) {
+        console.log(`${key}:`, value);
+      }
+
       const res = await saveDreWithFiles(fd);
 
       setFormData((prev) => ({
@@ -262,6 +267,12 @@ const DREEntry = () => {
       setSubmitLoading(true);   // 🔥 start loader
 
       const fd = buildDreFormData("OPEN", attachments);
+
+      console.log("Submitting DRE Data:");
+      for (let [key, value] of fd.entries()) {
+        console.log(`${key}:`, value);
+      }
+
       const res = await saveDreWithFiles(fd);
 
       setMessage("✓ DRE submitted successfully");

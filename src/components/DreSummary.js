@@ -13,10 +13,12 @@ import {
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import * as XLSX from "xlsx";
-import { getDreList } from '../api/pageApi';
+import { getDreList, downloadDREAttachment } from '../api/pageApi';
 import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import ClearIcon from '@mui/icons-material/Clear';
+import { IconButton, Tooltip } from '@mui/material';
+import { Download } from '@mui/icons-material';
 
 const DreSummary = () => {
     const [rows, setRows] = useState([]);
@@ -72,6 +74,7 @@ const DreSummary = () => {
         try {
             setLoading(true);
             const response = await getDreList();
+            console.log('Raw DRE Response:', response);
 
             const formattedData = response.map((item, index) => ({
                 ...item,
@@ -112,9 +115,13 @@ const DreSummary = () => {
         const exportData = filteredRows.map((row) => ({
             "S.No": row.serialNo,
             "DRE Number": row.DreNumber,
+            "DRE Name": row.DreName,
             "DRE Date": new Date(row.DreDate).toLocaleDateString(),
             "Model": row.Model,
             "Part": row.Part,
+            "Problem Description": row.ProblemDescription,
+            "Analysis Details": row.AnalysisDetails,
+            "Result Conclusion": row.ResultConclusion,
             "Status": row.Status,
         }));
 
@@ -123,6 +130,35 @@ const DreSummary = () => {
         XLSX.utils.book_append_sheet(workbook, worksheet, "DRE");
 
         XLSX.writeFile(workbook, "DRE_Summary.xlsx");
+    };
+
+    const handleDownload = async (row) => {
+        try {
+            const attachmentId = row.AttachmentIds;
+            console.log("⬇️ Downloading Attachment for Attachment ID:", attachmentId);
+            const blob = await downloadDREAttachment(attachmentId);
+
+            const originalName = row.AttachmentNames?.split(",")[0] || "";
+            const extension = originalName.includes(".")
+                ? originalName.substring(originalName.lastIndexOf("."))
+                : "";
+
+            // Create file name
+            const fileName = `DRE_${row.DreNumber || attachmentId}${extension}`;
+
+            // Download file
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = fileName;
+            link.click();
+
+            // Cleanup
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error("Download failed:", error);
+            alert("Unable to download attachment.");
+        }
     };
 
     // 📊 Columns
@@ -151,7 +187,7 @@ const DreSummary = () => {
             headerAlign: 'center',
             align: 'center',
             valueGetter: (value, row) =>
-                row.DreEngineerName || row.DreEngineerName || '',
+                row.DreEngineerName || '',
         },
         {
             field: 'DreDate',
@@ -184,26 +220,70 @@ const DreSummary = () => {
         {
             field: 'ProblemDescription',
             headerName: 'Description',
-            width: 250,
-            resizable: false,
+            width: 300,
+            resizable: true,
             headerAlign: 'center',
-            align: 'center',
+            align: 'left',
+            renderCell: (params) => (
+                <Box sx={{
+                    whiteSpace: 'normal',
+                    lineHeight: '1.4',
+                    padding: '8px 0',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    height: '100%',
+                    width: '100%'
+                }}>
+                    {params.value}
+                </Box>
+            )
         },
         {
             field: 'AnalysisDetails',
             headerName: 'Analysis Details',
-            width: 250,
-            resizable: false,
+            width: 300,
+            resizable: true,
             headerAlign: 'center',
-            align: 'center',
+            align: 'left',
+            valueGetter: (value, row) =>
+                row.DreAnalysis || '',
+            renderCell: (params) => (
+                <Box sx={{
+                    whiteSpace: 'normal',
+                    lineHeight: '1.4',
+                    padding: '8px 0',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    height: '100%',
+                    width: '100%'
+                }}>
+                    {params.value}
+                </Box>
+            )
+
         },
         {
             field: 'ResultConclusion',
             headerName: 'Conclusion',
-            width: 250,
-            resizable: false,
+            width: 300,
+            resizable: true,
             headerAlign: 'center',
-            align: 'center',
+            align: 'left',
+            valueGetter: (value, row) =>
+                row.ResultConclusion || '',
+            renderCell: (params) => (
+                <Box sx={{
+                    whiteSpace: 'normal',
+                    lineHeight: '1.4',
+                    padding: '8px 0',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    height: '100%',
+                    width: '100%'
+                }}>
+                    {params.value}
+                </Box>
+            )
         },
         {
             field: 'Status',
@@ -237,6 +317,27 @@ const DreSummary = () => {
                 />
             ),
         },
+        {
+            field: 'Download',
+            headerName: 'Download',
+            width: 100,
+            resizable: false,
+            sortable: false,
+            filterable: false,
+            headerAlign: 'center',
+            align: 'center',
+            renderCell: (params) => (
+                <Tooltip title="Download Attachment">
+                    <IconButton
+                        size="small"
+                        sx={{ color: "#1860fc" }}
+                        onClick={() => handleDownload(params.row)}
+                    >
+                        <Download />
+                    </IconButton>
+                </Tooltip>
+            ),
+        }
     ];
 
     return (
@@ -382,6 +483,7 @@ const DreSummary = () => {
                             columns={columns}
                             loading={loading}
                             autoHeight
+                            getRowHeight={() => 'auto'}
                             pageSizeOptions={[10, 20, 50]}
                             initialState={{
                                 pagination: {
@@ -398,7 +500,7 @@ const DreSummary = () => {
                             hideFooterSelectedRowCount
                             sx={{
                                 border: "none",
-                                minWidth: 1800, // Adjust based on total column widths
+                                minWidth: 1900, // Adjust based on total column widths
                                 "& .MuiDataGrid-columnHeaders": {
                                     backgroundColor: "#f1f5f9",
                                     fontWeight: 700,
@@ -407,7 +509,9 @@ const DreSummary = () => {
                                     backgroundColor: "#f8fafc",
                                 },
                                 "& .MuiDataGrid-cell": {
-                                    alignItems: "center",
+                                    alignItems: "flex-start",
+                                    paddingTop: "8px",
+                                    paddingBottom: "8px"
                                 },
                             }}
                         />

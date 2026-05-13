@@ -62,7 +62,6 @@ export const MASTER_CONFIG = {
         }),
     },
 
-
     cause: {
         baseUrl: "/masters/repair-cause-codes",
 
@@ -104,3 +103,4 @@ export const MASTER_CONFIG = {
     }
 
 };
+
