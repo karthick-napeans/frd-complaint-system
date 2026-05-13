@@ -137,15 +137,25 @@ const DreSummary = () => {
         },
         {
             field: 'DreNumber',
-            headerName: 'DRE Number',
+            headerName: 'Report Number',
             flex: 1,
             resizable: false,
             headerAlign: 'center',
             align: 'center',
         },
         {
+            field: 'DreName',
+            headerName: 'DRE Name',
+            flex: 1,
+            resizable: false,
+            headerAlign: 'center',
+            align: 'center',
+            valueGetter: (value, row) =>
+                row.DreEngineerName || row.DreEngineerName || '',
+        },
+        {
             field: 'DreDate',
-            headerName: 'DRE Date',
+            headerName: 'Report Date',
             flex: 1,
             resizable: false,
             headerAlign: 'center',
@@ -180,6 +190,22 @@ const DreSummary = () => {
             align: 'center',
         },
         {
+            field: 'AnalysisDetails',
+            headerName: 'Analysis Details',
+            width: 250,
+            resizable: false,
+            headerAlign: 'center',
+            align: 'center',
+        },
+        {
+            field: 'ResultConclusion',
+            headerName: 'Conclusion',
+            width: 250,
+            resizable: false,
+            headerAlign: 'center',
+            align: 'center',
+        },
+        {
             field: 'Status',
             headerName: 'Status',
             flex: 1,
@@ -188,16 +214,26 @@ const DreSummary = () => {
             align: 'center',
             renderCell: (params) => (
                 <Chip
-                    label={params.value}
-                    color={
-                        params.value === 'OPEN'
-                            ? 'info'
-                            : params.value === 'CLOSED'
-                                ? 'success'
-                                : 'default'
+                    label={
+                        params.value === "OPEN"
+                            ? "Completed"
+                            : params.value === "DRAFT"
+                                ? "Draft"
+                                : params.value
                     }
+                    color="default"
                     size="small"
-                    sx={{ margin: "0 auto" }} // ensure chip stays centered
+                    sx={{
+                        margin: "0 auto",
+                        fontWeight: 600,
+                        backgroundColor:
+                            params.value === "OPEN"
+                                ? "#4caf50"
+                                : params.value === "DRAFT"
+                                    ? "#f44336"
+                                    : "#f44336",
+                        color: "#fff",
+                    }}
                 />
             ),
         },
@@ -338,43 +374,46 @@ const DreSummary = () => {
 
             {/* DataGrid */}
             <Card sx={{ borderRadius: 3 }}>
-                <CardContent>
-                    <DataGrid
-                        rows={filteredRows}
-                        columns={columns}
-                        loading={loading}
-                        autoHeight
-                        pageSizeOptions={[10, 20, 50]}
-                        initialState={{
-                            pagination: {
-                                paginationModel: {
-                                    page: 0,
-                                    pageSize: 10,
+                <CardContent sx={{ p: 2 }}>
+                    {/* Wrapper to enable horizontal scrolling */}
+                    <Box sx={{ width: "100%", overflowX: "auto" }}>
+                        <DataGrid
+                            rows={filteredRows}
+                            columns={columns}
+                            loading={loading}
+                            autoHeight
+                            pageSizeOptions={[10, 20, 50]}
+                            initialState={{
+                                pagination: {
+                                    paginationModel: {
+                                        page: 0,
+                                        pageSize: 10,
+                                    },
                                 },
-                            },
-                        }}
-                        disableSelectionOnClick
-                        disableColumnMenu
-                        disableColumnFilter
-                        disableColumnSorting   // ✅ disables sorting
-                        hideFooterSelectedRowCount
-                        sx={{
-                            border: 'none',
-                            '& .MuiDataGrid-columnHeaders': {
-                                backgroundColor: '#f1f5f9',
-                                fontWeight: 700,
-                            },
-                            '& .MuiDataGrid-row:hover': {
-                                backgroundColor: '#f8fafc',
-                            },
-                            '& .MuiDataGrid-cell': {
-                                alignItems: 'center',
-                            },
-                        }}
-                    />
+                            }}
+                            disableSelectionOnClick
+                            disableColumnMenu
+                            disableColumnFilter
+                            disableColumnSorting
+                            hideFooterSelectedRowCount
+                            sx={{
+                                border: "none",
+                                minWidth: 1800, // Adjust based on total column widths
+                                "& .MuiDataGrid-columnHeaders": {
+                                    backgroundColor: "#f1f5f9",
+                                    fontWeight: 700,
+                                },
+                                "& .MuiDataGrid-row:hover": {
+                                    backgroundColor: "#f8fafc",
+                                },
+                                "& .MuiDataGrid-cell": {
+                                    alignItems: "center",
+                                },
+                            }}
+                        />
+                    </Box>
                 </CardContent>
             </Card>
-
         </Box>
     );
 };

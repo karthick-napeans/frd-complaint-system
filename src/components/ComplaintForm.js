@@ -109,6 +109,7 @@ const ComplaintForm = () => {
     const fetchAttachments = async () => {
       try {
         const res = await getAttachmentChecklist();
+        console.log("Fetched attachment checklist:", res);
 
         const rows = res.map(item => ({
           id: item.Id,
@@ -989,23 +990,19 @@ const ComplaintForm = () => {
                     error={!!errors.problemStatement}
                     helperText={errors.problemStatement}
                   />
+
                   <FormControl fullWidth error={!!errors.causeCode}>
-                    <InputLabel shrink>Cause Code</InputLabel>
-                    <Select
+
+                    <TextField
+                      label="Cause Code"
+                      fullWidth
                       name="causeCode"
                       value={formData.causeCode}
-                      onChange={handleSelectChange}
-                      displayEmpty
-                      label="Cause Code"
-                    >
-
-
-                      {activeRepairCauses.map((c) => (
-                        <MenuItem key={c.RepairCauseCodeId} value={c.Code}>
-                          {c.Code} - {c.CodeDescription}
-                        </MenuItem>
-                      ))}
-                    </Select>
+                      onChange={handleInputChange}
+                      required
+                      error={!!errors.causeCode}
+                      helperText={errors.causeCode}
+                    />
                   </FormControl>
 
                   <FormControl fullWidth>

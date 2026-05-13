@@ -195,14 +195,14 @@ const WarrantyEntry = () => {
       headerAlign: 'center',
       align: 'center',
     },
-    {
-      field: 'Sublet_Cost',
-      headerName: 'Sublet Cost',
-      width: 120,
-      resizable: false,
-      headerAlign: 'center',
-      align: 'center',
-    },
+    // {
+    //   field: 'Sublet_Cost',
+    //   headerName: 'Sublet Cost',
+    //   width: 120,
+    //   resizable: false,
+    //   headerAlign: 'center',
+    //   align: 'center',
+    // },
     {
       field: 'Total_Cost',
       headerName: 'Total Cost',

@@ -51,6 +51,17 @@ export const getCustomerColumnMapping = (customerId) => {
     return getRequest(`/customer-excel-mappings/${customerId}`);
 };
 
+export const downloadZip = async (complaintID) => {
+    const blob = await getRequest(
+        `complaints/download-all-attachment/${complaintID}`,
+        {},
+        {
+            responseType: "blob",
+        }
+    ); 
+    return blob;
+};
+
 export const getAttachmentChecklist = () => {
     return getRequest(`/complaints/attachments/checklist`)
 }
@@ -78,7 +89,7 @@ export const updateUser = (payload) => {
 }
 
 export const deleteUser = (id) => {
-    return postRequest(`/users/active`, { UserId: id });
+    return postRequest(`/users/active`,{ UserId: id });
 }
 
 export const saveDreDraft = (payload) => {
@@ -132,5 +143,9 @@ export const updatePassword = (passwordHash) => {
 
 export const saveMonthlySalesData = (payload) => {
     return postRequest("/complaints/sales/entry", payload);
+}
+
+export const deleteComplaint = (complaintId) => {
+    return postRequest(`/complaints/delete-complaint`, { ComplaintId: complaintId });
 }
 

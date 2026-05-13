@@ -87,6 +87,8 @@ const DREEntry = () => {
     model: '',
     part: '',
     problem: '',
+    analysis: '',
+    conclusion: '',
     status: 'Draft',
   };
 
@@ -98,6 +100,8 @@ const DREEntry = () => {
     model: '',
     part: '',
     problem: '',
+    analysis: '',
+    conclusion: '',
     status: 'Draft',
   });
 
@@ -119,12 +123,14 @@ const DREEntry = () => {
     fd.append("Model", formData.model);
     fd.append("Part", formData.part);
     fd.append("ProblemDescription", formData.problem);
+    fd.append("DreAnalysis", formData.analysis);
+    fd.append("ResultConclusion", formData.conclusion);
     fd.append("DreEngineerName", formData.dreEngineerName); // ✅ FIXED
     fd.append("Status", status);
 
     if (formData.dreId) {
       fd.append("DreId", formData.dreId);
-    }
+    } 
 
     attachments.forEach((file, index) => {
       fd.append(`file${index + 1}`, file);
@@ -145,6 +151,8 @@ const DREEntry = () => {
       part: draft.Part,
       problem: draft.ProblemDescription || '',
       dreEngineerName: draft.DreEngineerName || '',
+      analysis: draft.AnalysisDetails || '',
+      conclusion: draft.Conclusion || '',
       status: draft.Status,
     });
 
@@ -180,6 +188,12 @@ const DREEntry = () => {
     if (activeStep === 1) {
       if (!formData.problem?.trim())
         tempErrors.problem = "Required";
+
+      if (!formData.analysis?.trim())
+        tempErrors.analysis = "Required";
+
+      if (!formData.conclusion?.trim())
+        tempErrors.conclusion = "Required";
     }
 
     if (Object.keys(tempErrors).length > 0) {
@@ -360,7 +374,7 @@ const DREEntry = () => {
                   {/* DRE Number */}
                   <Grid item xs={12}>
                     <TextField
-                      label="DRE Number *"
+                      label="Report Number *"
                       name="dreNumber"
                       fullWidth
                       value={formData.dreNumber}
@@ -387,7 +401,7 @@ const DREEntry = () => {
                   <Grid item xs={12}>
                     <TextField
                       type="date"
-                      label="Entry Date *"
+                      label="Report Date *"
                       name="date"
                       InputLabelProps={{ shrink: true }}
                       fullWidth
@@ -456,17 +470,46 @@ const DREEntry = () => {
               )}
 
               {activeStep === 1 && (
-                <TextField
-                  label="Problem Description *"
-                  multiline
-                  rows={6}
-                  name="problem"
-                  fullWidth
-                  value={formData.problem}
-                  onChange={handleChange}
-                  error={!!errors.problem}
-                  helperText={errors.problem || " "}
-                />
+                <>
+                  <TextField
+                    label="Problem Description *"
+                    multiline
+                    rows={3}
+                    name="problem"
+                    fullWidth
+                    value={formData.problem}
+                    onChange={handleChange}
+                    error={!!errors.problem}
+                    helperText={errors.problem || " "}
+                  />
+
+                  <TextField
+                    label="Analysis Details *"
+                    multiline
+                    rows={3}
+                    name="analysis"
+                    fullWidth
+                    value={formData.analysis}
+                    onChange={handleChange}
+                    error={!!errors.analysis}
+                    helperText={errors.analysis || " "}
+                  />
+
+                  <TextField
+                    label="Conclusion *"
+                    multiline
+                    rows={3}
+                    name="conclusion"
+                    fullWidth
+                    value={formData.conclusion}
+                    onChange={handleChange}
+                    error={!!errors.conclusion}
+                    helperText={errors.conclusion || " "}
+                  />
+                </>
+
+
+
               )}
 
               {activeStep === 2 && (
@@ -601,6 +644,18 @@ const DREEntry = () => {
                       <Grid item xs={12}>
                         <Typography>
                           <b>Problem:</b> {formData.problem || '-'}
+                        </Typography>
+                      </Grid>
+
+                      <Grid item xs={12}>
+                        <Typography>
+                          <b>Analysis Detailes:</b> {formData.analysis || '-'}
+                        </Typography>
+                      </Grid>
+
+                      <Grid item xs={12}>
+                        <Typography>
+                          <b>Conclusion:</b> {formData.conclusion || '-'}
                         </Typography>
                       </Grid>
 

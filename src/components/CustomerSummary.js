@@ -10,10 +10,15 @@ import {
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import * as XLSX from "xlsx";
-import { getComplaintsList } from '../api/pageApi';
+import { getComplaintsList, deleteComplaint, downloadZip } from '../api/pageApi';
 import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import ClearIcon from '@mui/icons-material/Clear';
+import { IconButton, Tooltip } from '@mui/material';
+import TransformIcon from '@mui/icons-material/Transform';
+import { Delete, Download } from '@mui/icons-material';
+import ConfirmDialog from './ConfirmDialog';
+
 
 
 const CustomerSummary = () => {
@@ -22,17 +27,23 @@ const CustomerSummary = () => {
     const [filterPart, setFilterPart] = useState('');
     const [filterStatus, setFilterStatus] = useState('');
     const [filterSeverity, setFilterSeverity] = useState('');
+    const [filterCause, setFilterCause] = useState('');
     const today = new Date().toISOString().split("T")[0];
     const lastMonthDate = new Date();
     lastMonthDate.setMonth(lastMonthDate.getMonth() - 1);
     const lastMonth = lastMonthDate.toISOString().split("T")[0];
     const [fromDate, setFromDate] = useState(lastMonth);
     const [toDate, setToDate] = useState(today);
+    const [confirmState, setConfirmState] = useState({
+        open: false,
+        complaintId: null
+    });
 
     const [dateErrors, setDateErrors] = useState({
         fromDate: "",
         toDate: "",
     });
+
     const filteredRows = rows.filter((row) => {
 
         const matchPart =
@@ -40,6 +51,9 @@ const CustomerSummary = () => {
 
         const matchStatus =
             !filterStatus || row.Status === filterStatus;
+
+        const matchCause =
+            !filterCause || row.CauseCode === filterCause;
 
         const matchSeverity =
             !filterSeverity || row.Severity === filterSeverity;
@@ -54,6 +68,7 @@ const CustomerSummary = () => {
 
         return (
             matchPart &&
+            matchCause &&
             matchStatus &&
             matchSeverity &&
             matchFrom &&
@@ -160,6 +175,16 @@ const CustomerSummary = () => {
             align: 'center',
         },
         {
+            field: 'CustomerName',
+            headerName: 'Customer Name',
+            width: 170,
+            resizable: false,
+            headerAlign: 'center',
+            align: 'center',
+            valueGetter: (value, row) =>
+                row.CustomerName || row.CauseCode || '',
+        },
+        {
             field: 'CustomerEmail',
             headerName: 'Internal Staff Email',
             width: 230,
@@ -216,6 +241,16 @@ const CustomerSummary = () => {
             resizable: false,
             headerAlign: 'center',
             align: 'center',
+        },
+        {
+            field: 'RepairCause',
+            headerName: 'Repair Cause',
+            width: 250,
+            resizable: false,
+            headerAlign: 'center',
+            align: 'center',
+            valueGetter: (value, row) =>
+                row.RepairCause || row.CauseCode || '',
         },
         {
             field: 'ProblemStatement',
@@ -279,7 +314,139 @@ const CustomerSummary = () => {
                 );
             },
         },
+        {
+            field: 'actions',
+            headerName: 'Action',
+            width: 100,
+            resizable: false,
+            sortable: false,
+            filterable: false,
+            headerAlign: 'center',
+            align: 'center',
+            renderCell: (params) => (
+                <Tooltip title="Delete Complaint">
+                    <IconButton
+                        size="small"
+                        color="#fc4343"
+                        onClick={() => handleDelete(params.row)}
+                    >
+                        <Delete />
+                    </IconButton>
+                </Tooltip>
+            ),
+        },
+        {
+            field: 'Download',
+            headerName: 'Download Zip',
+            width: 100,
+            resizable: false,
+            sortable: false,
+            filterable: false,
+            headerAlign: 'center',
+            align: 'center',
+            renderCell: (params) => (
+                <Tooltip title="Download ZIP">
+                    <IconButton
+                        size="small"
+                        color="#1860fc"
+                        onClick={() => handleDownload(params.row)}
+                    >
+                        <Download />
+                    </IconButton>
+                </Tooltip>
+            ),
+        }
     ];
+
+    const handleDelete = (row) => {
+        setConfirmState({
+            open: true,
+            title: "Delete Complaint",
+            message: `Are you sure you want to delete Complaint No: ${row.ComplaintNo}?`,
+            successMessage: "Complaint deleted successfully.",
+            errorMessage: "Failed to delete complaint. Please try again.",
+            actionLabel: "Delete",
+            loadingLabel: "Deleting...",
+            buttonColor: "#ff6b6b",
+            icon: <Delete sx={{ color: "#ff6b6b" }} />,
+            onConfirm: () => confirmDelete(row.ComplaintId)
+        });
+    };
+
+    const confirmDelete = async (complaintId) => {
+        try {
+            // Call your delete API here
+            await deleteComplaint(complaintId);
+
+            // Close confirmation dialog
+            setConfirmState((prev) => ({
+                ...prev,
+                open: false,
+            }));
+
+            // Refresh grid data
+            fetchComplaints();
+        } catch (error) {
+            console.error("Delete failed:", error);
+        }
+    };
+
+    const handleCancelDelete = () => {
+        setConfirmState((prev) => ({
+            ...prev,
+            open: false,
+        }));
+    };
+
+    const handleDownload = async (row) => {
+        try {
+            console.log("⬇️ Downloading ZIP for:", row.ComplaintNo);
+
+            // downloadZip already returns Blob directly
+            const blob = await downloadZip(row.ComplaintId);
+
+            console.log("📦 Blob:", blob);
+            console.log("📌 Is Blob:", blob instanceof Blob);
+            console.log("📏 Size:", blob?.size);
+            console.log("📄 Type:", blob?.type);
+
+            if (!blob || !(blob instanceof Blob)) {
+                console.error("❌ Invalid Blob received");
+                alert("Invalid ZIP file received.");
+                return;
+            }
+
+            if (blob.size === 0) {
+                console.error("❌ ZIP file is empty");
+                alert("ZIP file is empty.");
+                return;
+            }
+
+            // Create downloadable URL
+            const url = window.URL.createObjectURL(blob);
+
+            // Create temporary download link
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `${row.ComplaintNo}.zip`;
+
+            // Trigger download
+            document.body.appendChild(link);
+            link.click();
+
+            // Cleanup
+            document.body.removeChild(link);
+
+            setTimeout(() => {
+                window.URL.revokeObjectURL(url);
+            }, 1000);
+
+            console.log("✅ ZIP downloaded successfully");
+        } catch (error) {
+            console.error("❌ Download failed:", error);
+            alert("Unable to download ZIP file.");
+        }
+    };
 
     return (
         <Box>
@@ -463,43 +630,80 @@ const CustomerSummary = () => {
 
             {/* Data Table */}
             <Card sx={{ borderRadius: 3 }}>
-                <CardContent>
-                    <DataGrid
-                        rows={filteredRows}
-                        columns={columns}
-                        loading={loading}
-                        autoHeight
-                        pageSizeOptions={[10, 20, 50]}
-                        initialState={{
-                            pagination: {
-                                paginationModel: {
-                                    page: 0,
-                                    pageSize: 10,
+                <CardContent sx={{ p: 2 }}>
+                    {/* Only one horizontal scrollbar */}
+                    <Box sx={{ width: "100%", overflowX: "auto" }}>
+                        <DataGrid
+                            rows={filteredRows}
+                            columns={columns}
+                            loading={loading}
+                            autoHeight
+                            pageSizeOptions={[10, 20, 50]}
+                            initialState={{
+                                pagination: {
+                                    paginationModel: {
+                                        page: 0,
+                                        pageSize: 10,
+                                    },
                                 },
-                            },
-                        }}
-                        disableSelectionOnClick
-                        disableColumnMenu
-                        disableColumnFilter
-                        disableColumnSorting   // ✅ disables sorting
-                        hideFooterSelectedRowCount
-                        sx={{
-                            border: 'none',
-                            '& .MuiDataGrid-columnHeaders': {
-                                backgroundColor: '#f1f5f9',
-                                fontWeight: 700,
-                            },
-                            '& .MuiDataGrid-row:hover': {
-                                backgroundColor: '#f8fafc',
-                            },
-                            '& .MuiDataGrid-cell': {
-                                alignItems: 'center',
-                            },
-                        }}
+                            }}
+                            disableSelectionOnClick
+                            disableColumnMenu
+                            disableColumnFilter
+                            disableColumnSorting
+                            hideFooterSelectedRowCount
+                            sx={{
+                                border: "none",
+                                minWidth: 1600, // Set according to total column widths
+
+                                /* Header Styling */
+                                "& .MuiDataGrid-columnHeaders": {
+                                    backgroundColor: "#f1f5f9",
+                                    fontWeight: 700,
+                                },
+
+                                /* Row Hover */
+                                "& .MuiDataGrid-row:hover": {
+                                    backgroundColor: "#f8fafc",
+                                },
+
+                                /* Cell Alignment */
+                                "& .MuiDataGrid-cell": {
+                                    alignItems: "center",
+                                },
+
+                                /* Hide DataGrid's internal horizontal scrollbar */
+                                "& .MuiDataGrid-scrollbar--horizontal": {
+                                    display: "none",
+                                },
+
+                                /* Prevent nested scrolling */
+                                "& .MuiDataGrid-main": {
+                                    overflow: "visible",
+                                },
+
+                                "& .MuiDataGrid-virtualScroller": {
+                                    overflowX: "hidden !important",
+                                },
+                            }}
+                        />
+                    </Box>
+
+                    <ConfirmDialog
+                        open={confirmState.open}
+                        title={confirmState.title}
+                        message={confirmState.message}
+                        successMessage={confirmState.successMessage}
+                        errorMessage={confirmState.errorMessage}
+                        onConfirm={confirmState.onConfirm}
+                        onCancel={handleCancelDelete}
+                        actionLabel={confirmState.actionLabel}
+                        loadingLabel={confirmState.loadingLabel}
+                        buttonColor={confirmState.buttonColor}
+                        icon={confirmState.icon}
                     />
                 </CardContent>
             </Card>
-
         </Box>
 
     );

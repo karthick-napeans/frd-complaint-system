@@ -88,8 +88,8 @@ const MASTER_FORM_CONFIG = {
       name: "PartNumber",
       label: "Part Number",
       required: true,
-      pattern: /^[A-Za-z0-9 ]+$/,
-      patternMessage: "Only letters and numbers allowed",
+      pattern: /^[0-9]+$/,
+      patternMessage: "Only numbers allowed",
     },
     {
       name: "PartName",
@@ -98,12 +98,12 @@ const MASTER_FORM_CONFIG = {
       pattern: /^[A-Za-z ]+$/,
       patternMessage: "Only letters and spaces allowed",
     },
-    {
-      name: "PartDescription",
-      label: "Description",
-      multiline: true,
-      required: true,
-    },
+    // {
+    //   name: "PartDescription",
+    //   label: "Description",
+    //   multiline: true,
+    //   required: true,
+    // },
   ],
 
   cause: [
@@ -393,7 +393,7 @@ const MasterData = ({ userRole = "Admin" }) => {
       part: [
         { field: "PartNumber", headerName: "Part Number", width: 180 },
         { field: "PartName", headerName: "Part Name", width: 200 },
-        { field: "PartDescription", headerName: "Description", width: 300 },
+        // { field: "PartDescription", headerName: "Description", width: 300 },
         {
           field: "IsActive",
           headerName: "Status",
@@ -471,7 +471,7 @@ const MasterData = ({ userRole = "Admin" }) => {
             <option value="customer">Customer</option>
             <option value="model">Model</option>
             <option value="part">Part</option>
-            <option value="cause">Repair Cause</option>
+            {/* <option value="cause">Repair Cause</option> */}
             <option value="attachment">Checklist Attachment</option>
           </TextField>
         </CardContent>

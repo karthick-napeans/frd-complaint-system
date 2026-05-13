@@ -132,33 +132,42 @@ const ComplaintAnalysis = ({ userRole }) => {
         value,
         row
     ) => {
+        // Convert to number
+        const numericValue = Number(value);
+
+        // Allow 0, reject empty, invalid, and negative values
+        if (value === "" || isNaN(numericValue) || numericValue < 0) {
+            return;
+        }
 
         const payload = {
             CustomerId: customerId,
             Year: currentYear,
             Month: monthIndex + 1,
-            Value: type === "sales" ? Number(value) : (row.sales?.[monthIndex] ?? 0),
-            PlannedPPM: type === "plan" ? Number(value) : (row.planPPM?.[monthIndex] ?? 0)
+            Value:
+                type === "sales"
+                    ? numericValue
+                    : (row.sales?.[monthIndex] ?? 0),
+            PlannedPPM:
+                type === "plan"
+                    ? numericValue
+                    : (row.planPPM?.[monthIndex] ?? 0),
         };
 
         console.log("Saving payload:", payload);
 
         try {
-
             await saveMonthlySalesData(payload);
 
             if (type === "sales") {
-                handleSalesCellClick(customerId, monthIndex, value);
+                handleSalesCellClick(customerId, monthIndex, numericValue);
             }
 
             console.log("Saved successfully");
 
             await loadPPM();
-
         } catch (error) {
-
             console.error("Save failed:", error);
-
         }
     };
 
@@ -296,8 +305,8 @@ const ComplaintAnalysis = ({ userRole }) => {
 
         // ✅ TOTAL PLAN PPM (AVERAGE OF MONTHLY AVERAGES)
         const activeMonths = planPPMMonths.filter(p => p > 0);
-        const totalPlanPPM = activeMonths.length === 0 
-            ? 0 
+        const totalPlanPPM = activeMonths.length === 0
+            ? 0
             : Number((activeMonths.reduce((a, b) => a + b, 0) / activeMonths.length).toFixed(1));
 
         const totalPPMLast =
@@ -585,6 +594,20 @@ const ComplaintAnalysis = ({ userRole }) => {
         setPendingEditCell(null);
     };
 
+
+    // Helper: calculate the same AVG that is displayed in each row
+    const calculateDisplayedAverage = (arr = []) => {
+        if (!arr.length) return 0;
+
+        return Math.round(
+            arr.reduce((sum, val) => sum + (Number(val) || 0), 0) / arr.length
+        );
+    };
+
+    // Helper: sum values safely
+    const sumValues = (values = []) =>
+        values.reduce((sum, val) => sum + (Number(val) || 0), 0);
+
     return (
         <Box >
 
@@ -654,9 +677,9 @@ const ComplaintAnalysis = ({ userRole }) => {
                                     }}
                                 />
 
-                                <Legend 
-                                    verticalAlign="top" 
-                                    align="right" 
+                                <Legend
+                                    verticalAlign="top"
+                                    align="right"
                                     iconType="circle"
                                     wrapperStyle={{ paddingBottom: 20, fontSize: 12 }}
                                 />
@@ -848,7 +871,14 @@ const ComplaintAnalysis = ({ userRole }) => {
 
                                         <TableCell>{row.rejPrev ?? "-"}</TableCell>
                                         <TableCell>{row.rejLast ?? "-"}</TableCell>
-                                        <TableCell>{row.totalRej ?? "-"}</TableCell>
+                                        <TableCell>
+                                            {row.rejection?.length
+                                                ? Math.round(
+                                                    row.rejection.reduce((sum, val) => sum + (Number(val) || 0), 0) /
+                                                    row.rejection.length
+                                                )
+                                                : "-"}
+                                        </TableCell>
 
                                         {(row.rejection || []).map((val, i) => (
                                             <TableCell
@@ -871,7 +901,14 @@ const ComplaintAnalysis = ({ userRole }) => {
 
                                         <TableCell>{row.salesPrev ?? "-"}</TableCell>
                                         <TableCell>{row.salesLast ?? "-"}</TableCell>
-                                        <TableCell>{row.totalSales ?? "-"}</TableCell>
+                                        <TableCell>
+                                            {row.sales?.length
+                                                ? Math.round(
+                                                    row.sales.reduce((sum, val) => sum + (Number(val) || 0), 0) /
+                                                    row.sales.length
+                                                )
+                                                : "-"}
+                                        </TableCell>
 
                                         {(row.sales || []).map((val, i) => {
 
@@ -1032,12 +1069,26 @@ const ComplaintAnalysis = ({ userRole }) => {
                                             sx={{
                                                 fontWeight: 600,
                                                 color:
-                                                    row.totalPPM > PLAN_PPM
+                                                    (row.ppmMonths?.length
+                                                        ? Math.round(
+                                                            row.ppmMonths.reduce(
+                                                                (sum, val) => sum + (Number(val) || 0),
+                                                                0
+                                                            ) / row.ppmMonths.length
+                                                        )
+                                                        : 0) > PLAN_PPM
                                                         ? "#d32f2f"
                                                         : "#2e7d32"
                                             }}
                                         >
-                                            {row.totalPPM ?? "-"}
+                                            {row.ppmMonths?.length
+                                                ? Math.round(
+                                                    row.ppmMonths.reduce(
+                                                        (sum, val) => sum + (Number(val) || 0),
+                                                        0
+                                                    ) / row.ppmMonths.length
+                                                )
+                                                : "-"}
                                         </TableCell>
 
                                         {(row.ppmMonths || []).map((val, i) => (
@@ -1061,11 +1112,9 @@ const ComplaintAnalysis = ({ userRole }) => {
                                 </React.Fragment>
                             ))}
 
-
-                            {/* ================= TOTAL SECTION ================= */}
-
                             {totals && (
                                 <>
+                                    {/* REJ QTY */}
                                     <TableRow sx={{ background: "#f1f5f9", fontWeight: 700 }}>
                                         <TableCell rowSpan={4}><b>TOTAL</b></TableCell>
 
@@ -1073,46 +1122,76 @@ const ComplaintAnalysis = ({ userRole }) => {
 
                                         <TableCell>{totals.rejPrev}</TableCell>
                                         <TableCell>{totals.rejLast}</TableCell>
-                                        <TableCell>{totals.totalRej}</TableCell>
+
+                                        {/* Sum of displayed AVG values */}
+                                        <TableCell>
+                                            {sumValues(
+                                                (ppmData || []).map(row =>
+                                                    calculateDisplayedAverage(row.rejection || [])
+                                                )
+                                            )}
+                                        </TableCell>
 
                                         {(totals.monthlyRejection || []).map((v, i) => (
                                             <TableCell key={i}>{v}</TableCell>
                                         ))}
                                     </TableRow>
 
-
+                                    {/* SALES QTY */}
                                     <TableRow sx={{ background: "#f1f5f9", fontWeight: 700 }}>
                                         <TableCell><b>SALES QTY</b></TableCell>
 
                                         <TableCell>{totals.salesPrev}</TableCell>
                                         <TableCell>{totals.salesLast}</TableCell>
-                                        <TableCell>{totals.totalSales}</TableCell>
+
+                                        {/* Example: 2058 + 433 = 2491 */}
+                                        <TableCell>
+                                            {sumValues(
+                                                (ppmData || []).map(row =>
+                                                    calculateDisplayedAverage(row.sales || [])
+                                                )
+                                            )}
+                                        </TableCell>
 
                                         {(totals.monthlySales || []).map((v, i) => (
                                             <TableCell key={i}>{v}</TableCell>
                                         ))}
                                     </TableRow>
 
-
+                                    {/* PLAN PPM */}
                                     <TableRow sx={{ background: "#f1f5f9", fontWeight: 700 }}>
                                         <TableCell><b>PLAN PPM</b></TableCell>
 
                                         <TableCell>{PLAN_PPM}</TableCell>
                                         <TableCell>{PLAN_PPM}</TableCell>
-                                        <TableCell>{totals.totalPlanPPM}</TableCell>
+
+                                        {/* Uses the same value shown in each row */}
+                                        <TableCell>
+                                            {sumValues(
+                                                (ppmData || []).map(row => Number(row.avgPlanPPM) || 0)
+                                            )}
+                                        </TableCell>
 
                                         {(totals.monthlyPlanPPM || []).map((v, i) => (
                                             <TableCell key={i}>{v}</TableCell>
                                         ))}
                                     </TableRow>
 
-
+                                    {/* ACTUAL PPM */}
                                     <TableRow sx={{ background: "#f1f5f9", fontWeight: 700 }}>
                                         <TableCell><b>ACTUAL PPM</b></TableCell>
 
                                         <TableCell>-</TableCell>
                                         <TableCell>-</TableCell>
-                                        <TableCell>{totals.totalPPM}</TableCell>
+
+                                        {/* Sum of displayed AVG values */}
+                                        <TableCell>
+                                            {sumValues(
+                                                (ppmData || []).map(row =>
+                                                    calculateDisplayedAverage(row.ppmMonths || [])
+                                                )
+                                            )}
+                                        </TableCell>
 
                                         {(totals.ppmMonths || []).map((v, i) => (
                                             <TableCell key={i}>{v}</TableCell>
@@ -1120,7 +1199,6 @@ const ComplaintAnalysis = ({ userRole }) => {
                                     </TableRow>
                                 </>
                             )}
-
                         </TableBody>
                     </Table>
                 </TableContainer>

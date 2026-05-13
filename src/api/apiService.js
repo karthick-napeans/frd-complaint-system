@@ -1,7 +1,13 @@
 import apiClient from "./apiClient";
 
-export const getRequest = (url, params = {}) =>
-    apiClient.get(url, { params });
+export const getRequest = (
+    url,
+    params = {},
+    config = {}
+) => apiClient.get(url, {
+    params,
+    ...config,
+});
 
 export const getRequestWithBody = (url, body = {}) =>
     apiClient.request({
