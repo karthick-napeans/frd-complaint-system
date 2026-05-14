@@ -54,32 +54,25 @@ const MASTER_FORM_CONFIG = {
       name: "CustomerName",
       label: "Customer Name",
       required: true,
-      pattern: /^[A-Za-z ]+$/,
-      patternMessage: "Only letters and spaces allowed",
+      pattern: /^[a-zA-Z0-9 ]+$/,
+      patternMessage: "Special characters are not allowed",
     },
     {
       name: "CustomerCode",
       label: "Customer Code",
       required: true,
-      pattern: /^[A-Za-z0-9 ]+$/,
-      patternMessage: "Only letters and numbers allowed",
+      pattern: /^[a-zA-Z0-9 ]+$/,
+      patternMessage: "Special characters are not allowed",
     },
   ],
 
   model: [
     {
-      name: "ModelCode",
-      label: "Model Code",
-      required: true,
-      pattern: /^[A-Za-z0-9 ]+$/,
-      patternMessage: "Only letters and numbers allowed",
-    },
-    {
       name: "ModelName",
       label: "Model Name",
       required: true,
-      pattern: /^[A-Za-z ]+$/,
-      patternMessage: "Only letters and spaces allowed",
+      pattern: /^[A-Za-z0-9 ]+$/,
+      patternMessage: "Special characters are not allowed",
     },
   ],
 
@@ -88,15 +81,15 @@ const MASTER_FORM_CONFIG = {
       name: "PartNumber",
       label: "Part Number",
       required: true,
-      pattern: /^[0-9]+$/,
-      patternMessage: "Only numbers allowed",
+      pattern: /^[A-Za-z0-9 ]+$/,
+      patternMessage: "Special characters are not allowed",
     },
     {
       name: "PartName",
       label: "Part Name",
       required: true,
-      pattern: /^[A-Za-z ]+$/,
-      patternMessage: "Only letters and spaces allowed",
+      pattern: /^[A-Za-z0-9 ]+$/,
+      patternMessage: "Special characters are not allowed",
     },
     // {
     //   name: "PartDescription",
@@ -112,7 +105,7 @@ const MASTER_FORM_CONFIG = {
       label: "Nature Code",
       required: true,
       pattern: /^[A-Za-z0-9 ]+$/,
-      patternMessage: "Only letters and numbers allowed",
+      patternMessage: "Special characters are not allowed",
     },
     {
       name: "CodeDescription",
@@ -127,7 +120,7 @@ const MASTER_FORM_CONFIG = {
       label: "Attachment Name",
       required: true,
       pattern: /^[A-Za-z0-9 ]+$/,
-      patternMessage: "Only letters and numbers allowed",
+      patternMessage: "Special characters are not allowed",
     },
     {
       name: "IsMandatory",
@@ -226,10 +219,10 @@ const MasterData = ({ userRole = "Admin" }) => {
             : "";
 
       // required validation
-      if (field.required && value.length === 0) {
-        tempErrors[field.name] = `${field.label} is required`;
-        return;
-      }
+      // if (field.required && value.length === 0) {
+      //   tempErrors[field.name] = `${field.label} is required`;
+      //   return;
+      // }
 
       // pattern validation
       if (field.pattern && value && !field.pattern.test(value)) {
@@ -377,8 +370,7 @@ const MasterData = ({ userRole = "Admin" }) => {
 
 
       model: [
-        { field: "ModelCode", headerName: "Model Code", width: 180 },
-        { field: "ModelName", headerName: "Model Name", width: 260 },
+        { field: "ModelName", headerName: "Model Name", width: 350 },
         {
           field: "IsActive",
           headerName: "Status",

@@ -39,7 +39,7 @@ import SaveIcon from "@mui/icons-material/Save";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import { useSelector } from "react-redux";
 import CircularProgress from "@mui/material/CircularProgress";
-import { submitCustomerComplaint, getCustomerComplaints, getAttachmentChecklist } from "../api/pageApi";
+import { submitCustomerComplaint, getCustomerComplaints, getAttachmentChecklist, downloadAttachment } from "../api/pageApi";
 import Visibility from "@mui/icons-material/Visibility";
 import { Email } from "@mui/icons-material";
 import IconButton from "@mui/material/IconButton";
@@ -198,6 +198,10 @@ const ComplaintForm = () => {
       ? draft.CheckListIds.split(",").map(Number)
       : [];
 
+    const attachmentIds = draft.AttachmentIds
+      ? draft.AttachmentIds.split(",")
+      : [];
+
     const attachmentNames = draft.AttachmentNames
       ? draft.AttachmentNames.split(",")
       : [];
@@ -249,6 +253,7 @@ const ComplaintForm = () => {
       let fileName = "";
       let email = "";
       let expiryDate = "";
+      let attachmentId = "";
       let checked = row.isMandatory; // Ensure mandatory items are always checked
 
       checklistIds.forEach((id, index) => {
@@ -259,6 +264,7 @@ const ComplaintForm = () => {
 
           fileName = attachmentNames[index] || "";
           email = emails[index] || "";
+          attachmentId = attachmentIds[index] || "";
 
           expiryDate = formatDateForInput(dueDates[index]);
 
@@ -276,7 +282,8 @@ const ComplaintForm = () => {
         checked,
         fileName,
         emails: email,
-        expiryDate
+        expiryDate,
+        attachmentId
       };
 
     });
@@ -389,6 +396,9 @@ const ComplaintForm = () => {
   };
 
   const handleNext = () => {
+    console.log(">>> handleNext called | Step:", activeStep);
+    console.log(">>> formData:", formData);
+
     let tempErrors = {};
 
     /* ================= STEP 0 ================= */
@@ -411,6 +421,7 @@ const ComplaintForm = () => {
 
 
       if (Object.keys(tempErrors).length > 0) {
+        console.log(">>> Step 0 Errors:", tempErrors);
         setErrors(tempErrors);
         return;
       }
@@ -425,6 +436,7 @@ const ComplaintForm = () => {
         tempErrors.causeCode = "Required";
 
       if (Object.keys(tempErrors).length > 0) {
+        console.log(">>> Step 1 Errors:", tempErrors);
         setErrors(tempErrors);
         return;
       }
@@ -433,10 +445,12 @@ const ComplaintForm = () => {
     /* ================= STEP 2 ================= */
     if (activeStep === 2) {
       const newAttachmentErrors = {};
+      console.log(">>> Checking Step 2 Attachments:", attachmentRows);
 
       attachmentRows.forEach((row) => {
         if (row.isMandatory) {
-          if (!row.file)
+          // If mandatory, must have a new file OR an existing fileName from draft
+          if (!row.file && !row.fileName)
             newAttachmentErrors[`file_${row.id}`] = "Required";
 
           if (!row.emails?.trim())
@@ -450,11 +464,13 @@ const ComplaintForm = () => {
       });
 
       if (Object.keys(newAttachmentErrors).length > 0) {
+        console.log(">>> Step 2 Errors:", newAttachmentErrors);
         setErrors(newAttachmentErrors);
         return;
       }
     }
 
+    console.log(">>> No errors found, moving to next step");
     setErrors({});
     setMessage("");
     setActiveStep((prev) => prev + 1);
@@ -730,10 +746,24 @@ const ComplaintForm = () => {
     }, 0);
   };
 
-  const handleViewFile = (row) => {
+  const handleViewFile = async (row) => {
     if (row.file) {
       const fileUrl = URL.createObjectURL(row.file);
       window.open(fileUrl, "_blank");
+    } else if (row.attachmentId) {
+      try {
+        const blob = await downloadAttachment(row.attachmentId);
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", row.fileName || "attachment");
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+      } catch (err) {
+        console.error("Error downloading file:", err);
+      }
     } else if (row.fileName) {
       const base = process.env.REACT_APP_API_BASE_URL || "";
       const separator = base.endsWith("/") ? "" : "/";
