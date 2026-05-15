@@ -73,10 +73,10 @@ export const downloadAttachment = async (attachmentID) => {
     return blob;
 };
 
-export const downloadDREAttachment = async (attachmentID) => {
+export const downloadDREAttachment = async (fileName) => {
     const blob = await getRequest(
-        `dre/download/${attachmentID}`,
-        {},
+        `dre/download/1`,
+        { attachment: fileName },
         {
             responseType: "blob",
         }

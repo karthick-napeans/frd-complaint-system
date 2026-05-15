@@ -1025,7 +1025,7 @@ const ComplaintForm = () => {
                       >
                         {activeModels.map((m) => (
                           <MenuItem key={m.ModelId} value={m.ModelId}>
-                            {m.ModelName}
+                            {m.ModelCode} - {m.ModelName}
                           </MenuItem>
                         ))}
                       </Select>
@@ -1136,7 +1136,7 @@ const ComplaintForm = () => {
                           <TableCell><strong>Document</strong></TableCell>
                           <TableCell><strong>Upload</strong></TableCell>
                           <TableCell><strong>Email  </strong></TableCell>
-                          <TableCell><strong>Open Date</strong></TableCell>
+                          {/* <TableCell><strong>Open Date</strong></TableCell> */}
                           <TableCell><strong>Last Date</strong></TableCell>
                         </TableRow>
                       </TableHead>
@@ -1248,7 +1248,7 @@ const ComplaintForm = () => {
 
 
                             {/* Open Date */}
-                            <TableCell
+                            {/* <TableCell
                               width="25%"
                               sx={{ verticalAlign: "middle" }}
                             >
@@ -1271,7 +1271,7 @@ const ComplaintForm = () => {
                                   }}
                                 />
                               </Box>
-                            </TableCell>
+                            </TableCell> */}
 
                             {/* Expiry Date */}
                             <TableCell
@@ -1315,7 +1315,7 @@ const ComplaintForm = () => {
                       sx={{ gap: 1, display: "flex", flexDirection: "column" }}
                     >
                       <Typography>
-                        <strong>Complaint Number:</strong> {formData.ComplaintNo || "-"}
+                        <strong>Complaint Number:</strong> {formData.complaintNo || "-"}
                       </Typography>
                       <Typography>
                         <strong>Customer:</strong>{" "}
@@ -1360,7 +1360,7 @@ const ComplaintForm = () => {
                                   <TableCell><strong>Document</strong></TableCell>
                                   <TableCell><strong>File Name</strong></TableCell>
                                   <TableCell><strong>Email</strong></TableCell>
-                                  <TableCell><strong>Open Date</strong></TableCell>
+                                  {/* <TableCell><strong>Open Date</strong></TableCell> */}
                                   <TableCell><strong>Last Date</strong></TableCell>
                                 </TableRow>
                               </TableHead>
@@ -1405,9 +1405,6 @@ const ComplaintForm = () => {
                                         </Box>
                                       </TableCell>
 
-                                      <TableCell>
-                                        {row.openDate || "-"}
-                                      </TableCell>
                                       <TableCell>
                                         {row.expiryDate || "-"}
                                       </TableCell>

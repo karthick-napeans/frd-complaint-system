@@ -20,15 +20,25 @@ import {
   AccordionDetails,
   Paper,
   Chip, Alert,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  IconButton,
+  Tooltip
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import SaveIcon from '@mui/icons-material/Save';
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import DownloadIcon from "@mui/icons-material/Download";
 import { useSelector, useDispatch } from "react-redux";
 import { loadMasters } from "../store/masterSlice";
 import ClearIcon from "@mui/icons-material/Clear";
 import CircularProgress from "@mui/material/CircularProgress";
-import { saveDreDraft, saveDreWithFiles, getDreList } from "../api/pageApi"
+import { saveDreDraft, saveDreWithFiles, getDreList, downloadDREAttachment } from "../api/pageApi"
 
 const DREEntry = () => {
   const dispatch = useDispatch();
@@ -353,6 +363,49 @@ const DREEntry = () => {
     }
   };
 
+  const handleDownloadFile = async (file) => {
+    try {
+      let blob;
+      let fileName = file.name || file.fileName;
+
+      if (file instanceof File) {
+        blob = file;
+      } else {
+        blob = await downloadDREAttachment(fileName);
+      }
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", fileName);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Error downloading file:", err);
+    }
+  };
+
+  const handleViewFile = async (file) => {
+    try {
+      let blob;
+      let fileName = file.name || file.fileName;
+
+      if (file instanceof File) {
+        blob = file;
+      } else {
+        blob = await downloadDREAttachment(fileName);
+      }
+
+      const url = window.URL.createObjectURL(blob);
+      window.open(url, "_blank");
+      // Note: we can't easily revokeObjectURL for window.open without a timer or tracking
+    } catch (err) {
+      console.error("Error viewing file:", err);
+    }
+  };
+
   return (
     <Box>
       <Typography variant="h5" fontWeight={700} sx={{ mb: 2, color: "#3b3b3b" }}>
@@ -444,7 +497,7 @@ const DREEntry = () => {
                       >
                         {activeModels.map((m) => (
                           <MenuItem key={m.ModelId} value={m.ModelName}>
-                            {m.ModelName}
+                            {m.ModelCode} - {m.ModelName}
                           </MenuItem>
                         ))}
                       </Select>
@@ -674,12 +727,52 @@ const DREEntry = () => {
                       </Grid>
 
                       <Grid item xs={12}>
-                        <Typography>
-                          <b>Attachments:</b>{' '}
-                          {attachments.length > 0
-                            ? attachments.map((file) => file.name).join(', ')
-                            : 'None'}
+                        <Typography fontWeight={600} sx={{ mb: 1 }}>
+                          Attachments:
                         </Typography>
+                        {attachments.length > 0 ? (
+                          <TableContainer component={Paper} variant="outlined">
+                            <Table size="small">
+                              <TableHead>
+                                <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
+                                  <TableCell><b>File Name</b></TableCell>
+                                  <TableCell align="center"><b>Actions</b></TableCell>
+                                </TableRow>
+                              </TableHead>
+                              <TableBody>
+                                {attachments.map((file, index) => (
+                                  <TableRow key={index}>
+                                    <TableCell>{file.name || file.fileName}</TableCell>
+                                    <TableCell align="center">
+                                      {/* <Tooltip title="View">
+                                        <IconButton
+                                          size="small"
+                                          onClick={() => handleViewFile(file)}
+                                          color="primary"
+                                        >
+                                          <VisibilityIcon fontSize="small" />
+                                        </IconButton>
+                                      </Tooltip> */}
+                                      <Tooltip title="Download">
+                                        <IconButton
+                                          size="small"
+                                          onClick={() => handleDownloadFile(file)}
+                                          color="secondary"
+                                        >
+                                          <DownloadIcon fontSize="small" />
+                                        </IconButton>
+                                      </Tooltip>
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </TableContainer>
+                        ) : (
+                          <Typography variant="body2" color="text.secondary">
+                            None
+                          </Typography>
+                        )}
                       </Grid>
                     </Grid>
                   </Paper>
