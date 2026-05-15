@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
+import { loadMasters } from "../store/masterSlice";
 import {
     Box,
     Typography,
@@ -38,6 +39,7 @@ const MONTHS = [
 
 
 const ComplaintAnalysis = ({ userRole }) => {
+    const dispatch = useDispatch();
     console.log("Rendering ComplaintAnalysis with userRole:", userRole);
     const [salesInput, setSalesInput] = useState({});
     const [editingCell, setEditingCell] = useState(null);
@@ -55,8 +57,9 @@ const ComplaintAnalysis = ({ userRole }) => {
     /* ================= FETCH PPM DATA ================= */
 
     useEffect(() => {
+        dispatch(loadMasters());
         loadPPM();
-    }, []);
+    }, [dispatch]);
 
     useEffect(() => {
         if (editingCell && inputRef.current) {

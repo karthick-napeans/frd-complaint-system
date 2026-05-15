@@ -14,10 +14,12 @@ import { DataGrid } from "@mui/x-data-grid";
 import ConfirmDialog from "./ConfirmDialog";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
+import { loadMasters } from "../store/masterSlice";
 import { saveImprovementBaseline, getAllImprovementList, deleteImprovementBaseline } from "../api/pageApi";
 
 const ImprovementBaselinePage = () => {
+    const dispatch = useDispatch();
     const { models } = useSelector((state) => state.masters);
     const activeModels = models?.filter(m => m.IsActive);
     const [config, setConfig] = useState({
@@ -43,8 +45,9 @@ const ImprovementBaselinePage = () => {
         pageSize: 10,
     });
     useEffect(() => {
+        dispatch(loadMasters());
         fetchImprovementList();
-    }, []);
+    }, [dispatch]);
 
     const fetchImprovementList = async () => {
         try {

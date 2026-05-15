@@ -37,8 +37,6 @@ const Login = ({ onLogin }) => {
       localStorage.setItem("authToken", Token);
       localStorage.setItem("username", UserName);
 
-      await dispatch(loadMasters());
-
       onLogin(UserRole, UserName);
       navigate("/dashboard", { replace: true });
 

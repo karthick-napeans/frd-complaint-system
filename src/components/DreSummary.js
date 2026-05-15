@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { useDispatch } from 'react-redux';
+import { loadMasters } from '../store/masterSlice';
 import {
     Box,
     Container,
@@ -21,6 +23,7 @@ import { IconButton, Tooltip } from '@mui/material';
 import { Download } from '@mui/icons-material';
 
 const DreSummary = () => {
+    const dispatch = useDispatch();
     const [rows, setRows] = useState([]);
     const [loading, setLoading] = useState(false);
     const [filterPart, setFilterPart] = useState("All");
@@ -67,8 +70,9 @@ const DreSummary = () => {
     };
 
     useEffect(() => {
+        dispatch(loadMasters());
         fetchDreList();
-    }, []);
+    }, [dispatch]);
 
     const fetchDreList = async () => {
         try {

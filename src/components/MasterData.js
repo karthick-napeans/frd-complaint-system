@@ -51,15 +51,15 @@ const MASTER_LABEL = {
 const MASTER_FORM_CONFIG = {
   customer: [
     {
-      name: "CustomerName",
-      label: "Customer Name",
+      name: "CustomerCode",
+      label: "Customer Code",
       required: true,
       pattern: /^[a-zA-Z0-9 ]+$/,
       patternMessage: "Special characters are not allowed",
     },
     {
-      name: "CustomerCode",
-      label: "Customer Code",
+      name: "CustomerName",
+      label: "Customer Name",
       required: true,
       pattern: /^[a-zA-Z0-9 ]+$/,
       patternMessage: "Special characters are not allowed",
@@ -67,6 +67,13 @@ const MASTER_FORM_CONFIG = {
   ],
 
   model: [
+    {
+      name: "ModelCode",
+      label: "Model Code",
+      required: true,
+      pattern: /^[A-Za-z0-9 ]+$/,
+      patternMessage: "Special characters are not allowed",
+    },
     {
       name: "ModelName",
       label: "Model Name",
@@ -164,6 +171,7 @@ const MasterData = ({ userRole = "Admin" }) => {
   }, [message]);
 
   useEffect(() => {
+    dispatch(loadMasters());
     fetchMasterData();
   }, [masterType]);
 
@@ -357,8 +365,8 @@ const MasterData = ({ userRole = "Admin" }) => {
 
     return {
       customer: [
-        { field: "CustomerName", headerName: "Customer Name", width: 260 },
         { field: "CustomerCode", headerName: "Customer Code", width: 180 },
+        { field: "CustomerName", headerName: "Customer Name", width: 260 },
         {
           field: "IsActive",
           headerName: "Status",
@@ -370,7 +378,8 @@ const MasterData = ({ userRole = "Admin" }) => {
 
 
       model: [
-        { field: "ModelName", headerName: "Model Name", width: 350 },
+        { field: "ModelCode", headerName: "Model Code", width: 180 },
+        { field: "ModelName", headerName: "Model Name", width: 260 },
         {
           field: "IsActive",
           headerName: "Status",

@@ -18,6 +18,9 @@ import {
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import SaveIcon from '@mui/icons-material/Save';
 import SaveAltIcon from '@mui/icons-material/SaveAlt';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import DownloadIcon from '@mui/icons-material/Download';
+import { IconButton, Tooltip } from '@mui/material';
 
 const ComplaintEntry = () => {
   const [activeStep, setActiveStep] = useState(0);
@@ -28,6 +31,7 @@ const ComplaintEntry = () => {
     complaintDescription: '',
     reportedDate: '',
     severity: 'Medium',
+    quantity: '',
     attachments: [],
     draftSavedTime: null,
   });
@@ -41,7 +45,7 @@ const ComplaintEntry = () => {
     { id: 'DRAFT001', customerName: 'Customer C', lastSaved: '2025-11-01', daysInactive: 2 },
   ]);
 
-  const [message, setMessage] = useState(''); 
+  const [message, setMessage] = useState('');
   const steps = ['Complaint Details', 'Attachments', 'Review & Submit'];
 
   const handleInputChange = (e) => {
@@ -105,6 +109,8 @@ const ComplaintEntry = () => {
       complaintDescription: '',
       reportedDate: '',
       severity: 'Medium',
+      quantity: '',
+      problemAttachment: null,
       attachments: [],
       draftSavedTime: null,
     });
@@ -151,6 +157,15 @@ const ComplaintEntry = () => {
               {activeStep === 0 && (
                 <Box sx={{ gap: 2, display: 'flex', flexDirection: 'column' }}>
                   <TextField
+                    label="Complaint Number"
+                    fullWidth
+                    name="complaintId"
+                    value={formData.complaintId}
+                    onChange={handleInputChange}
+                    placeholder="Enter Complaint Number"
+                    required
+                  />
+                  <TextField
                     label="Customer Name"
                     fullWidth
                     name="customerName"
@@ -164,6 +179,20 @@ const ComplaintEntry = () => {
                     name="modelCode"
                     value={formData.modelCode}
                     onChange={handleInputChange}
+                  />
+                  <TextField
+                    label="Quantity"
+                    fullWidth
+                    type="number"
+                    name="quantity"
+                    value={formData.quantity}
+                    onChange={handleInputChange}
+                    required
+                    onKeyPress={(e) => {
+                      if (!/[0-9]/.test(e.key)) {
+                        e.preventDefault();
+                      }
+                    }}
                   />
                   <TextField
                     label="Complaint Description"
@@ -245,9 +274,11 @@ const ComplaintEntry = () => {
                   <Typography variant="h6">Review Complaint Summary</Typography>
                   <Paper sx={{ p: 2, backgroundColor: '#f5f5f5' }}>
                     <Box sx={{ gap: 1, display: 'flex', flexDirection: 'column' }}>
+                      <Typography><strong>Complaint Number:</strong> {formData.complaintId || "-"}</Typography>
                       <Typography><strong>Customer:</strong> {formData.customerName}</Typography>
                       <Typography><strong>Model:</strong> {formData.modelCode}</Typography>
                       <Typography><strong>Description:</strong> {formData.complaintDescription}</Typography>
+                      <Typography><strong>Quantity:</strong> {formData.quantity}</Typography>
                       <Typography><strong>Severity:</strong> {formData.severity}</Typography>
                       <Typography><strong>Files:</strong> {formData.attachments.length} file(s) attached</Typography>
                     </Box>

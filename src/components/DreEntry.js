@@ -24,12 +24,14 @@ import {
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import SaveIcon from '@mui/icons-material/Save';
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
+import { loadMasters } from "../store/masterSlice";
 import ClearIcon from "@mui/icons-material/Clear";
 import CircularProgress from "@mui/material/CircularProgress";
 import { saveDreDraft, saveDreWithFiles, getDreList } from "../api/pageApi"
 
 const DREEntry = () => {
+  const dispatch = useDispatch();
   const { parts, models, repairCauses } = useSelector((state) => state.masters);
   const activeParts = parts.filter((p) => p.IsActive === true);
   const activeModels = models.filter((m) => m.IsActive === true);
@@ -76,8 +78,9 @@ const DREEntry = () => {
   };
 
   useEffect(() => {
+    dispatch(loadMasters());
     loadDreList();
-  }, []);
+  }, [dispatch]);
 
   const EMPTY_FORM = {
     dreId: '',

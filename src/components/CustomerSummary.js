@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { useDispatch } from 'react-redux';
+import { loadMasters } from '../store/masterSlice';
 import {
     Box,
     Container,
@@ -22,6 +24,7 @@ import ConfirmDialog from './ConfirmDialog';
 
 
 const CustomerSummary = ({ userRole }) => {
+    const dispatch = useDispatch();
     const [rows, setRows] = useState([]);
     const [loading, setLoading] = useState(false);
     const [filterPart, setFilterPart] = useState('');
@@ -107,8 +110,9 @@ const CustomerSummary = ({ userRole }) => {
     };
 
     useEffect(() => {
+        dispatch(loadMasters());
         fetchComplaints();
-    }, []);
+    }, [dispatch]);
 
     const fetchComplaints = async () => {
         try {
@@ -249,8 +253,8 @@ const CustomerSummary = ({ userRole }) => {
         },
         {
             field: 'RepairCause',
-            headerName: 'Repair Cause',
-            width: 250,
+            headerName: 'Quantity',
+            width: 120,
             resizable: false,
             headerAlign: 'center',
             align: 'center',
@@ -343,7 +347,7 @@ const CustomerSummary = ({ userRole }) => {
         {
             field: 'Download',
             headerName: 'Download Zip',
-            width: 100,
+            width: 130,
             resizable: false,
             sortable: false,
             filterable: false,

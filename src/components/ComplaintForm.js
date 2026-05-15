@@ -28,7 +28,8 @@ import {
   TableRow, FormLabel,
   RadioGroup,
   FormControlLabel,
-  Radio
+  Radio,
+  Tooltip
 
 } from "@mui/material";
 import ClearIcon from "@mui/icons-material/Clear";
@@ -37,10 +38,11 @@ import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import DownloadIcon from '@mui/icons-material/Download';
 import SaveIcon from "@mui/icons-material/Save";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
+import { loadMasters } from "../store/masterSlice";
 import CircularProgress from "@mui/material/CircularProgress";
 import { submitCustomerComplaint, getCustomerComplaints, getAttachmentChecklist, downloadAttachment } from "../api/pageApi";
-import Visibility from "@mui/icons-material/Visibility";
+import VisibilityIcon from "@mui/icons-material/Visibility";
 import { Email } from "@mui/icons-material";
 import IconButton from "@mui/material/IconButton";
 
@@ -48,7 +50,9 @@ import IconButton from "@mui/material/IconButton";
 
 
 const ComplaintForm = () => {
+  const dispatch = useDispatch();
   const { parts, models, repairCauses, customers } = useSelector((state) => state.masters);
+  console.log('Model Form Complaint Form', models);
   const activeCustomers = customers.filter((p) => p.IsActive === true);
   const activeParts = parts.filter((p) => p.IsActive === true);
   const activeModels = models.filter((m) => m.IsActive === true);
@@ -75,12 +79,14 @@ const ComplaintForm = () => {
       ...item,
       checked: item.isMandatory,
       file: null,
-      expiryDate: ""
+      expiryDate: "",
+      openDate: ""
     }))
   );
 
   const INITIAL_FORM_STATE = {
     complaintId: "",
+    complaintNo: "",
     customerSelected: "",
     customerEmail: "",
     IsRegistered: true,
@@ -88,7 +94,7 @@ const ComplaintForm = () => {
     modelSelected: "",
     partSelected: "",
     problemStatement: "",
-    causeCode: "",
+    quantity: "",
     severityLevel: SEVERITY_LEVELS[0],
     attachments: [],
     status: "",
@@ -98,6 +104,7 @@ const ComplaintForm = () => {
   const [draftLoading, setDraftLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [originalChecklist, setOriginalChecklist] = useState([]);
+
   useEffect(() => {
     if (message) {
       const timer = setTimeout(() => setMessage(''), 3000);
@@ -137,8 +144,9 @@ const ComplaintForm = () => {
   };
 
   useEffect(() => {
+    dispatch(loadMasters());
     fetchComplaints();
-  }, []);
+  }, [dispatch]);
 
   const fetchComplaints = async () => {
     try {
@@ -214,6 +222,10 @@ const ComplaintForm = () => {
       ? draft.DueDates.split(",").map((d) => d.trim())
       : [];
 
+    const openDates = draft.OpenDates
+      ? draft.OpenDates.split(",").map((d) => d.trim())
+      : [];
+
     // Convert API date -> YYYY-MM-DD
     const formatDateForInput = (dateStr) => {
       if (!dateStr) return "";
@@ -253,6 +265,7 @@ const ComplaintForm = () => {
       let fileName = "";
       let email = "";
       let expiryDate = "";
+      let openDate = "";
       let attachmentId = "";
       let checked = row.isMandatory; // Ensure mandatory items are always checked
 
@@ -267,6 +280,7 @@ const ComplaintForm = () => {
           attachmentId = attachmentIds[index] || "";
 
           expiryDate = formatDateForInput(dueDates[index]);
+          openDate = formatDateForInput(openDates[index]);
 
         }
 
@@ -283,6 +297,7 @@ const ComplaintForm = () => {
         fileName,
         emails: email,
         expiryDate,
+        openDate,
         attachmentId
       };
 
@@ -292,14 +307,15 @@ const ComplaintForm = () => {
     setOriginalChecklist(JSON.parse(JSON.stringify(updatedRows)));
     setFormData({
       complaintId: draft.ComplaintId || "",
+      complaintNo: draft.ComplaintNo || "",
       customerSelected: draft.CustomerId || "",
       customerEmail: draft.CustomerEmail || "",
       IsRegistered: draft.IsRegistred ?? true,
       complaintDate: draft.ComplaintDate?.split("T")[0] || "",
-      modelSelected: draft.Model || "",
-      partSelected: draft.Part || "",
+      modelSelected: activeModels.find(m => m.ModelName === draft.Model)?.ModelId || draft.Model || "",
+      partSelected: activeParts.find(p => p.PartNumber === draft.Part || p.PartName === draft.Part)?.PartId || draft.Part || "",
       problemStatement: draft.ProblemStatement || "",
-      causeCode: draft.CauseCode || "",
+      quantity: draft.CauseCode || "",
       severityLevel: draft.Severity || SEVERITY_LEVELS[0],
       status: draft.Status || "DRAFT",
     });
@@ -432,8 +448,8 @@ const ComplaintForm = () => {
       if (!formData.problemStatement)
         tempErrors.problemStatement = "Required";
 
-      if (!formData.causeCode)
-        tempErrors.causeCode = "Required";
+      if (!formData.quantity)
+        tempErrors.quantity = "Required";
 
       if (Object.keys(tempErrors).length > 0) {
         console.log(">>> Step 1 Errors:", tempErrors);
@@ -484,18 +500,19 @@ const ComplaintForm = () => {
 
     const fd = new FormData();
 
-    // 🔹 Normal Fields
-    fd.append("complaintId", formData.complaintId || "");
-    fd.append("customerId", formData.customerSelected || "");
-    fd.append("customerEmail", formData.customerEmail || "");
-    fd.append("complaintDate", formData.complaintDate || "");
-    fd.append("model", formData.modelSelected || "");
-    fd.append("part", formData.partSelected || "");
-    fd.append("problemStatement", formData.problemStatement || "");
-    fd.append("causeCode", formData.causeCode || "");
+    fd.append("ComplaintId", formData.complaintId || "");
+    fd.append("ComplaintNo", formData.complaintNo || "");
+    fd.append("CustomerId", formData.customerSelected || "");
+    fd.append("CustomerEmail", formData.customerEmail || "");
+    fd.append("ComplaintDate", formData.complaintDate || "");
+    fd.append("Model", activeModels.find(m => m.ModelId === formData.modelSelected)?.ModelName || formData.modelSelected || "");
+    fd.append("Part", activeParts.find(p => p.PartId === formData.partSelected)?.PartNumber || formData.partSelected || "");
+    fd.append("ProblemStatement", formData.problemStatement || "");
+    fd.append("CauseCode", formData.quantity || "");
     fd.append("IsRegistred", String(formData.IsRegistered ?? true));
-    fd.append("severity", formData.severityLevel || "");
-    fd.append("status", status);
+    fd.append("Quantity", formData.quantity || "");
+    fd.append("Severity", formData.severityLevel || "");
+    fd.append("Status", status);
 
     const checklist = [];
     const attachmentErrors = {};
@@ -540,6 +557,9 @@ const ComplaintForm = () => {
         IsMandatory: row.isMandatory,
         IsChecked: !!row.checked,
         Duedate: formattedDate,
+        OpenDate: row.openDate
+          ? row.openDate.split("-").reverse().join("-")
+          : "",
         NotificationEmails: (row.emails || "")
           .split(/[,\n]/)
           .map(e => e.trim())
@@ -561,7 +581,8 @@ const ComplaintForm = () => {
             ([key]) =>
               !key.startsWith("file_") &&
               !key.startsWith("email_") &&
-              !key.startsWith("expiry_")
+              !key.startsWith("expiry_") &&
+              !key.startsWith("open_")
           )
         ),
         ...attachmentErrors
@@ -577,7 +598,8 @@ const ComplaintForm = () => {
           ([key]) =>
             !key.startsWith("file_") &&
             !key.startsWith("email_") &&
-            !key.startsWith("expiry_")
+            !key.startsWith("expiry_") &&
+            !key.startsWith("open_")
         )
       )
     );
@@ -589,6 +611,7 @@ const ComplaintForm = () => {
 
     return fd;
   };
+
   const resetForm = () => {
     setFormData({ ...INITIAL_FORM_STATE });
     setOriginalChecklist([]);
@@ -651,7 +674,6 @@ const ComplaintForm = () => {
         } else {
           console.log(`${key}:`, value);
         }
-
       }
 
       console.log("------ FormData End ------");
@@ -803,6 +825,22 @@ const ComplaintForm = () => {
     }, 0);
   };
 
+  const handleOpenDateChange = (id, date) => {
+    setAttachmentRows((prev) =>
+      prev.map((row) =>
+        row.id === id ? { ...row, openDate: date } : row
+      )
+    );
+
+    if (date) {
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[`open_${id}`];
+        return newErrors;
+      });
+    }
+  };
+
   const handleEmailChange = (id, value) => {
     // Replace commas with newlines to show one email per line
     const formattedValue = value.replace(/,/g, "\n");
@@ -852,9 +890,26 @@ const ComplaintForm = () => {
               {activeStep === 0 && (
                 <Grid container spacing={0.5}>
 
+                  {/* Complaint Number */}
+                  <Grid item xs={12}>
+                    <TextField
+                      label="Complaint Number"
+                      fullWidth
+                      name="complaintNo"
+                      value={formData.complaintNo || ""}
+                      onChange={handleInputChange}
+                      required
+                      error={!!errors.complaintNo}
+                      helperText={errors.complaintNo || " "}
+                    />
+                  </Grid>
+
+
                   {/* Customer */}
                   <Grid item xs={12} sx>
                     <FormControl fullWidth error={!!errors.customerSelected}>
+
+
                       <InputLabel>Select Customer</InputLabel>
                       <Select
                         name="customerSelected"
@@ -969,7 +1024,7 @@ const ComplaintForm = () => {
                         onChange={handleSelectChange}
                       >
                         {activeModels.map((m) => (
-                          <MenuItem key={m.ModelId} value={m.ModelName}>
+                          <MenuItem key={m.ModelId} value={m.ModelId}>
                             {m.ModelName}
                           </MenuItem>
                         ))}
@@ -991,7 +1046,7 @@ const ComplaintForm = () => {
                         onChange={handleSelectChange}
                       >
                         {activeParts.map((p) => (
-                          <MenuItem key={p.PartId} value={p.PartNumber}>
+                          <MenuItem key={p.PartId} value={p.PartId}>
                             {p.PartName}
                           </MenuItem>
                         ))}
@@ -1021,19 +1076,22 @@ const ComplaintForm = () => {
                     helperText={errors.problemStatement}
                   />
 
-                  <FormControl fullWidth error={!!errors.causeCode}>
-
-                    <TextField
-                      label="Cause Code"
-                      fullWidth
-                      name="causeCode"
-                      value={formData.causeCode}
-                      onChange={handleInputChange}
-                      required
-                      error={!!errors.causeCode}
-                      helperText={errors.causeCode}
-                    />
-                  </FormControl>
+                  <TextField
+                    label="Quantity"
+                    fullWidth
+                    type="number"
+                    name="quantity"
+                    value={formData.quantity}
+                    onChange={handleInputChange}
+                    required
+                    error={!!errors.quantity}
+                    helperText={errors.quantity}
+                    onKeyPress={(e) => {
+                      if (!/[0-9]/.test(e.key)) {
+                        e.preventDefault();
+                      }
+                    }}
+                  />
 
                   <FormControl fullWidth>
                     <InputLabel>Severity Level</InputLabel>
@@ -1078,6 +1136,7 @@ const ComplaintForm = () => {
                           <TableCell><strong>Document</strong></TableCell>
                           <TableCell><strong>Upload</strong></TableCell>
                           <TableCell><strong>Email  </strong></TableCell>
+                          <TableCell><strong>Open Date</strong></TableCell>
                           <TableCell><strong>Last Date</strong></TableCell>
                         </TableRow>
                       </TableHead>
@@ -1188,6 +1247,32 @@ const ComplaintForm = () => {
                             </TableCell>
 
 
+                            {/* Open Date */}
+                            <TableCell
+                              width="25%"
+                              sx={{ verticalAlign: "middle" }}
+                            >
+                              <Box display="flex" alignItems="center">
+                                <TextField
+                                  type="date"
+                                  fullWidth
+                                  size="small"
+                                  value={row.openDate || ""}
+                                  InputLabelProps={{ shrink: true }}
+                                  onChange={(e) =>
+                                    handleOpenDateChange(row.id, e.target.value)
+                                  }
+                                  error={!!errors[`open_${row.id}`]}
+                                  helperText={errors[`open_${row.id}`]}
+                                  sx={{
+                                    "& .MuiInputBase-root": {
+                                      height: 38,
+                                    },
+                                  }}
+                                />
+                              </Box>
+                            </TableCell>
+
                             {/* Expiry Date */}
                             <TableCell
                               width="25%"
@@ -1230,6 +1315,9 @@ const ComplaintForm = () => {
                       sx={{ gap: 1, display: "flex", flexDirection: "column" }}
                     >
                       <Typography>
+                        <strong>Complaint Number:</strong> {formData.ComplaintNo || "-"}
+                      </Typography>
+                      <Typography>
                         <strong>Customer:</strong>{" "}
                         {
                           activeCustomers.find(
@@ -1248,15 +1336,10 @@ const ComplaintForm = () => {
                       <Typography>
                         <strong>Part:</strong> {formData.partSelected}
                       </Typography>
-                      <Typography>
-                        <strong>Problem:</strong> {formData.problemStatement}
-                      </Typography>
-                      <Typography>
-                        <strong>Cause Code:</strong> {formData.causeCode}
-                      </Typography>
-                      <Typography>
-                        <strong>Severity:</strong> {formData.severityLevel}
-                      </Typography>
+                      <Typography><strong>Problem Statement:</strong> {formData.problemStatement}</Typography>
+                      <Typography><strong>Quantity:</strong> {formData.quantity}</Typography>
+                      <Typography><strong>Severity:</strong> {formData.severityLevel}</Typography>
+
                       <Box mt={2}>
                         <Typography variant="subtitle1" fontWeight={600} mb={1}>
                           Attachments
@@ -1277,6 +1360,7 @@ const ComplaintForm = () => {
                                   <TableCell><strong>Document</strong></TableCell>
                                   <TableCell><strong>File Name</strong></TableCell>
                                   <TableCell><strong>Email</strong></TableCell>
+                                  <TableCell><strong>Open Date</strong></TableCell>
                                   <TableCell><strong>Last Date</strong></TableCell>
                                 </TableRow>
                               </TableHead>
@@ -1322,6 +1406,9 @@ const ComplaintForm = () => {
                                       </TableCell>
 
                                       <TableCell>
+                                        {row.openDate || "-"}
+                                      </TableCell>
+                                      <TableCell>
                                         {row.expiryDate || "-"}
                                       </TableCell>
                                     </TableRow>
@@ -1336,7 +1423,7 @@ const ComplaintForm = () => {
                 </Box>
               )}
 
-              {/* Navigation */}
+
               <Box
                 sx={{ display: "flex", justifyContent: "space-between", mt: 3 }}
               >

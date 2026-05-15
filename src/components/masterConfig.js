@@ -23,13 +23,13 @@ export const MASTER_CONFIG = {
         baseUrl: "/masters/models",
 
         mapCreate: (data) => ({
-            ModelCode: data.ModelName,
+            ModelCode: data.ModelCode,
             ModelName: data.ModelName,
         }),
 
         mapUpdate: (data) => ({
             ModelId: data.ModelId,
-            ModelCode: data.ModelName,
+            ModelCode: data.ModelCode,
             ModelName: data.ModelName,
         }),
 

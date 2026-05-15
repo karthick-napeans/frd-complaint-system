@@ -28,13 +28,15 @@ import {
 } from "recharts";
 import CloseIcon from "@mui/icons-material/Close";
 import { getWrantyReport, getAllImprovementList } from "../api/pageApi";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
+import { loadMasters } from "../store/masterSlice";
 import html2canvas from "html2canvas";
 import DownloadIcon from "@mui/icons-material/Download";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import Collapse from "@mui/material/Collapse";
 
 const WarrantyAnalysis = () => {
+  const dispatch = useDispatch();
   const { customers, models, parts } = useSelector((state) => state.masters);
   const activeCustomers = customers.filter((c) => c.IsActive);
   const [customerSelected, setCustomerSelected] = useState("");
@@ -83,8 +85,9 @@ const WarrantyAnalysis = () => {
 
 
   useEffect(() => {
+    dispatch(loadMasters());
     fetchImprovementList();
-  }, []);
+  }, [dispatch]);
 
   const fetchImprovementList = async () => {
     try {
@@ -101,7 +104,7 @@ const WarrantyAnalysis = () => {
       // convert API format → UI format
       const mapped = sorted.map((item) => ({
         id: item.ImprovementId,
-        modelCode: item.ModelName,
+        modelCode: item.ModelCode || item.ModelName,
         yearMonth: item.ImprovementDate.slice(0, 7),
         description: item.Details,
         date: item.ImprovementDate,
@@ -518,10 +521,10 @@ const WarrantyAnalysis = () => {
                       .map((model) => (
                         <MenuItem
                           key={model.ModelId}
-                          value={model.ModelName}   // ✅ send ModelName
+                          value={model.ModelCode}   
                         >
                           <Checkbox
-                            checked={selectedModels.includes(model.ModelName)}
+                            checked={selectedModels.includes(model.ModelCode)}
                           />
                           <ListItemText
                             primary={`${model.ModelCode} - ${model.ModelName}`}
