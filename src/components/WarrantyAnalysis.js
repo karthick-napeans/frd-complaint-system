@@ -747,7 +747,7 @@ const WarrantyAnalysis = () => {
                       content={({ active, payload, label }) => {
                         if (!active || !payload || payload.length === 0) return null;
 
-                        const matchedBaseline = filteredBaselines?.find(
+                        const matchedBaselines = filteredBaselines?.filter(
                           (b) => b.yearMonth === label
                         );
 
@@ -771,18 +771,19 @@ const WarrantyAnalysis = () => {
                               </p>
                             ))}
 
-                            {matchedBaseline && (
+                            {matchedBaselines && matchedBaselines.length > 0 && matchedBaselines.map((baseline, idx) => (
                               <p
+                                key={idx}
                                 style={{
                                   marginTop: 6,
                                   fontWeight: 600,
-                                  color: "#ef4444",
+                                  color: baselineColors[improvementList.indexOf(baseline) % baselineColors.length] || "#ef4444",
                                 }}
                               >
-                                {matchedBaseline.modelCode} Improvement:{" "}
-                                {matchedBaseline.description || ""}
+                                {baseline.modelCode} Improvement:{" "}
+                                {baseline.description || ""}
                               </p>
-                            )}
+                            ))}
                           </div>
                         );
                       }}
@@ -808,43 +809,81 @@ const WarrantyAnalysis = () => {
                       />
                     </Line>
 
-                    {filteredBaselines?.length > 0 &&
-                      filteredBaselines.map((baseline, index) => {
-                        const color = baselineColors[index % baselineColors.length];
+                    {(() => {
+                      const grouped = filteredBaselines?.reduce((acc, b) => {
+                        if (!acc[b.yearMonth]) acc[b.yearMonth] = [];
+                        acc[b.yearMonth].push(b);
+                        return acc;
+                      }, {});
+
+                      if (!grouped) return null;
+
+                      return Object.entries(grouped).map(([month, baselines]) => {
+                        const isMultiple = baselines.length > 1;
+                        // Use a neutral color if multiple, or the first one's color
+                        const lineColor = isMultiple ? "#1e3a8a" : baselineColors[improvementList.indexOf(baselines[0]) % baselineColors.length];
 
                         return (
                           <ReferenceLine
-                            key={baseline.modelCode}
-                            x={baseline.yearMonth}
-                            stroke={color}
-                            strokeWidth={4}              // 🔥 Increase thickness here
-                            strokeDasharray="6 3"        // Slightly stronger dash
-                            isFront={true}               // Bring to front of chart
+                            key={month}
+                            x={month}
+                            stroke={lineColor}
+                            strokeWidth={isMultiple ? 5 : 4} // Thicker line if multiple
+                            strokeDasharray={isMultiple ? "0" : "6 3"} // Solid line if multiple
+                            isFront={true}
                             label={({ viewBox }) => {
                               const { x, y } = viewBox;
 
                               return (
-                                <text
-                                  x={x}
-                                  y={y - 8}
-                                  textAnchor="middle"
-                                  fill={color}
-                                  fontSize={13}
-                                  fontWeight={700}
-                                  style={{
-                                    pointerEvents: "none",
-                                    paintOrder: "stroke",
-                                    stroke: "#ffffff",
-                                    strokeWidth: 4
-                                  }}
-                                >
-                                  {baseline.modelCode} BASELINE
-                                </text>
+                                <g>
+                                  {baselines.map((baseline, idx) => {
+                                    const color = baselineColors[improvementList.indexOf(baseline) % baselineColors.length];
+                                    const yOffset = idx * 22;
+                                    return (
+                                      <text
+                                        key={baseline.id}
+                                        x={x}
+                                        y={y - 10 - yOffset}
+                                        textAnchor="middle"
+                                        fill={color}
+                                        fontSize={13}
+                                        fontWeight={800}
+                                        style={{
+                                          pointerEvents: "none",
+                                          paintOrder: "stroke",
+                                          stroke: "#ffffff",
+                                          strokeWidth: 4
+                                        }}
+                                      >
+                                        {baseline.modelCode} BASELINE
+                                      </text>
+                                    );
+                                  })}
+                                  {isMultiple && (
+                                    <text
+                                      x={x}
+                                      y={y - 12 - (baselines.length * 22)}
+                                      textAnchor="middle"
+                                      fill="#d32f2f"
+                                      fontSize={11}
+                                      fontWeight={900}
+                                      style={{
+                                        pointerEvents: "none",
+                                        paintOrder: "stroke",
+                                        stroke: "#ffffff",
+                                        strokeWidth: 3
+                                      }}
+                                    >
+                                      ({baselines.length} IMPROVEMENTS)
+                                    </text>
+                                  )}
+                                </g>
                               );
                             }}
                           />
                         );
-                      })}
+                      });
+                    })()}
                   </ComposedChart>
 
 
@@ -857,12 +896,12 @@ const WarrantyAnalysis = () => {
                     mt={2}
                     flexWrap="wrap"
                   >
-                    {filteredBaselines.map((baseline, index) => {
-                      const color = baselineColors[index % baselineColors.length];
+                    {filteredBaselines.map((baseline) => {
+                      const color = baselineColors[improvementList.indexOf(baseline) % baselineColors.length];
 
                       return (
                         <Box
-                          key={baseline.modelCode}
+                          key={baseline.id}
                           display="flex"
                           alignItems="center"
                           gap={1}
