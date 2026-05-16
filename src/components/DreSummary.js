@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { loadMasters } from '../store/masterSlice';
 import {
     Box,
@@ -24,6 +24,7 @@ import { Download } from '@mui/icons-material';
 
 const DreSummary = () => {
     const dispatch = useDispatch();
+    const { parts, models } = useSelector((state) => state.masters);
     const [rows, setRows] = useState([]);
     const [loading, setLoading] = useState(false);
     const [filterPart, setFilterPart] = useState("All");
@@ -118,15 +119,21 @@ const DreSummary = () => {
     const handleExportExcel = () => {
         const exportData = filteredRows.map((row) => ({
             "S.No": row.serialNo,
-            "DRE Number": row.DreNumber,
-            "DRE Name": row.DreName,
-            "DRE Date": new Date(row.DreDate).toLocaleDateString(),
-            "Model": row.Model,
-            "Part": row.Part,
-            "Problem Description": row.ProblemDescription,
-            "Analysis Details": row.AnalysisDetails,
-            "Result Conclusion": row.ResultConclusion,
-            "Status": row.Status,
+            "Report Number": row.DreNumber,
+            "DRE Name": row.DreEngineerName || "",
+            "Report Date": row.DreDate ? new Date(row.DreDate).toLocaleDateString() : "",
+            "Model": (() => {
+                const model = models.find(m => m.ModelName === row.Model);
+                return model ? `${model.ModelCode} - ${model.ModelName}` : row.Model || "";
+            })(),
+            "Part": (() => {
+                const part = parts.find(p => p.PartNumber === row.Part);
+                return part ? `${row.Part} - ${part.PartName}` : row.Part || "";
+            })(),
+            "Description": row.ProblemDescription,
+            "Analysis Details": row.DreAnalysis || "",
+            "Conclusion": row.ResultConclusion || "",
+            "Status": row.Status === "OPEN" ? "Completed" : row.Status === "DRAFT" ? "Draft" : row.Status,
         }));
 
         const worksheet = XLSX.utils.json_to_sheet(exportData);
@@ -178,7 +185,7 @@ const DreSummary = () => {
         {
             field: 'DreNumber',
             headerName: 'Report Number',
-            flex: 1,
+            width: 150,
             resizable: false,
             headerAlign: 'center',
             align: 'center',
@@ -186,7 +193,7 @@ const DreSummary = () => {
         {
             field: 'DreName',
             headerName: 'DRE Name',
-            flex: 1,
+            width: 180,
             resizable: false,
             headerAlign: 'center',
             align: 'center',
@@ -196,7 +203,7 @@ const DreSummary = () => {
         {
             field: 'DreDate',
             headerName: 'Report Date',
-            flex: 1,
+            width: 130,
             resizable: false,
             headerAlign: 'center',
             align: 'center',
@@ -208,18 +215,26 @@ const DreSummary = () => {
         {
             field: 'Model',
             headerName: 'Model',
-            flex: 1,
+            width: 250,
             resizable: false,
             headerAlign: 'center',
             align: 'center',
+            valueGetter: (value, row) => {
+                const model = models.find(m => m.ModelName === row.Model);
+                return model ? `${model.ModelCode} - ${model.ModelName}` : row.Model || '';
+            }
         },
         {
             field: 'Part',
             headerName: 'Part',
-            flex: 1,
+            width: 250,
             resizable: false,
             headerAlign: 'center',
             align: 'center',
+            valueGetter: (value, row) => {
+                const part = parts.find(p => p.PartNumber === row.Part);
+                return part ? `${row.Part} - ${part.PartName}` : row.Part || '';
+            }
         },
         {
             field: 'ProblemDescription',
@@ -234,7 +249,7 @@ const DreSummary = () => {
                     lineHeight: '1.4',
                     padding: '8px 0',
                     display: 'flex',
-                    alignItems: 'flex-start',
+                    alignItems: 'center',
                     height: '100%',
                     width: '100%'
                 }}>
@@ -257,7 +272,7 @@ const DreSummary = () => {
                     lineHeight: '1.4',
                     padding: '8px 0',
                     display: 'flex',
-                    alignItems: 'flex-start',
+                    alignItems: 'center',
                     height: '100%',
                     width: '100%'
                 }}>
@@ -281,7 +296,7 @@ const DreSummary = () => {
                     lineHeight: '1.4',
                     padding: '8px 0',
                     display: 'flex',
-                    alignItems: 'flex-start',
+                    alignItems: 'center',
                     height: '100%',
                     width: '100%'
                 }}>
@@ -292,7 +307,7 @@ const DreSummary = () => {
         {
             field: 'Status',
             headerName: 'Status',
-            flex: 1,
+            width: 140,
             resizable: false,
             headerAlign: 'center',
             align: 'center',
@@ -481,7 +496,7 @@ const DreSummary = () => {
             <Card sx={{ borderRadius: 3 }}>
                 <CardContent sx={{ p: 2 }}>
                     {/* Wrapper to enable horizontal scrolling */}
-                    <Box sx={{ width: "100%", overflowX: "auto" }}>
+                    <Box sx={{ width: "100%" }}>
                         <DataGrid
                             rows={filteredRows}
                             columns={columns}
@@ -504,7 +519,7 @@ const DreSummary = () => {
                             hideFooterSelectedRowCount
                             sx={{
                                 border: "none",
-                                minWidth: 1900, // Adjust based on total column widths
+                                width: '100%',
                                 "& .MuiDataGrid-columnHeaders": {
                                     backgroundColor: "#f1f5f9",
                                     fontWeight: 700,
@@ -513,7 +528,8 @@ const DreSummary = () => {
                                     backgroundColor: "#f8fafc",
                                 },
                                 "& .MuiDataGrid-cell": {
-                                    alignItems: "flex-start",
+                                    display: "flex",
+                                    alignItems: "center", // Vertically center content
                                     paddingTop: "8px",
                                     paddingBottom: "8px"
                                 },

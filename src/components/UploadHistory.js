@@ -80,7 +80,7 @@ const UploadHistory = () => {
   const [filterStatus, setFilterStatus] = useState('all');
 
   const columns = [
-    { field: 'id', headerName: 'ID', width: 50 },
+    { field: 'serialNo', headerName: 'S.No', width: 60 },
     {
       field: 'filename',
       headerName: 'Filename',
@@ -177,7 +177,7 @@ const UploadHistory = () => {
     const matchesStatus = filterStatus === 'all' || item.status === filterStatus;
 
     return matchesSearch && matchesType && matchesStatus;
-  });
+  }).map((item, index) => ({ ...item, serialNo: index + 1 }));
 
   const totalRecords = uploadHistory.reduce((sum, item) => sum + item.recordsProcessed, 0);
   const successfulUploads = uploadHistory.filter((item) => item.status === 'Success').length;

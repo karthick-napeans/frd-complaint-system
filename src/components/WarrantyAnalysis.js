@@ -79,7 +79,7 @@ const WarrantyAnalysis = () => {
   ];
 
   const filteredBaselines = improvementList?.filter(b =>
-    selectedModels.includes(b.modelCode)
+    selectedModels.includes(b.modelId)
   );
 
 
@@ -92,19 +92,20 @@ const WarrantyAnalysis = () => {
   const fetchImprovementList = async () => {
     try {
       const res = await getAllImprovementList();
+      console.log("Improvement List Response:", res);
 
       if (!res || res.length === 0) return;
 
-      // sort latest first
       const sorted = [...res].sort(
         (a, b) =>
           new Date(b.ImprovementDate) - new Date(a.ImprovementDate)
       );
 
-      // convert API format → UI format
+
       const mapped = sorted.map((item) => ({
         id: item.ImprovementId,
         modelCode: item.ModelCode || item.ModelName,
+        modelId: item.ModelId,
         yearMonth: item.ImprovementDate.slice(0, 7),
         description: item.Details,
         date: item.ImprovementDate,
@@ -250,7 +251,7 @@ const WarrantyAnalysis = () => {
         productionToDate: prodDateTo || null,
         repairFromDate: repairFrom || null,
         repairToDate: repairTo || null,
-        modelList: selectedModels || [],
+        modelList: selectedModels.map(id => models.find(m => m.ModelId === id)?.ModelCode).filter(Boolean) || [],
         partList: selectedParts || [],
         regionList: selectedRegions || [],
       };
@@ -325,7 +326,7 @@ const WarrantyAnalysis = () => {
   const uiFilteredData = useMemo(() => {
     return baseData.filter(d => {
 
-      if (selectedModels.length && !selectedModels.includes(d.Model_Name))
+      if (selectedModels.length && !selectedModels.some(id => models.find(m => m.ModelId === id)?.ModelName === d.Model_Name))
         return false;
 
       if (selectedParts.length && !selectedParts.includes(d.Part_Number))
@@ -514,21 +515,19 @@ const WarrantyAnalysis = () => {
                     multiple
                     value={selectedModels}
                     onChange={(e) => setSelectedModels(e.target.value)}
-                    renderValue={(selected) => selected.join(", ")}
+                    renderValue={(selected) =>
+                      selected
+                        .map((id) => models.find((m) => m.ModelId === id)?.ModelCode)
+                        .filter(Boolean)
+                        .join(", ")
+                    }
                   >
                     {models
                       ?.filter((model) => model.IsActive)
                       .map((model) => (
-                        <MenuItem
-                          key={model.ModelId}
-                          value={model.ModelCode}   
-                        >
-                          <Checkbox
-                            checked={selectedModels.includes(model.ModelCode)}
-                          />
-                          <ListItemText
-                            primary={`${model.ModelCode} - ${model.ModelName}`}
-                          />
+                        <MenuItem key={model.ModelId} value={model.ModelId}>
+                          <Checkbox checked={selectedModels.includes(model.ModelId)} />
+                          <ListItemText primary={`${model.ModelCode} - ${model.ModelName}`} />
                         </MenuItem>
                       ))}
                   </Select>

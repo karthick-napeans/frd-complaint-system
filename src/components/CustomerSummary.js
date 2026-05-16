@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { loadMasters } from '../store/masterSlice';
 import {
     Box,
@@ -25,6 +25,7 @@ import ConfirmDialog from './ConfirmDialog';
 
 const CustomerSummary = ({ userRole }) => {
     const dispatch = useDispatch();
+    const { parts, models } = useSelector((state) => state.masters);
     const [rows, setRows] = useState([]);
     const [loading, setLoading] = useState(false);
     const [filterPart, setFilterPart] = useState('');
@@ -151,10 +152,19 @@ const CustomerSummary = ({ userRole }) => {
         const exportData = filteredRows.map((row) => ({
             "S.No": row.serialNo,
             "Complaint No": row.ComplaintNo,
-            "Customer Email": row.CustomerEmail,
-            "Complaint Date": row.ComplaintDate,
-            "Model": row.Model,
-            "Part": row.Part,
+            "Customer Name": row.CustomerName || row.CauseCode || "",
+            "Internal Staff Email": row.CustomerEmail,
+            "Complaint Date": row.ComplaintDate ? new Date(row.ComplaintDate).toLocaleDateString() : "",
+            "Model": (() => {
+                const model = models.find(m => m.ModelName === row.Model);
+                return model ? `${model.ModelCode} - ${model.ModelName}` : row.Model || "";
+            })(),
+            "Part": (() => {
+                const part = parts.find(p => p.PartNumber === row.Part);
+                return part ? `${row.Part} - ${part.PartName}` : row.Part || "";
+            })(),
+            "Quantity": row.RepairCause || row.CauseCode || "",
+            "Description": row.ProblemStatement,
             "Severity": row.Severity,
             "Status": row.Status,
         }));
@@ -238,18 +248,26 @@ const CustomerSummary = ({ userRole }) => {
         {
             field: 'Model',
             headerName: 'Model',
-            width: 100,
+            width: 250,
             resizable: false,
             headerAlign: 'center',
             align: 'center',
+            valueGetter: (value, row) => {
+                const model = models.find(m => m.ModelName === row.Model);
+                return model ? `${model.ModelCode} - ${model.ModelName}` : row.Model || '';
+            }
         },
         {
             field: 'Part',
             headerName: 'Part',
-            width: 100,
+            width: 200,
             resizable: false,
             headerAlign: 'center',
             align: 'center',
+            valueGetter: (value, row) => {
+                const part = parts.find(p => p.PartNumber === row.Part);
+                return part ? `${row.Part} - ${part.PartName}` : row.Part || '';
+            }
         },
         {
             field: 'RepairCause',
@@ -641,7 +659,7 @@ const CustomerSummary = ({ userRole }) => {
             <Card sx={{ borderRadius: 3 }}>
                 <CardContent sx={{ p: 2 }}>
                     {/* Only one horizontal scrollbar */}
-                    <Box sx={{ width: "100%", overflowX: "auto" }}>
+                    <Box sx={{ width: "100%" }}>
                         <DataGrid
                             rows={filteredRows}
                             columns={isQCUser ? columns.filter(col => col.field !== 'actions') : columns}
@@ -664,7 +682,7 @@ const CustomerSummary = ({ userRole }) => {
                             hideFooterSelectedRowCount
                             sx={{
                                 border: "none",
-                                minWidth: 1890, // Sum of all column widths (60+170+170+230+120+100+100+250+250+100+140+100+100)
+                                width: '100%',
 
                                 /* Header Styling */
                                 "& .MuiDataGrid-columnHeaders": {
@@ -680,20 +698,6 @@ const CustomerSummary = ({ userRole }) => {
                                 /* Cell Alignment */
                                 "& .MuiDataGrid-cell": {
                                     alignItems: "center",
-                                },
-
-                                /* Hide DataGrid's internal horizontal scrollbar */
-                                "& .MuiDataGrid-scrollbar--horizontal": {
-                                    display: "none",
-                                },
-
-                                /* Prevent nested scrolling */
-                                "& .MuiDataGrid-main": {
-                                    overflow: "visible",
-                                },
-
-                                "& .MuiDataGrid-virtualScroller": {
-                                    overflowX: "hidden !important",
                                 },
                             }}
                         />

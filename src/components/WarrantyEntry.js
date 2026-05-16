@@ -47,8 +47,9 @@ const WarrantyEntry = () => {
   const fetchUploadHistory = async () => {
     try {
       const response = await getUploadHistory(); // already response.data because interceptor
-      const rows = response.map((item) => ({
+      const rows = response.map((item, index) => ({
         id: item.UploadHeadId, // DataGrid requires `id`
+        serialNo: index + 1,
         customer: item.CustomerName,
         filename: item.FileName,
         uploadDate: new Date(item.UploadDateTime).toLocaleDateString(),
@@ -152,9 +153,9 @@ const WarrantyEntry = () => {
 
   const columns = [
     {
-      field: 'id',
-      headerName: 'ID',
-      width: 50,
+      field: 'serialNo',
+      headerName: 'S.No',
+      width: 60,
       resizable: false,
       headerAlign: 'center',
       align: 'center',

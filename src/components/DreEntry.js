@@ -523,7 +523,7 @@ const DREEntry = () => {
                       >
                         {activeParts.map((p) => (
                           <MenuItem key={p.PartId} value={p.PartNumber}>
-                            {p.PartName}
+                            {p.PartNumber} - {p.PartName}
                           </MenuItem>
                         ))}
                       </Select>
@@ -698,13 +698,19 @@ const DREEntry = () => {
 
                       <Grid item xs={12}>
                         <Typography>
-                          <b>Model:</b> {formData.model || '-'}
+                          <b>Model:</b> {(() => {
+                            const m = activeModels.find(x => x.ModelName === formData.model);
+                            return m ? `${m.ModelCode} - ${m.ModelName}` : (formData.model || '-');
+                          })()}
                         </Typography>
                       </Grid>
 
                       <Grid item xs={12}>
                         <Typography>
-                          <b>Part:</b> {formData.part || '-'}
+                          <b>Part:</b> {(() => {
+                            const p = activeParts.find(x => x.PartNumber === formData.part);
+                            return p ? `${p.PartNumber} - ${p.PartName}` : (formData.part || '-');
+                          })()}
                         </Typography>
                       </Grid>
 

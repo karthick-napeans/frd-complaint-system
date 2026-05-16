@@ -1047,7 +1047,7 @@ const ComplaintForm = () => {
                       >
                         {activeParts.map((p) => (
                           <MenuItem key={p.PartId} value={p.PartId}>
-                            {p.PartName}
+                            {p.PartNumber} - {p.PartName}
                           </MenuItem>
                         ))}
                       </Select>
@@ -1331,10 +1331,18 @@ const ComplaintForm = () => {
                         <strong>Date:</strong> {formData.complaintDate}
                       </Typography>
                       <Typography>
-                        <strong>Model:</strong> {formData.modelSelected}
+                        <strong>Model:</strong>{" "}
+                        {(() => {
+                          const m = activeModels.find(x => x.ModelId === formData.modelSelected);
+                          return m ? `${m.ModelCode} - ${m.ModelName}` : (formData.modelSelected || "-");
+                        })()}
                       </Typography>
                       <Typography>
-                        <strong>Part:</strong> {formData.partSelected}
+                        <strong>Part:</strong>{" "}
+                        {(() => {
+                          const p = activeParts.find(x => x.PartId === formData.partSelected);
+                          return p ? `${p.PartNumber} - ${p.PartName}` : (formData.partSelected || "-");
+                        })()}
                       </Typography>
                       <Typography><strong>Problem Statement:</strong> {formData.problemStatement}</Typography>
                       <Typography><strong>Quantity:</strong> {formData.quantity}</Typography>
