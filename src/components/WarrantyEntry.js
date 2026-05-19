@@ -24,9 +24,11 @@ import {
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { useSelector } from 'react-redux';
 import * as XLSX from 'xlsx';
-import { uploadWarrantyClaims, getUploadHistory } from '../api/pageApi';
+import { uploadWarrantyClaims, getUploadHistory, deleteWarrantyClaimUpload } from '../api/pageApi';
+import ConfirmDialog from './ConfirmDialog';
 
 const WarrantyEntry = () => {
   const fileInputRef = useRef(null);
@@ -38,6 +40,35 @@ const WarrantyEntry = () => {
   const [previewData, setPreviewData] = useState([]);
   const [message, setMessage] = useState('');
   const [uploadHistory, setUploadHistory] = useState([]);
+  const [confirmState, setConfirmState] = useState({
+    open: false,
+    title: '',
+    message: '',
+    successMessage: '',
+    errorMessage: '',
+    onConfirm: null,
+  });
+
+  const handleDelete = (row) => {
+    setConfirmState({
+      open: true,
+      title: 'Delete Upload History',
+      message: `Are you sure you want to delete the upload record for file "${row.filename}"? This action cannot be undone.`,
+      successMessage: 'Upload history record deleted successfully.',
+      errorMessage: 'Failed to delete upload history record.',
+      onConfirm: () => confirmDeleteUpload(row.id),
+    });
+  };
+
+  const confirmDeleteUpload = async (uploadHeadId) => {
+    console.log('Delete upload head id:', uploadHeadId);
+    await deleteWarrantyClaimUpload(uploadHeadId);
+    await fetchUploadHistory();
+  };
+
+  const handleCancelDelete = () => {
+    setConfirmState(prev => ({ ...prev, open: false }));
+  };
 
   const CUSTOMER_LIST = customers.map(c => ({
     id: c.CustomerId,
@@ -252,6 +283,32 @@ const WarrantyEntry = () => {
             Download
           </a>
         </div>
+      ),
+    },
+    {
+      field: 'actions',
+      headerName: 'Action',
+      width: 100,
+      sortable: false,
+      resizable: false,
+      headerAlign: 'center',
+      align: 'center',
+      renderCell: (params) => (
+        <Box
+          sx={{
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+        >
+          <DeleteIcon
+            sx={{ cursor: 'pointer' }}
+            color="error"
+            onClick={() => handleDelete(params.row)}
+          />
+        </Box>
       ),
     },
 
@@ -558,6 +615,16 @@ const WarrantyEntry = () => {
         />
 
       </Box>
+
+      <ConfirmDialog
+        open={confirmState.open}
+        title={confirmState.title}
+        message={confirmState.message}
+        successMessage={confirmState.successMessage}
+        errorMessage={confirmState.errorMessage}
+        onConfirm={confirmState.onConfirm}
+        onCancel={handleCancelDelete}
+      />
     </Box>
   );
 };

@@ -15,20 +15,22 @@ import {
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import * as XLSX from "xlsx";
-import { getDreList, downloadDREAttachment } from '../api/pageApi';
+import { getDreList, downloadDREAttachment, deleteDre } from '../api/pageApi';
 import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import ClearIcon from '@mui/icons-material/Clear';
 import { IconButton, Tooltip } from '@mui/material';
-import { Download } from '@mui/icons-material';
+import { Download, Delete } from '@mui/icons-material';
+import ConfirmDialog from './ConfirmDialog';
 
 const DreSummary = () => {
     const dispatch = useDispatch();
     const { parts, models } = useSelector((state) => state.masters);
     const [rows, setRows] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [filterPart, setFilterPart] = useState("All");
-    const [filterStatus, setFilterStatus] = useState("All");
+    const [filterPart, setFilterPart] = useState("");
+    const [filterStatus, setFilterStatus] = useState("");
+    const [filterModel, setFilterModel] = useState("");
     const today = new Date().toISOString().split("T")[0];
     const lastMonthDate = new Date();
     lastMonthDate.setMonth(lastMonthDate.getMonth() - 1);
@@ -38,6 +40,14 @@ const DreSummary = () => {
     const [dateErrors, setDateErrors] = useState({
         fromDate: "",
         toDate: "",
+    });
+    const [confirmState, setConfirmState] = useState({
+        open: false,
+        title: "",
+        message: "",
+        successMessage: "",
+        errorMessage: "",
+        onConfirm: null
     });
 
     const validateDates = (from, to) => {
@@ -99,10 +109,10 @@ const DreSummary = () => {
     const filteredRows = rows.filter((row) => {
 
         const matchPart =
-            filterPart === "All" ? true : row.Part === filterPart;
+            !filterPart || row.Part === filterPart;
 
         const matchStatus =
-            filterStatus === "All" ? true : row.Status === filterStatus;
+            !filterStatus || row.Status === filterStatus;
 
         const dreDate = new Date(row.DreDate);
 
@@ -112,7 +122,10 @@ const DreSummary = () => {
         const matchTo =
             !toDate || dreDate <= new Date(toDate);
 
-        return matchPart && matchStatus && matchFrom && matchTo;
+        const matchModel =
+            !filterModel || row.Model === filterModel;
+
+        return matchPart && matchStatus && matchFrom && matchTo && matchModel;
     });
 
     // 📤 Export
@@ -141,6 +154,46 @@ const DreSummary = () => {
         XLSX.utils.book_append_sheet(workbook, worksheet, "DRE");
 
         XLSX.writeFile(workbook, "DRE_Summary.xlsx");
+    };
+
+    const handleDelete = (row) => {
+        setConfirmState({
+            open: true,
+            title: "Delete DRE Record",
+            message: `Are you sure you want to delete DRE Report: ${row.DreNumber}?`,
+            successMessage: "DRE record deleted successfully.",
+            errorMessage: "Failed to delete DRE record. Please try again.",
+            actionLabel: "Delete",
+            loadingLabel: "Deleting...",
+            buttonColor: "#ff6b6b",
+            icon: <Delete sx={{ color: "#ff6b6b" }} />,
+            onConfirm: () => confirmDelete(row.DreId)
+        });
+    };
+
+    const confirmDelete = async (dreId) => {
+        try {
+            await deleteDre(dreId);
+
+            // Close confirmation dialog
+            setConfirmState((prev) => ({
+                ...prev,
+                open: false,
+            }));
+
+            // Refresh grid data
+            fetchDreList();
+        } catch (error) {
+            console.error("Delete failed:", error);
+            throw error; // Re-throw so the ConfirmDialog shows the error state
+        }
+    };
+
+    const handleCancelDelete = () => {
+        setConfirmState((prev) => ({
+            ...prev,
+            open: false,
+        }));
     };
 
     const handleDownload = async (row) => {
@@ -337,6 +390,27 @@ const DreSummary = () => {
             ),
         },
         {
+            field: 'actions',
+            headerName: 'Action',
+            width: 100,
+            resizable: false,
+            sortable: false,
+            filterable: false,
+            headerAlign: 'center',
+            align: 'center',
+            renderCell: (params) => (
+                <Tooltip title="Delete DRE Record">
+                    <IconButton
+                        size="small"
+                        sx={{ color: "#fc4343" }}
+                        onClick={() => handleDelete(params.row)}
+                    >
+                        <Delete />
+                    </IconButton>
+                </Tooltip>
+            ),
+        },
+        {
             field: 'Download',
             headerName: 'Download',
             width: 100,
@@ -388,8 +462,31 @@ const DreSummary = () => {
 
                     <Grid container spacing={2} alignItems="center">
 
+                        {/* Model */}
+                        <Grid item xs={12} sm={6} md={2}>
+                            <TextField
+                                select
+                                label="Model"
+                                fullWidth
+                                value={filterModel}
+                                onChange={(e) => setFilterModel(e.target.value)}
+                            >
+                                {[...new Set(rows.map(r => r.Model))]
+                                    .filter(val => val)
+                                    .map((modelName) => {
+                                        const modelObj = models.find(m => m.ModelName === modelName);
+                                        const displayName = modelObj ? `${modelObj.ModelCode} - ${modelName}` : modelName;
+                                        return (
+                                            <MenuItem key={modelName} value={modelName}>
+                                                {displayName}
+                                            </MenuItem>
+                                        );
+                                    })}
+                            </TextField>
+                        </Grid>
+
                         {/* Part */}
-                        <Grid item xs={12} sm={6} md={2.4}>
+                        <Grid item xs={12} sm={6} md={2}>
                             <TextField
                                 select
                                 label="Part"
@@ -399,16 +496,20 @@ const DreSummary = () => {
                             >
                                 {[...new Set(rows.map(r => r.Part))]
                                     .filter(val => val)
-                                    .map((part) => (
-                                        <MenuItem key={part} value={part}>
-                                            {part}
-                                        </MenuItem>
-                                    ))}
+                                    .map((partNo) => {
+                                        const partObj = parts.find(p => p.PartNumber === partNo);
+                                        const displayName = partObj ? `${partNo} - ${partObj.PartName}` : partNo;
+                                        return (
+                                            <MenuItem key={partNo} value={partNo}>
+                                                {displayName}
+                                            </MenuItem>
+                                        );
+                                    })}
                             </TextField>
                         </Grid>
 
                         {/* Status */}
-                        <Grid item xs={12} sm={6} md={2.4}>
+                        <Grid item xs={12} sm={6} md={2}>
                             <TextField
                                 select
                                 label="Status"
@@ -427,7 +528,7 @@ const DreSummary = () => {
                         </Grid>
 
                         {/* From Date */}
-                        <Grid item xs={12} sm={6} md={2.4}>
+                        <Grid item xs={12} sm={6} md={2}>
                             <TextField
                                 type="date"
                                 label="From Date"
@@ -446,7 +547,7 @@ const DreSummary = () => {
                         </Grid>
 
                         {/* To Date */}
-                        <Grid item xs={12} sm={6} md={2.4}>
+                        <Grid item xs={12} sm={6} md={2}>
                             <TextField
                                 type="date"
                                 label="To Date"
@@ -465,7 +566,7 @@ const DreSummary = () => {
                         </Grid>
 
                         {/* Clear Button */}
-                        <Grid item xs={12} sm={6} md={2.4}>
+                        <Grid item xs={12} sm={6} md={2}>
                             <Button
                                 variant="outlined"
                                 color="error"
@@ -473,8 +574,9 @@ const DreSummary = () => {
                                 fullWidth
                                 sx={{ height: '56px' }}
                                 onClick={() => {
-                                    setFilterPart("All");
-                                    setFilterStatus("All");
+                                    setFilterPart("");
+                                    setFilterStatus("");
+                                    setFilterModel("");
                                     setFromDate("");
                                     setToDate("");
                                     setDateErrors({
@@ -538,6 +640,20 @@ const DreSummary = () => {
                     </Box>
                 </CardContent>
             </Card>
+
+            <ConfirmDialog
+                open={confirmState.open}
+                title={confirmState.title}
+                message={confirmState.message}
+                successMessage={confirmState.successMessage}
+                errorMessage={confirmState.errorMessage}
+                onConfirm={confirmState.onConfirm}
+                onCancel={handleCancelDelete}
+                actionLabel={confirmState.actionLabel}
+                loadingLabel={confirmState.loadingLabel}
+                buttonColor={confirmState.buttonColor}
+                icon={confirmState.icon}
+            />
         </Box>
     );
 };

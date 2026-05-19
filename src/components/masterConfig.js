@@ -82,6 +82,26 @@ export const MASTER_CONFIG = {
         }),
     },
 
+    nature: {
+        baseUrl: "/masters/nature-code",
+
+        mapCreate: (data) => ({
+            Code: data.Code,
+            CodeDescription: data.CodeDescription,
+        }),
+
+        mapUpdate: (data) => ({
+            NatureCodeId: data.NatureCodeId,
+            Code: data.Code,
+            CodeDescription: data.CodeDescription,
+        }),
+
+        mapDelete: (id, isActive) => ({
+            NatureCodeId: id,
+            IsActive: isActive,
+        }),
+    },
+
     attachment: {
         baseUrl: "/masters/checklist",
 
@@ -101,6 +121,4 @@ export const MASTER_CONFIG = {
             IsActive: isActive,
         }),
     }
-
 };
-

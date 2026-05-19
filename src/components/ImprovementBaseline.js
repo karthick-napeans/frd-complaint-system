@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
     Box,
     Typography,
@@ -13,17 +13,18 @@ import {
 import { DataGrid } from "@mui/x-data-grid";
 import ConfirmDialog from "./ConfirmDialog";
 import DeleteIcon from "@mui/icons-material/Delete";
-import AddIcon from "@mui/icons-material/Add";
 import { useSelector, useDispatch } from "react-redux";
 import { loadMasters } from "../store/masterSlice";
 import { saveImprovementBaseline, getAllImprovementList, deleteImprovementBaseline } from "../api/pageApi";
 
 const ImprovementBaselinePage = () => {
     const dispatch = useDispatch();
-    const { models } = useSelector((state) => state.masters);
+    const { models, customers } = useSelector((state) => state.masters);
     const activeModels = models?.filter(m => m.IsActive);
+    const activeCustomers = customers?.filter(c => c.IsActive === true) || [];
     const [config, setConfig] = useState({
         lastImprovementDate: new Date().toISOString().split("T")[0],
+        customerId: "",
         modelId: "",
         improvementDescription: "",
     })
@@ -38,12 +39,29 @@ const ImprovementBaselinePage = () => {
     const [selectedModel, setSelectedModel] = useState("");
     const [saving, setSaving] = useState(false);
     const [errors, setErrors] = useState({});
-    const [rows, setRows] = useState([]);
+    const [rawRows, setRawRows] = useState([]);
     const [loading, setLoading] = useState(false);
     const [paginationModel, setPaginationModel] = React.useState({
         page: 0,
         pageSize: 10,
     });
+
+    const formattedRows = useMemo(() => {
+        return rawRows.map(item => {
+            const customerObj = customers?.find(c => c.CustomerId == item.CustomerId);
+            return {
+                id: item.ImprovementId,
+                rawDate: item.ImprovementDate,   // 🔥 keep original
+                date: new Date(item.ImprovementDate)
+                    .toLocaleDateString("en-GB")
+                    .replace(/\//g, "-"),
+                customer: item.CustomerName || customerObj?.CustomerName || "-",
+                model: item.ModelName,
+                description: item.Details,
+            };
+        }).sort((a, b) => new Date(b.rawDate) - new Date(a.rawDate));
+    }, [rawRows, customers]);
+
     useEffect(() => {
         dispatch(loadMasters());
         fetchImprovementList();
@@ -52,24 +70,8 @@ const ImprovementBaselinePage = () => {
     const fetchImprovementList = async () => {
         try {
             setLoading(true);
-
             const res = await getAllImprovementList();
-
-            const formattedRows = res
-                .map(item => ({
-                    id: item.ImprovementId,
-                    rawDate: item.ImprovementDate,   // 🔥 keep original
-                    date: new Date(item.ImprovementDate)
-                        .toLocaleDateString("en-GB")
-                        .replace(/\//g, "-"),
-                    model: item.ModelName,
-                    description: item.Details,
-                }))
-                // 🔥 Sort using raw date
-                .sort((a, b) => new Date(b.rawDate) - new Date(a.rawDate));
-
-            setRows(formattedRows);
-
+            setRawRows(res || []);
         } catch (err) {
             console.error("Error fetching improvement list", err);
         } finally {
@@ -114,6 +116,10 @@ const ImprovementBaselinePage = () => {
     const handleCreate = async () => {
         const newErrors = {};
 
+        if (!config.customerId) {
+            newErrors.customerId = "Customer selection is required";
+        }
+
         if (!config.modelId) {
             newErrors.modelId = "Model selection is required";
         }
@@ -133,6 +139,7 @@ const ImprovementBaselinePage = () => {
 
             const payload = {
                 ImprovementDate: config.lastImprovementDate,
+                CustomerId: Number(config.customerId),
                 ModelId: config.modelId,
                 Details: config.improvementDescription,
             };
@@ -141,6 +148,8 @@ const ImprovementBaselinePage = () => {
 
             setConfig({
                 lastImprovementDate: new Date().toISOString().split("T")[0],
+                customerId: "",
+                modelId: "",
                 improvementDescription: "",
             });
 
@@ -177,26 +186,34 @@ const ImprovementBaselinePage = () => {
                     {/* Form */}
                     <Grid container spacing={3}>
 
-                        <Grid item xs={12} md={6}>
+                        {/* Customer */}
+                        <Grid item xs={12} md={4}>
                             <TextField
-                                type="date"
+                                select
                                 fullWidth
                                 size="small"
-                                label="Improvement Date"
-                                InputLabelProps={{ shrink: true }}
-                                value={config.lastImprovementDate}
+                                label="Select Customer"
+                                value={config.customerId || ""}
                                 onChange={(e) =>
-                                    setConfig({
-                                        ...config,
-                                        lastImprovementDate: e.target.value,
-                                    })
+                                    setConfig({ ...config, customerId: e.target.value })
                                 }
-                                error={!!errors.lastImprovementDate}
-                                helperText={errors.lastImprovementDate}
-                            />
+                                error={!!errors.customerId}
+                                helperText={errors.customerId}
+                            >
+                                <MenuItem value="">
+                                    <em>Select Customer</em>
+                                </MenuItem>
+
+                                {activeCustomers?.map((customer) => (
+                                    <MenuItem key={customer.CustomerId} value={customer.CustomerId}>
+                                        {customer.CustomerName}
+                                    </MenuItem>
+                                ))}
+                            </TextField>
                         </Grid>
 
-                        <Grid item xs={12} md={6}>
+                        {/* Model */}
+                        <Grid item xs={12} md={4}>
                             <TextField
                                 select
                                 fullWidth
@@ -219,6 +236,26 @@ const ImprovementBaselinePage = () => {
                                     </MenuItem>
                                 ))}
                             </TextField>
+                        </Grid>
+
+                        {/* Date */}
+                        <Grid item xs={12} md={4}>
+                            <TextField
+                                type="date"
+                                fullWidth
+                                size="small"
+                                label="Improvement Date"
+                                InputLabelProps={{ shrink: true }}
+                                value={config.lastImprovementDate}
+                                onChange={(e) =>
+                                    setConfig({
+                                        ...config,
+                                        lastImprovementDate: e.target.value,
+                                    })
+                                }
+                                error={!!errors.lastImprovementDate}
+                                helperText={errors.lastImprovementDate}
+                            />
                         </Grid>
 
                         {/* Description */}
@@ -278,7 +315,7 @@ const ImprovementBaselinePage = () => {
                     <DataGrid
                         autoHeight
                         loading={loading}
-                        rows={rows}
+                        rows={formattedRows}
                         columns={[
                             {
                                 field: "sno",
@@ -307,10 +344,19 @@ const ImprovementBaselinePage = () => {
                                 headerAlign: "center",
                             },
                             {
+                                field: "customer",
+                                headerName: "Customer",
+                                flex: 1.5,
+                                minWidth: 200,
+                                editable: false,
+                                align: "center",
+                                headerAlign: "center",
+                            },
+                            {
                                 field: "model",
                                 headerName: "Model",
-                                flex: 2,
-                                minWidth: 300,
+                                flex: 1.5,
+                                minWidth: 220,
                                 editable: false,
                                 align: "center",
                                 headerAlign: "center",
@@ -319,7 +365,7 @@ const ImprovementBaselinePage = () => {
                                 field: "description",
                                 headerName: "Description",
                                 flex: 2,
-                                minWidth: 300,
+                                minWidth: 280,
                                 editable: false,
                                 align: "center",
                                 headerAlign: "center",

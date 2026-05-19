@@ -1,6 +1,7 @@
 import { getRequest } from "./apiService";
 import { postRequest } from "./apiService";
 import { getRequestWithBody } from "./apiService";
+import { deleteRequest } from "./apiService";
 
 //getRequest 
 export const healthCheck = () => {
@@ -170,4 +171,13 @@ export const saveMonthlySalesData = (payload) => {
 export const deleteComplaint = (complaintId) => {
     return postRequest(`/complaints/delete-complaint`, { ComplaintId: complaintId });
 }
+
+export const deleteWarrantyClaimUpload = (uploadHeadId) => {
+    return getRequest(`/warranty-claims/delete/${uploadHeadId}`);
+}
+
+export const deleteDre = (dreId) => {
+    return getRequest(`/dre/delete/${dreId}`);
+}
+
 

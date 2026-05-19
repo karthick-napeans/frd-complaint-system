@@ -24,7 +24,7 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-  ComposedChart, ReferenceLine, LabelList
+  ComposedChart, ReferenceLine, LabelList, Brush
 } from "recharts";
 import CloseIcon from "@mui/icons-material/Close";
 import { getWrantyReport, getAllImprovementList } from "../api/pageApi";
@@ -44,12 +44,32 @@ const WarrantyAnalysis = () => {
   const [selectedModels, setSelectedModels] = useState([]);
   const [selectedParts, setSelectedParts] = useState([]);
   const [selectedRegions, setSelectedRegions] = useState([]);
+  const [selectedMonthYear, setSelectedMonthYear] = useState("");
+  const [hideDatePickers, setHideDatePickers] = useState(false);
+
+  const monthYearOptions = useMemo(() => {
+    const options = [];
+    const currentDate = new Date();
+    // Generate for the last 36 months
+    for (let i = 0; i < 36; i++) {
+      const d = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+      const year = d.getFullYear();
+      const monthNum = String(d.getMonth() + 1).padStart(2, "0");
+      const value = `${year}-${monthNum}`;
+
+      const label = d.toLocaleString("en-US", { month: "long", year: "numeric" });
+      options.push({ value, label });
+    }
+    return options;
+  }, []);
+
   const formatLocalYYYYMMDD = (date) => {
     const y = date.getFullYear();
     const m = String(date.getMonth() + 1).padStart(2, "0");
     const d = String(date.getDate()).padStart(2, "0");
     return `${y}-${m}-${d}`;
   };
+
   const [apiData, setApiData] = useState(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -65,6 +85,8 @@ const WarrantyAnalysis = () => {
   const [prodDateTo, setProdDateTo] = useState(today);
   const [repairFrom, setRepairFrom] = useState(lastYearMonthStart);
   const [repairTo, setRepairTo] = useState(today);
+  const [userSelectedProd, setUserSelectedProd] = useState(false);
+  const [userSelectedRepair, setUserSelectedRepair] = useState(false);
   const [errors, setErrors] = useState({});
   const hasFetchedOnce = useRef(false);
   const [latestImprovement, setLatestImprovement] = useState(null);
@@ -79,10 +101,8 @@ const WarrantyAnalysis = () => {
   ];
 
   const filteredBaselines = improvementList?.filter(b =>
-    selectedModels.includes(b.modelId)
+    selectedModels.includes(b.modelId) && b.customerId == customerSelected
   );
-
-
 
   useEffect(() => {
     dispatch(loadMasters());
@@ -106,6 +126,7 @@ const WarrantyAnalysis = () => {
         id: item.ImprovementId,
         modelCode: item.ModelCode || item.ModelName,
         modelId: item.ModelId,
+        customerId: item.CustomerId,
         yearMonth: item.ImprovementDate.slice(0, 7),
         description: item.Details,
         date: item.ImprovementDate,
@@ -134,6 +155,26 @@ const WarrantyAnalysis = () => {
     initLoad();
   }, [customerSelected]);
 
+  const handleMonthYearChange = (e) => {
+    const val = e.target.value;
+    setSelectedMonthYear(val);
+    if (val) {
+      const [yearStr, monthStr] = val.split("-");
+      const year = parseInt(yearStr, 10);
+      const month = parseInt(monthStr, 10);
+
+      const fromDateStr = `${yearStr}-${monthStr}-01`;
+      const lastDay = new Date(year, month, 0).getDate();
+      const toDateStr = `${yearStr}-${monthStr}-${String(lastDay).padStart(2, "0")}`;
+
+      setRepairFrom(fromDateStr);
+      setRepairTo(toDateStr);
+    } else {
+      setRepairFrom(lastYearMonthStart);
+      setRepairTo(today);
+    }
+  };
+
   const handleDateChange = (field, value) => {
     let newProdFrom = prodDateFrom;
     let newProdTo = prodDateTo;
@@ -143,21 +184,27 @@ const WarrantyAnalysis = () => {
     if (field === "prodDateFrom") {
       newProdFrom = value;
       setProdDateFrom(value);
+      setUserSelectedProd(true);
     }
 
     if (field === "prodDateTo") {
       newProdTo = value;
       setProdDateTo(value);
+      setUserSelectedProd(true);
     }
 
     if (field === "repairFrom") {
       newRepairFrom = value;
       setRepairFrom(value);
+      setUserSelectedRepair(true);
+      setSelectedMonthYear("");
     }
 
     if (field === "repairTo") {
       newRepairTo = value;
       setRepairTo(value);
+      setUserSelectedRepair(true);
+      setSelectedMonthYear("");
     }
 
     // validate using updated values
@@ -203,11 +250,16 @@ const WarrantyAnalysis = () => {
   };
 
   const handleApplyFilters = async () => {
-    const dateErrors = validateDates();
-
-    if (Object.keys(dateErrors).length > 0) {
-      setErrors(dateErrors);
-      return;
+    if (selectedMonthYear) {
+      setHideDatePickers(true);
+      setErrors({}); // Clear date picker validation errors since they are now hidden
+    } else {
+      setHideDatePickers(false);
+      const dateErrors = validateDates();
+      if (Object.keys(dateErrors).length > 0) {
+        setErrors(dateErrors);
+        return;
+      }
     }
 
     setLoading(true);
@@ -245,15 +297,32 @@ const WarrantyAnalysis = () => {
 
   const fetchWarrantyReport = async () => {
     try {
+      let formattedMonthYear = "";
+      if (selectedMonthYear) {
+        const parts = selectedMonthYear.split("-");
+        if (parts.length === 2) {
+          formattedMonthYear = `${parts[1]}${parts[0]}`;
+        }
+      }
+
+      const minDateDefaultObj = new Date(
+        todayObj.getFullYear() - 15,
+        todayObj.getMonth(),
+        todayObj.getDate()
+      );
+      const minDateDefault = formatLocalYYYYMMDD(minDateDefaultObj);
+      const maxDateDefault = today;
+
       const payload = {
         customerId: Number(customerSelected),
-        productionFromDate: prodDateFrom || null,
-        productionToDate: prodDateTo || null,
-        repairFromDate: repairFrom || null,
-        repairToDate: repairTo || null,
+        productionFromDate: userSelectedProd ? (prodDateFrom || null) : minDateDefault,
+        productionToDate: userSelectedProd ? (prodDateTo || null) : maxDateDefault,
+        repairFromDate: userSelectedRepair ? (repairFrom || null) : minDateDefault,
+        repairToDate: userSelectedRepair ? (repairTo || null) : maxDateDefault,
         modelList: selectedModels.map(id => models.find(m => m.ModelId === id)?.ModelCode).filter(Boolean) || [],
         partList: selectedParts || [],
         regionList: selectedRegions || [],
+        MonthYear: formattedMonthYear,
       };
 
       console.log("Sending Payload:", payload);
@@ -291,7 +360,11 @@ const WarrantyAnalysis = () => {
   };
 
   const downloadChart = async (id, fileName) => {
-    const element = document.getElementById(id);
+    let targetId = id;
+    if (id === "prodRepairDiv") {
+      targetId = "prodRepairDiv_full";
+    }
+    const element = document.getElementById(targetId);
     if (!element) return;
 
     const canvas = await html2canvas(element, {
@@ -404,6 +477,32 @@ const WarrantyAnalysis = () => {
 
   }, [apiData]);
 
+  // 6️⃣ Cause Code Distribution
+  const causeCodeData = useMemo(() => {
+    if (!apiData?.CauseCodeDistribution) return [];
+
+    return apiData.CauseCodeDistribution.map(item => {
+      const labelKey = Object.keys(item).find(key => key !== "FailureCount") || "Region";
+      return {
+        name: item[labelKey]?.trim() || "N/A",
+        count: item.FailureCount || 0,
+      };
+    });
+  }, [apiData]);
+
+  // 7️⃣ Domestic vs Export Distribution
+  const domesticExportData = useMemo(() => {
+    if (!apiData?.DomesticExportDistribution) return [];
+
+    return apiData.DomesticExportDistribution.map(item => {
+      const labelKey = Object.keys(item).find(key => key !== "FailureCount") || "Region";
+      return {
+        name: item[labelKey]?.trim() || "N/A",
+        count: item.FailureCount || 0,
+      };
+    });
+  }, [apiData]);
+
   const sortedData = [...prodRepairData].sort((a, b) => {
     return new Date(a.month) - new Date(b.month);
   });
@@ -432,8 +531,6 @@ const WarrantyAnalysis = () => {
           </Button>
         )}
       </Box>
-
-
 
       <Collapse in={filtersOpen} timeout="auto" unmountOnExit>
         <Card
@@ -472,7 +569,7 @@ const WarrantyAnalysis = () => {
             <Grid container spacing={2}>
 
               {/* ROW 1 */}
-              <Grid item xs={12} md={3}>
+              <Grid item xs={12} md={2.4}>
                 <FormControl
                   fullWidth
                   size="small"
@@ -496,10 +593,11 @@ const WarrantyAnalysis = () => {
                     ))}
                   </Select>
                 </FormControl>
-
               </Grid>
 
-              <Grid item xs={12} md={3}>
+
+
+              <Grid item xs={12} md={2.4}>
                 <FormControl
                   fullWidth
                   size="small"
@@ -534,7 +632,7 @@ const WarrantyAnalysis = () => {
                 </FormControl>
               </Grid>
 
-              <Grid item xs={12} md={3}>
+              <Grid item xs={12} md={2.4}>
                 <FormControl
                   fullWidth
                   size="small"
@@ -571,7 +669,7 @@ const WarrantyAnalysis = () => {
                 </FormControl>
               </Grid>
 
-              <Grid item xs={12} md={3}>
+              <Grid item xs={12} md={2.4}>
                 <FormControl
                   fullWidth
                   size="small"
@@ -599,67 +697,99 @@ const WarrantyAnalysis = () => {
                 </FormControl>
               </Grid>
 
+              <Grid item xs={12} md={2.4}>
+                <FormControl
+                  fullWidth
+                  size="small"
+                  sx={{
+                    "& .MuiInputLabel-root": {
+                      backgroundColor: "#fff",
+                      px: 0.5,
+                    }
+                  }}
+                >
+                  <InputLabel shrink>Month & Year</InputLabel>
+                  <Select
+                    value={selectedMonthYear}
+                    onChange={handleMonthYearChange}
+                    label="Month & Year"
+                  >
+                    <MenuItem value="">
+                      <em>All Months</em>
+                    </MenuItem>
+                    {monthYearOptions.map((opt) => (
+                      <MenuItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+
               {/* ROW 2 - 4 DATE PICKERS */}
+              {!hideDatePickers && (
+                <>
+                  <Grid item xs={12} md={3}>
+                    <TextField
+                      type="date"
+                      label="Production From"
+                      value={prodDateFrom}
+                      onChange={(e) => handleDateChange("prodDateFrom", e.target.value)}
+                      fullWidth
+                      size="small"
+                      InputLabelProps={{ shrink: true }}
+                      inputProps={{ max: today }}
+                      error={!!errors.prodDateFrom}
+                      helperText={errors.prodDateFrom}
+                    />
+                  </Grid>
 
-              <Grid item xs={12} md={3}>
-                <TextField
-                  type="date"
-                  label="Production From"
-                  value={prodDateFrom}
-                  onChange={(e) => handleDateChange("prodDateFrom", e.target.value)}
-                  fullWidth
-                  size="small"
-                  InputLabelProps={{ shrink: true }}
-                  inputProps={{ max: today }}
-                  error={!!errors.prodDateFrom}
-                  helperText={errors.prodDateFrom}
-                />
-              </Grid>
+                  <Grid item xs={12} md={3}>
+                    <TextField
+                      type="date"
+                      label="Production To"
+                      value={prodDateTo}
+                      onChange={(e) => handleDateChange("prodDateTo", e.target.value)}
+                      fullWidth
+                      size="small"
+                      InputLabelProps={{ shrink: true }}
+                      inputProps={{ max: today }}
+                      error={!!errors.prodDateTo}
+                      helperText={errors.prodDateTo}
+                    />
+                  </Grid>
 
-              <Grid item xs={12} md={3}>
-                <TextField
-                  type="date"
-                  label="Production To"
-                  value={prodDateTo}
-                  onChange={(e) => handleDateChange("prodDateTo", e.target.value)}
-                  fullWidth
-                  size="small"
-                  InputLabelProps={{ shrink: true }}
-                  inputProps={{ max: today }}
-                  error={!!errors.prodDateTo}
-                  helperText={errors.prodDateTo}
-                />
-              </Grid>
+                  <Grid item xs={12} md={3}>
+                    <TextField
+                      type="date"
+                      label="Repair From"
+                      value={repairFrom}
+                      onChange={(e) => handleDateChange("repairFrom", e.target.value)}
+                      fullWidth
+                      size="small"
+                      InputLabelProps={{ shrink: true }}
+                      inputProps={{ max: today }}
+                      error={!!errors.repairFrom}
+                      helperText={errors.repairFrom}
+                    />
+                  </Grid>
 
-              <Grid item xs={12} md={3}>
-                <TextField
-                  type="date"
-                  label="Repair From"
-                  value={repairFrom}
-                  onChange={(e) => handleDateChange("repairFrom", e.target.value)}
-                  fullWidth
-                  size="small"
-                  InputLabelProps={{ shrink: true }}
-                  inputProps={{ max: today }}
-                  error={!!errors.repairFrom}
-                  helperText={errors.repairFrom}
-                />
-              </Grid>
-
-              <Grid item xs={12} md={3}>
-                <TextField
-                  type="date"
-                  label="Repair To"
-                  value={repairTo}
-                  onChange={(e) => handleDateChange("repairTo", e.target.value)}
-                  fullWidth
-                  size="small"
-                  InputLabelProps={{ shrink: true }}
-                  inputProps={{ max: today }}
-                  error={!!errors.repairTo}
-                  helperText={errors.repairTo}
-                />
-              </Grid>
+                  <Grid item xs={12} md={3}>
+                    <TextField
+                      type="date"
+                      label="Repair To"
+                      value={repairTo}
+                      onChange={(e) => handleDateChange("repairTo", e.target.value)}
+                      fullWidth
+                      size="small"
+                      InputLabelProps={{ shrink: true }}
+                      inputProps={{ max: today }}
+                      error={!!errors.repairTo}
+                      helperText={errors.repairTo}
+                    />
+                  </Grid>
+                </>
+              )}
 
             </Grid>
 
@@ -680,6 +810,10 @@ const WarrantyAnalysis = () => {
                   setProdDateTo(today);
                   setRepairFrom(lastYearMonthStart);
                   setRepairTo(today);
+                  setUserSelectedProd(false);
+                  setUserSelectedRepair(false);
+                  setSelectedMonthYear("");
+                  setHideDatePickers(false);
                 }}
               >
                 Reset
@@ -698,8 +832,6 @@ const WarrantyAnalysis = () => {
         </Card>
       </Collapse>
 
-
-      {/* Charts */}
       <Grid container spacing={3}>
 
         {/* ✅ ROW 1 — FULL WIDTH */}
@@ -884,6 +1016,16 @@ const WarrantyAnalysis = () => {
                         );
                       });
                     })()}
+                    {sortedData.length > 0 && (
+                      <Brush
+                        dataKey="month"
+                        height={26}
+                        stroke="#3b82f6"
+                        fill="#f8fafc"
+                        startIndex={Math.max(0, sortedData.length - 36)}
+                        endIndex={sortedData.length - 1}
+                      />
+                    )}
                   </ComposedChart>
 
 
@@ -932,6 +1074,56 @@ const WarrantyAnalysis = () => {
             </div>
           </Card>
         </Grid>
+
+        {/* Hidden full-width chart for screenshot purposes (15 years of data) */}
+        <div
+          id="prodRepairDiv_full"
+          style={{
+            position: "absolute",
+            left: "-9999px",
+            top: "-9999px",
+            width: "1800px",
+            background: "#ffffff",
+          }}
+        >
+          <div style={{ padding: "30px" }}>
+            <Typography variant="h5" fontWeight="bold" sx={{ mb: 3, color: "#3b3b3b", textAlign: "center" }}>
+              Production vs Repair (Full 15 Years Trend)
+            </Typography>
+            <ResponsiveContainer width="100%" height={500}>
+              <ComposedChart data={sortedData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis
+                  dataKey="month"
+                  angle={-60}
+                  textAnchor="end"
+                  interval={Math.ceil(sortedData.length / 40)}
+                  height={100}
+                  tick={{ fontSize: 13 }}
+                />
+                <YAxis allowDecimals={false} domain={[5, (dataMax) => dataMax + 20]} />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="production" fill="#3b82f6" barSize={15} />
+                <Line
+                  type="monotone"
+                  dataKey="repair"
+                  stroke="#ef4444"
+                  strokeWidth={2}
+                  dot={{ r: 2 }}
+                >
+                  <LabelList
+                    dataKey="repair"
+                    position="top"
+                    fill="#000000"
+                    fontSize={10}
+                    offset={6}
+                  />
+                </Line>
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
 
         {/* ✅ ROW 2 — 50% + 50% */}
         <Grid item xs={12} md={6}>
@@ -1157,6 +1349,108 @@ const WarrantyAnalysis = () => {
           </Card>
         </Grid>
 
+        {/* ✅ ROW 4 — 50% + 50% */}
+        <Grid item xs={12} md={6}>
+          <Card>
+            <div id="causeCodeDiv">
+              <CardContent>
+                <Box display="flex" justifyContent="space-between" alignItems="center">
+                  <Typography fontWeight="bold">
+                    Cause Code Distribution
+                  </Typography>
+
+                  <IconButton
+                    size="small"
+                    onClick={() => downloadChart("causeCodeDiv", "cause_code_distribution")}
+                  >
+                    <DownloadIcon />
+                  </IconButton>
+                </Box>
+
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart
+                    layout="vertical"
+                    data={causeCodeData}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis
+                      type="number"
+                      domain={[
+                        0,
+                        (dataMax) => {
+                          const even = Math.ceil(dataMax);
+                          return even % 2 === 0 ? even : even + 1;
+                        }
+                      ]}
+                      allowDecimals={false}
+                    />
+                    <YAxis dataKey="name" type="category" interval={0} width={80} />
+                    <Tooltip />
+                    <Bar dataKey="count" fill="#ec4899" barSize={25}>
+                      <LabelList
+                        dataKey="count"
+                        position="right"
+                        offset={6}
+                        fill="#000"
+                        fontSize={14}
+                      />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </div>
+          </Card>
+        </Grid>
+
+        <Grid item xs={12} md={6}>
+          <Card>
+            <div id="domesticExportDiv">
+              <CardContent>
+                <Box display="flex" justifyContent="space-between" alignItems="center">
+                  <Typography fontWeight="bold">
+                    Domestic / Export Distribution
+                  </Typography>
+
+                  <IconButton
+                    size="small"
+                    onClick={() => downloadChart("domesticExportDiv", "domestic_export_distribution")}
+                  >
+                    <DownloadIcon />
+                  </IconButton>
+                </Box>
+
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart
+                    data={domesticExportData}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis
+                      domain={[
+                        0,
+                        (dataMax) => {
+                          const even = Math.ceil(dataMax);
+                          return even % 2 === 0 ? even : even + 1;
+                        }
+                      ]}
+                      allowDecimals={false}
+                    />
+                    <Tooltip />
+                    <Bar dataKey="count" fill="#06b6d4" barSize={40}>
+                      <LabelList
+                        dataKey="count"
+                        position="top"
+                        offset={6}
+                        fill="#000"
+                        fontSize={14}
+                      />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </div>
+          </Card>
+        </Grid>
 
       </Grid>
     </Box>);

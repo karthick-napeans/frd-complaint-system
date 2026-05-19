@@ -524,18 +524,22 @@ const CustomerSummary = ({ userRole }) => {
                                 value={filterPart}
                                 onChange={(e) => setFilterPart(e.target.value)}
                             >
-
+                                <MenuItem value="">All Parts</MenuItem>
                                 {[...new Set(
                                     rows
                                         .map(r => r.Part)
                                         .filter(val => val && val.trim() !== "")
                                 )]
                                     .sort((a, b) => a.localeCompare(b))
-                                    .map((part) => (
-                                        <MenuItem key={part} value={part}>
-                                            {part}
-                                        </MenuItem>
-                                    ))}
+                                    .map((partNo) => {
+                                        const partObj = parts.find(p => p.PartNumber === partNo);
+                                        const displayName = partObj ? `${partNo} - ${partObj.PartName}` : partNo;
+                                        return (
+                                            <MenuItem key={partNo} value={partNo}>
+                                                {displayName}
+                                            </MenuItem>
+                                        );
+                                    })}
                             </TextField>
                         </Grid>
 
@@ -548,7 +552,7 @@ const CustomerSummary = ({ userRole }) => {
                                 value={filterStatus}
                                 onChange={(e) => setFilterStatus(e.target.value)}
                             >
-
+                                <MenuItem value="">All Status</MenuItem>
                                 {[...new Set(
                                     rows
                                         .map(r => r.Status)
@@ -572,7 +576,7 @@ const CustomerSummary = ({ userRole }) => {
                                 value={filterSeverity}
                                 onChange={(e) => setFilterSeverity(e.target.value)}
                             >
-
+                                <MenuItem value="">All Severities</MenuItem>
                                 {[...new Set(
                                     rows
                                         .map(r => r.Severity)

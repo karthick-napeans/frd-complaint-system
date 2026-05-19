@@ -37,6 +37,7 @@ const MASTER_ID_FIELD = {
   model: "ModelId",
   part: "PartId",
   cause: "RepairCauseCodeId",
+  nature: "NatureCodeId",
   attachment: "Id",
 };
 
@@ -44,7 +45,8 @@ const MASTER_LABEL = {
   customer: "Customer",
   model: "Model",
   part: "Part",
-  cause: "Nature Code",
+  cause: "Cause Code",
+  nature: "Nature Code",
   attachment: "Checklist Attachment",
 };
 
@@ -109,6 +111,22 @@ const MASTER_FORM_CONFIG = {
   cause: [
     {
       name: "Code",
+      label: "Cause Code",
+      required: true,
+      pattern: /^[A-Za-z0-9 ]+$/,
+      patternMessage: "Special characters are not allowed",
+    },
+    {
+      name: "CodeDescription",
+      label: "Description",
+      multiline: true,
+      required: true,
+    },
+  ],
+
+  nature: [
+    {
+      name: "Code",
       label: "Nature Code",
       required: true,
       pattern: /^[A-Za-z0-9 ]+$/,
@@ -116,11 +134,13 @@ const MASTER_FORM_CONFIG = {
     },
     {
       name: "CodeDescription",
-      label: "Nature Code Description",
+      label: "Description",
       multiline: true,
       required: true,
     },
   ],
+
+
   attachment: [
     {
       name: "Name",
@@ -406,10 +426,31 @@ const MasterData = ({ userRole = "Admin" }) => {
 
 
       cause: [
+        { field: "Code", headerName: "Cause Code", width: 180 },
+        {
+          field: "CodeDescription",
+          headerName: "Description",
+          width: 500,
+          renderCell: (params) => (
+            <Box sx={{ whiteSpace: "normal", lineHeight: "1.4", py: 1, textAlign: "left", width: "100%" }}>
+              {params.value}
+            </Box>
+          ),
+        },
+        {
+          field: "IsActive",
+          headerName: "Status",
+          width: 120,
+          renderCell: (p) => <StatusChip value={p.value} />,
+        },
+        { ...actionColumn, width: 120 },
+      ],
+
+      nature: [
         { field: "Code", headerName: "Nature Code", width: 180 },
         {
           field: "CodeDescription",
-          headerName: "Nature Code Description",
+          headerName: "Description",
           width: 500,
           renderCell: (params) => (
             <Box sx={{ whiteSpace: "normal", lineHeight: "1.4", py: 1, textAlign: "left", width: "100%" }}>
@@ -481,7 +522,8 @@ const MasterData = ({ userRole = "Admin" }) => {
             <option value="customer">Customer</option>
             <option value="model">Model</option>
             <option value="part">Part</option>
-            <option value="cause">Nature Code</option>
+            <option value="cause">Cause Code</option>
+            <option value="nature">Nature Code</option>
             <option value="attachment">Checklist Attachment</option>
           </TextField>
         </CardContent>
