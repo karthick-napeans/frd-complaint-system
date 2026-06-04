@@ -32,6 +32,10 @@ export const getMstRepairCause = () => {
     return getRequest("/masters/repair-cause-codes");
 }
 
+export const getMstDefects = () => {
+    return getRequest("/masters/defect");
+}
+
 export const getMstColumns = () => {
     return getRequest(`/field-report/master-columns`);
 };

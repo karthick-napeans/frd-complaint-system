@@ -11,14 +11,16 @@ export const loadMasters = createAsyncThunk(
       parts,
       models,
       repairCauses,
+      defects,
     ] = await Promise.all([ 
       api.getMstCustomers(),
       api.getMstParts(),
       api.getMstModels(),
       api.getMstRepairCause(),
+      api.getMstDefects().catch(() => []), // Safe catch if endpoint is not fully ready
     ]);
 
-    return { customers, parts, models, repairCauses };
+    return { customers, parts, models, repairCauses, defects };
   }
 );
 
@@ -29,6 +31,7 @@ const masterSlice = createSlice({
     parts: [],
     models: [],
     repairCauses: [],
+    defects: [],
     loaded: false,
   },
   reducers: {
@@ -58,6 +61,7 @@ const masterSlice = createSlice({
       state.parts = action.payload.parts || [];
       state.models = action.payload.models || [];
       state.repairCauses = action.payload.repairCauses || [];
+      state.defects = action.payload.defects || [];
       state.loaded = true;
     });
   },

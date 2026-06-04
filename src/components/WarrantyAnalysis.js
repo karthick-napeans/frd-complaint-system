@@ -43,7 +43,25 @@ const WarrantyAnalysis = () => {
   const [rawData, setRawData] = useState([]);
   const [selectedModels, setSelectedModels] = useState([]);
   const [selectedParts, setSelectedParts] = useState([]);
+  const [modelSearch, setModelSearch] = useState("");
+  const [partSearch, setPartSearch] = useState("");
   const [selectedRegions, setSelectedRegions] = useState([]);
+
+  const filteredModels = useMemo(() => {
+    return models
+      ?.filter((model) => model.IsActive)
+      .filter((model) =>
+        model.ModelName.toLowerCase().includes(modelSearch.toLowerCase())
+      ) || [];
+  }, [models, modelSearch]);
+
+  const filteredParts = useMemo(() => {
+    return parts
+      ?.filter((part) => part.IsActive)
+      .filter((part) =>
+        part.PartNumber.toLowerCase().includes(partSearch.toLowerCase())
+      ) || [];
+  }, [parts, partSearch]);
   const [selectedMonthYear, setSelectedMonthYear] = useState("");
   const [hideDatePickers, setHideDatePickers] = useState(false);
 
@@ -100,9 +118,13 @@ const WarrantyAnalysis = () => {
     "#00d9ff", // cyan
   ];
 
-  const filteredBaselines = improvementList?.filter(b =>
-    selectedModels.includes(b.modelId) && b.customerId == customerSelected
-  );
+  const filteredBaselines = (customerSelected && selectedModels.length > 0 && selectedParts.length > 0)
+    ? improvementList?.filter(b =>
+        selectedModels.includes(b.modelId) && 
+        b.customerId == customerSelected &&
+        selectedParts.includes(b.partNumber)
+      )
+    : [];
 
   useEffect(() => {
     dispatch(loadMasters());
@@ -127,6 +149,7 @@ const WarrantyAnalysis = () => {
         modelCode: item.ModelCode || item.ModelName,
         modelId: item.ModelId,
         customerId: item.CustomerId,
+        partNumber: item.PartNumber,
         yearMonth: item.ImprovementDate.slice(0, 7),
         description: item.Details,
         date: item.ImprovementDate,
@@ -608,26 +631,54 @@ const WarrantyAnalysis = () => {
                     }
                   }}
                 >
-                  <InputLabel shrink>Model</InputLabel>
-                  <Select
+                                   <Select
                     multiple
                     value={selectedModels}
                     onChange={(e) => setSelectedModels(e.target.value)}
+                    onClose={() => setModelSearch("")}
                     renderValue={(selected) =>
                       selected
-                        .map((id) => models.find((m) => m.ModelId === id)?.ModelCode)
+                        .map((id) => models.find((m) => m.ModelId === id)?.ModelName)
                         .filter(Boolean)
                         .join(", ")
                     }
+                    MenuProps={{
+                      autoFocus: false,
+                      PaperProps: {
+                        style: {
+                          maxHeight: 300,
+                        }
+                      }
+                    }}
                   >
-                    {models
-                      ?.filter((model) => model.IsActive)
-                      .map((model) => (
-                        <MenuItem key={model.ModelId} value={model.ModelId}>
-                          <Checkbox checked={selectedModels.includes(model.ModelId)} />
-                          <ListItemText primary={`${model.ModelCode} - ${model.ModelName}`} />
-                        </MenuItem>
-                      ))}
+                    <Box
+                      sx={{
+                        position: "sticky",
+                        top: 0,
+                        bgcolor: "background.paper",
+                        zIndex: 1,
+                        p: 1,
+                        borderBottom: "1px solid #e0e0e0"
+                      }}
+                      onKeyDown={(e) => e.stopPropagation()}
+                    >
+                      <TextField
+                        size="small"
+                        autoFocus
+                        placeholder="Search Model..."
+                        fullWidth
+                        value={modelSearch}
+                        onChange={(e) => setModelSearch(e.target.value)}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </Box>
+
+                    {filteredModels.map((model) => (
+                      <MenuItem key={model.ModelId} value={model.ModelId}>
+                        <Checkbox checked={selectedModels.includes(model.ModelId)} />
+                        <ListItemText primary={model.ModelName} />
+                      </MenuItem>
+                    ))}
                   </Select>
                 </FormControl>
               </Grid>
@@ -648,23 +699,57 @@ const WarrantyAnalysis = () => {
                     multiple
                     value={selectedParts}
                     onChange={(e) => setSelectedParts(e.target.value)}
-                    renderValue={(selected) => selected.join(", ")}
+                    onClose={() => setPartSearch("")}
+                    renderValue={(selected) =>
+                      selected
+                        .map((num) => parts.find((p) => p.PartNumber === num)?.PartNumber)
+                        .filter(Boolean)
+                        .join(", ")
+                    }
+                    MenuProps={{
+                      autoFocus: false,
+                      PaperProps: {
+                        style: {
+                          maxHeight: 300,
+                        }
+                      }
+                    }}
                   >
-                    {parts
-                      ?.filter((part) => part.IsActive)
-                      .map((part) => (
-                        <MenuItem
-                          key={part.PartId}
-                          value={part.PartNumber}   // ✅ send PartNumber
-                        >
-                          <Checkbox
-                            checked={selectedParts.includes(part.PartNumber)}
-                          />
-                          <ListItemText
-                            primary={`${part.PartNumber} - ${part.PartName}`}
-                          />
-                        </MenuItem>
-                      ))}
+                    <Box
+                      sx={{
+                        position: "sticky",
+                        top: 0,
+                        bgcolor: "background.paper",
+                        zIndex: 1,
+                        p: 1,
+                        borderBottom: "1px solid #e0e0e0"
+                      }}
+                      onKeyDown={(e) => e.stopPropagation()}
+                    >
+                      <TextField
+                        size="small"
+                        autoFocus
+                        placeholder="Search Part Number..."
+                        fullWidth
+                        value={partSearch}
+                        onChange={(e) => setPartSearch(e.target.value)}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </Box>
+
+                    {filteredParts.map((part) => (
+                      <MenuItem
+                        key={part.PartId}
+                        value={part.PartNumber}   // ✅ send PartNumber
+                      >
+                        <Checkbox
+                          checked={selectedParts.includes(part.PartNumber)}
+                        />
+                        <ListItemText
+                          primary={part.PartNumber}
+                        />
+                      </MenuItem>
+                    ))}
                   </Select>
                 </FormControl>
               </Grid>
@@ -922,7 +1007,16 @@ const WarrantyAnalysis = () => {
                     />
                     <Legend />
 
-                    <Bar dataKey="production" fill="#3b82f6" barSize={25} />
+                    <Bar dataKey="production" fill="#3b82f6" barSize={25}>
+                      <LabelList
+                        dataKey="production"
+                        position="top"
+                        fill="#3b82f6"
+                        fontSize={12}
+                        fontWeight="bold"
+                        offset={6}
+                      />
+                    </Bar>
 
                     <Line
                       type="monotone"
@@ -933,11 +1027,11 @@ const WarrantyAnalysis = () => {
                     >
                       <LabelList
                         dataKey="repair"
-                        position="top"
-                        fill="#000000"
+                        position="right"
+                        fill="#ef4444"
                         fontSize={12}
-                        offset={9}
-
+                        fontWeight="bold"
+                        offset={6}
                       />
                     </Line>
 
@@ -1075,8 +1169,7 @@ const WarrantyAnalysis = () => {
           </Card>
         </Grid>
 
-        {/* Hidden full-width chart for screenshot purposes (15 years of data) */}
-        <div
+         <div
           id="prodRepairDiv_full"
           style={{
             position: "absolute",
@@ -1104,7 +1197,16 @@ const WarrantyAnalysis = () => {
                 <YAxis allowDecimals={false} domain={[5, (dataMax) => dataMax + 20]} />
                 <Tooltip />
                 <Legend />
-                <Bar dataKey="production" fill="#3b82f6" barSize={15} />
+                <Bar dataKey="production" fill="#3b82f6" barSize={15}>
+                  <LabelList
+                    dataKey="production"
+                    position="top"
+                    fill="#3b82f6"
+                    fontSize={10}
+                    fontWeight="bold"
+                    offset={6}
+                  />
+                </Bar>
                 <Line
                   type="monotone"
                   dataKey="repair"
@@ -1114,9 +1216,10 @@ const WarrantyAnalysis = () => {
                 >
                   <LabelList
                     dataKey="repair"
-                    position="top"
-                    fill="#000000"
+                    position="right"
+                    fill="#ef4444"
                     fontSize={10}
+                    fontWeight="bold"
                     offset={6}
                   />
                 </Line>

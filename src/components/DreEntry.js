@@ -118,6 +118,9 @@ const DREEntry = () => {
     status: 'Draft',
   });
 
+  const [modelSearch, setModelSearch] = useState("");
+  const [partSearch, setPartSearch] = useState("");
+
   const resetForm = () => {
     setFormData(EMPTY_FORM);
     setAttachments([]);
@@ -493,13 +496,52 @@ const DREEntry = () => {
                         name="model"
                         value={formData.model}
                         onChange={handleSelectChange}
+                        onClose={() => setModelSearch("")}
+                        renderValue={(selected) => {
+                          const m = activeModels.find(x => x.ModelName === selected);
+                          return m ? m.ModelName : (selected || "");
+                        }}
                         label="Model *"
+                        MenuProps={{
+                          autoFocus: false,
+                          PaperProps: {
+                            style: {
+                              maxHeight: 300,
+                            }
+                          }
+                        }}
                       >
-                        {activeModels.map((m) => (
-                          <MenuItem key={m.ModelId} value={m.ModelName}>
-                            {m.ModelCode} - {m.ModelName}
-                          </MenuItem>
-                        ))}
+                        <Box
+                          sx={{
+                            position: "sticky",
+                            top: 0,
+                            bgcolor: "background.paper",
+                            zIndex: 1,
+                            p: 1,
+                            borderBottom: "1px solid #e0e0e0"
+                          }}
+                          onKeyDown={(e) => e.stopPropagation()}
+                        >
+                          <TextField
+                            size="small"
+                            autoFocus
+                            placeholder="Search Model..."
+                            fullWidth
+                            value={modelSearch}
+                            onChange={(e) => setModelSearch(e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </Box>
+                        {activeModels
+                          .filter((m) =>
+                            m.ModelName.toLowerCase().includes(modelSearch.toLowerCase())
+                          )
+                          .map((m) => (
+                            <MenuItem key={m.ModelId} value={m.ModelName}>
+                              {m.ModelName}
+                            </MenuItem>
+                          ))
+                        }
                       </Select>
 
                       <FormHelperText>
@@ -519,13 +561,52 @@ const DREEntry = () => {
                         name="part"
                         value={formData.part}
                         onChange={handleSelectChange}
+                        onClose={() => setPartSearch("")}
+                        renderValue={(selected) => {
+                          const p = activeParts.find(x => x.PartNumber === selected);
+                          return p ? p.PartNumber : (selected || "");
+                        }}
                         label="Part *"
+                        MenuProps={{
+                          autoFocus: false,
+                          PaperProps: {
+                            style: {
+                              maxHeight: 300,
+                            }
+                          }
+                        }}
                       >
-                        {activeParts.map((p) => (
-                          <MenuItem key={p.PartId} value={p.PartNumber}>
-                            {p.PartNumber} - {p.PartName}
-                          </MenuItem>
-                        ))}
+                        <Box
+                          sx={{
+                            position: "sticky",
+                            top: 0,
+                            bgcolor: "background.paper",
+                            zIndex: 1,
+                            p: 1,
+                            borderBottom: "1px solid #e0e0e0"
+                          }}
+                          onKeyDown={(e) => e.stopPropagation()}
+                        >
+                          <TextField
+                            size="small"
+                            autoFocus
+                            placeholder="Search Part Number..."
+                            fullWidth
+                            value={partSearch}
+                            onChange={(e) => setPartSearch(e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </Box>
+                        {activeParts
+                          .filter((p) =>
+                            p.PartNumber.toLowerCase().includes(partSearch.toLowerCase())
+                          )
+                          .map((p) => (
+                            <MenuItem key={p.PartId} value={p.PartNumber}>
+                              {p.PartNumber}
+                            </MenuItem>
+                          ))
+                        }
                       </Select>
 
                       <FormHelperText>
@@ -707,9 +788,9 @@ const DREEntry = () => {
 
                       <Grid item xs={12}>
                         <Typography>
-                          <b>Part:</b> {(() => {
+                           <b>Part:</b> {(() => {
                             const p = activeParts.find(x => x.PartNumber === formData.part);
-                            return p ? `${p.PartNumber} - ${p.PartName}` : (formData.part || '-');
+                            return p ? p.PartNumber : (formData.part || '-');
                           })()}
                         </Typography>
                       </Grid>

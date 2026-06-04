@@ -51,12 +51,17 @@ import IconButton from "@mui/material/IconButton";
 
 const ComplaintForm = () => {
   const dispatch = useDispatch();
-  const { parts, models, repairCauses, customers } = useSelector((state) => state.masters);
+  const { parts, models, repairCauses, customers, defects } = useSelector((state) => state.masters);
   console.log('Model Form Complaint Form', models);
   const activeCustomers = customers.filter((p) => p.IsActive === true);
   const activeParts = parts.filter((p) => p.IsActive === true);
   const activeModels = models.filter((m) => m.IsActive === true);
   const activeRepairCauses = repairCauses.filter((c) => c.IsActive === true);
+  const activeDefects = defects ? defects.filter((d) => d.IsActive === true) : [];
+  const fallbackDefects = ["Dent", "Scratch", "Dimension Issue", "Broken", "Leakage", "Others"];
+  const displayDefects = activeDefects.length > 0
+    ? activeDefects.map((d) => d.Defect)
+    : fallbackDefects;
   const [expandedPanel, setExpandedPanel] = useState(null);
   const SEVERITY_LEVELS = ["Low", "Medium", "High", "Critical"];
   const [activeStep, setActiveStep] = useState(0);
@@ -96,6 +101,8 @@ const ComplaintForm = () => {
     problemStatement: "",
     quantity: "",
     severityLevel: SEVERITY_LEVELS[0],
+    fourM: "",
+    defect: "",
     attachments: [],
     status: "",
   };
@@ -103,6 +110,8 @@ const ComplaintForm = () => {
   const [submitLoading, setSubmitLoading] = useState(false);
   const [draftLoading, setDraftLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [modelSearch, setModelSearch] = useState("");
+  const [partSearch, setPartSearch] = useState("");
   const [originalChecklist, setOriginalChecklist] = useState([]);
 
   useEffect(() => {
@@ -317,6 +326,8 @@ const ComplaintForm = () => {
       problemStatement: draft.ProblemStatement || "",
       quantity: draft.CauseCode || "",
       severityLevel: draft.Severity || SEVERITY_LEVELS[0],
+      fourM: draft["4M"] || draft.FourM || draft.fourM || "",
+      defect: draft.Defect || draft.defect || "",
       status: draft.Status || "DRAFT",
     });
 
@@ -451,6 +462,12 @@ const ComplaintForm = () => {
       if (!formData.quantity)
         tempErrors.quantity = "Required";
 
+      if (!formData.fourM)
+        tempErrors.fourM = "Required";
+
+      if (!formData.defect)
+        tempErrors.defect = "Required";
+
       if (Object.keys(tempErrors).length > 0) {
         console.log(">>> Step 1 Errors:", tempErrors);
         setErrors(tempErrors);
@@ -512,6 +529,8 @@ const ComplaintForm = () => {
     fd.append("IsRegistred", String(formData.IsRegistered ?? true));
     fd.append("Quantity", formData.quantity || "");
     fd.append("Severity", formData.severityLevel || "");
+    fd.append("FourM", formData.fourM || "");
+    fd.append("Defect", formData.defect || "");
     fd.append("Status", status);
 
     const checklist = [];
@@ -1022,12 +1041,51 @@ const ComplaintForm = () => {
                         value={formData.modelSelected || ""}
                         label="Model"
                         onChange={handleSelectChange}
+                        onClose={() => setModelSearch("")}
+                        renderValue={(selected) => {
+                          const m = activeModels.find(x => x.ModelId === selected);
+                          return m ? m.ModelName : (selected || "");
+                        }}
+                        MenuProps={{
+                          autoFocus: false,
+                          PaperProps: {
+                            style: {
+                              maxHeight: 300,
+                            }
+                          }
+                        }}
                       >
-                        {activeModels.map((m) => (
-                          <MenuItem key={m.ModelId} value={m.ModelId}>
-                            {m.ModelCode} - {m.ModelName}
-                          </MenuItem>
-                        ))}
+                        <Box
+                          sx={{
+                            position: "sticky",
+                            top: 0,
+                            bgcolor: "background.paper",
+                            zIndex: 1,
+                            p: 1,
+                            borderBottom: "1px solid #e0e0e0"
+                          }}
+                          onKeyDown={(e) => e.stopPropagation()}
+                        >
+                          <TextField
+                            size="small"
+                            autoFocus
+                            placeholder="Search Model..."
+                            fullWidth
+                            value={modelSearch}
+                            onChange={(e) => setModelSearch(e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </Box>
+                        {activeModels
+                          .filter((m) =>
+                            m.ModelName.toLowerCase().includes(modelSearch.toLowerCase())
+                          )
+                          .map((m) => (
+                            <MenuItem key={m.ModelId} value={m.ModelId}>
+                              {m.ModelName}
+                            </MenuItem>
+                          ))
+                        }
                       </Select>
                       <FormHelperText>
                         {errors.modelSelected || " "}
@@ -1044,12 +1102,51 @@ const ComplaintForm = () => {
                         value={formData.partSelected || ""}
                         label="Part"
                         onChange={handleSelectChange}
+                        onClose={() => setPartSearch("")}
+                        renderValue={(selected) => {
+                          const p = activeParts.find(x => x.PartId === selected);
+                          return p ? p.PartNumber : (selected || "");
+                        }}
+                        MenuProps={{
+                          autoFocus: false,
+                          PaperProps: {
+                            style: {
+                              maxHeight: 300,
+                            }
+                          }
+                        }}
                       >
-                        {activeParts.map((p) => (
-                          <MenuItem key={p.PartId} value={p.PartId}>
-                            {p.PartNumber} - {p.PartName}
-                          </MenuItem>
-                        ))}
+                        <Box
+                          sx={{
+                            position: "sticky",
+                            top: 0,
+                            bgcolor: "background.paper",
+                            zIndex: 1,
+                            p: 1,
+                            borderBottom: "1px solid #e0e0e0"
+                          }}
+                          onKeyDown={(e) => e.stopPropagation()}
+                        >
+                          <TextField
+                            size="small"
+                            autoFocus
+                            placeholder="Search Part Number..."
+                            fullWidth
+                            value={partSearch}
+                            onChange={(e) => setPartSearch(e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </Box>
+                        {activeParts
+                          .filter((p) =>
+                            p.PartNumber.toLowerCase().includes(partSearch.toLowerCase())
+                          )
+                          .map((p) => (
+                            <MenuItem key={p.PartId} value={p.PartId}>
+                              {p.PartNumber}
+                            </MenuItem>
+                          ))
+                        }
                       </Select>
                       <FormHelperText>
                         {errors.partSelected || " "}
@@ -1092,6 +1189,40 @@ const ComplaintForm = () => {
                       }
                     }}
                   />
+
+                  <FormControl fullWidth error={!!errors.fourM} required>
+                    <InputLabel>4M</InputLabel>
+                    <Select
+                      name="fourM"
+                      value={formData.fourM || ""}
+                      onChange={handleSelectChange}
+                      label="4M"
+                    >
+                      {["Man", "Machine", "Material", "Method", "Others"].map((opt) => (
+                        <MenuItem key={opt} value={opt}>
+                          {opt}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                    {errors.fourM && <FormHelperText>{errors.fourM}</FormHelperText>}
+                  </FormControl>
+
+                  <FormControl fullWidth error={!!errors.defect} required>
+                    <InputLabel>Defect</InputLabel>
+                    <Select
+                      name="defect"
+                      value={formData.defect || ""}
+                      onChange={handleSelectChange}
+                      label="Defect"
+                    >
+                      {displayDefects.map((opt) => (
+                        <MenuItem key={opt} value={opt}>
+                          {opt}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                    {errors.defect && <FormHelperText>{errors.defect}</FormHelperText>}
+                  </FormControl>
 
                   <FormControl fullWidth>
                     <InputLabel>Severity Level</InputLabel>
@@ -1341,11 +1472,13 @@ const ComplaintForm = () => {
                         <strong>Part:</strong>{" "}
                         {(() => {
                           const p = activeParts.find(x => x.PartId === formData.partSelected);
-                          return p ? `${p.PartNumber} - ${p.PartName}` : (formData.partSelected || "-");
+                          return p ? p.PartNumber : (formData.partSelected || "-");
                         })()}
                       </Typography>
                       <Typography><strong>Problem Statement:</strong> {formData.problemStatement}</Typography>
                       <Typography><strong>Quantity:</strong> {formData.quantity}</Typography>
+                      <Typography><strong>4M:</strong> {formData.fourM || "-"}</Typography>
+                      <Typography><strong>Defect:</strong> {formData.defect || "-"}</Typography>
                       <Typography><strong>Severity:</strong> {formData.severityLevel}</Typography>
 
                       <Box mt={2}>

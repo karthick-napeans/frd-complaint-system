@@ -31,6 +31,8 @@ const DreSummary = () => {
     const [filterPart, setFilterPart] = useState("");
     const [filterStatus, setFilterStatus] = useState("");
     const [filterModel, setFilterModel] = useState("");
+    const [modelSearch, setModelSearch] = useState("");
+    const [partSearch, setPartSearch] = useState("");
     const today = new Date().toISOString().split("T")[0];
     const lastMonthDate = new Date();
     lastMonthDate.setMonth(lastMonthDate.getMonth() - 1);
@@ -470,12 +472,54 @@ const DreSummary = () => {
                                 fullWidth
                                 value={filterModel}
                                 onChange={(e) => setFilterModel(e.target.value)}
+                                SelectProps={{
+                                    onClose: () => setModelSearch(""),
+                                    renderValue: (selected) => {
+                                        const modelObj = models.find(m => m.ModelName === selected);
+                                        return modelObj ? modelObj.ModelName : (selected || "");
+                                    },
+                                    MenuProps: {
+                                        autoFocus: false,
+                                        PaperProps: {
+                                            style: {
+                                                maxHeight: 300,
+                                            }
+                                        }
+                                    }
+                                }}
                             >
+                                <Box
+                                  sx={{
+                                    position: "sticky",
+                                    top: 0,
+                                    bgcolor: "background.paper",
+                                    zIndex: 1,
+                                    p: 1,
+                                    borderBottom: "1px solid #e0e0e0"
+                                  }}
+                                  onKeyDown={(e) => e.stopPropagation()}
+                                >
+                                  <TextField
+                                    size="small"
+                                    autoFocus
+                                    placeholder="Search Model..."
+                                    fullWidth
+                                    value={modelSearch}
+                                    onChange={(e) => setModelSearch(e.target.value)}
+                                    onClick={(e) => e.stopPropagation()}
+                                  />
+                                </Box>
+                                <MenuItem value="">
+                                    <em>Select Model</em>
+                                </MenuItem>
                                 {[...new Set(rows.map(r => r.Model))]
                                     .filter(val => val)
+                                    .filter((modelName) =>
+                                        modelName.toLowerCase().includes(modelSearch.toLowerCase())
+                                    )
                                     .map((modelName) => {
                                         const modelObj = models.find(m => m.ModelName === modelName);
-                                        const displayName = modelObj ? `${modelObj.ModelCode} - ${modelName}` : modelName;
+                                        const displayName = modelObj ? modelObj.ModelName : modelName;
                                         return (
                                             <MenuItem key={modelName} value={modelName}>
                                                 {displayName}
@@ -493,18 +537,58 @@ const DreSummary = () => {
                                 fullWidth
                                 value={filterPart}
                                 onChange={(e) => setFilterPart(e.target.value)}
+                                SelectProps={{
+                                    onClose: () => setPartSearch(""),
+                                    renderValue: (selected) => {
+                                        const partObj = parts.find(p => p.PartNumber === selected);
+                                        return partObj ? partObj.PartNumber : (selected || "");
+                                    },
+                                    MenuProps: {
+                                        autoFocus: false,
+                                        PaperProps: {
+                                            style: {
+                                                maxHeight: 300,
+                                            }
+                                        }
+                                    }
+                                }}
                             >
+                                <Box
+                                  sx={{
+                                    position: "sticky",
+                                    top: 0,
+                                    bgcolor: "background.paper",
+                                    zIndex: 1,
+                                    p: 1,
+                                    borderBottom: "1px solid #e0e0e0"
+                                  }}
+                                  onKeyDown={(e) => e.stopPropagation()}
+                                >
+                                  <TextField
+                                    size="small"
+                                    autoFocus
+                                    placeholder="Search Part Number..."
+                                    fullWidth
+                                    value={partSearch}
+                                    onChange={(e) => setPartSearch(e.target.value)}
+                                    onClick={(e) => e.stopPropagation()}
+                                  />
+                                </Box>
+                                <MenuItem value="">
+                                    <em>Select Part</em>
+                                </MenuItem>
                                 {[...new Set(rows.map(r => r.Part))]
-                                    .filter(val => val)
-                                    .map((partNo) => {
-                                        const partObj = parts.find(p => p.PartNumber === partNo);
-                                        const displayName = partObj ? `${partNo} - ${partObj.PartName}` : partNo;
-                                        return (
-                                            <MenuItem key={partNo} value={partNo}>
-                                                {displayName}
-                                            </MenuItem>
-                                        );
-                                    })}
+                                     .filter(val => val)
+                                     .filter((partNo) => {
+                                         return partNo.toLowerCase().includes(partSearch.toLowerCase());
+                                     })
+                                     .map((partNo) => {
+                                         return (
+                                             <MenuItem key={partNo} value={partNo}>
+                                                 {partNo}
+                                             </MenuItem>
+                                         );
+                                     })}
                             </TextField>
                         </Grid>
 

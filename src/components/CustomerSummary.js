@@ -165,6 +165,8 @@ const CustomerSummary = ({ userRole }) => {
             })(),
             "Quantity": row.RepairCause || row.CauseCode || "",
             "Description": row.ProblemStatement,
+            "4M": row["4M"] || row.FourM || row.fourM || "",
+            "Defect": row.Defect || row.defect || "",
             "Severity": row.Severity,
             "Status": row.Status,
         }));
@@ -286,6 +288,26 @@ const CustomerSummary = ({ userRole }) => {
             resizable: false,
             headerAlign: 'center',
             align: 'center',
+        },
+        {
+            field: 'FourM',
+            headerName: '4M',
+            width: 120,
+            resizable: false,
+            headerAlign: 'center',
+            align: 'center',
+            valueGetter: (value, row) =>
+                row["4M"] || row.FourM || row.fourM || '',
+        },
+        {
+            field: 'Defect',
+            headerName: 'Defect',
+            width: 150,
+            resizable: false,
+            headerAlign: 'center',
+            align: 'center',
+            valueGetter: (value, row) =>
+                row.Defect || row.defect || '',
         },
         {
             field: 'Severity',

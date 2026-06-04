@@ -23,7 +23,8 @@ import {
     Tooltip,
     Legend,
     BarChart, Area,
-    Bar, ReferenceLine
+    Bar, ReferenceLine,
+    LabelList
 } from "recharts";
 import html2canvas from "html2canvas";
 import DownloadIcon from "@mui/icons-material/Download";
@@ -41,6 +42,7 @@ const MONTHS = [
 const ComplaintAnalysis = ({ userRole }) => {
     const dispatch = useDispatch();
     console.log("Rendering ComplaintAnalysis with userRole:", userRole);
+    const [selectedCustomerId, setSelectedCustomerId] = useState(null);
     const [salesInput, setSalesInput] = useState({});
     const [editingCell, setEditingCell] = useState(null);
     const [tempValue, setTempValue] = useState("");
@@ -298,15 +300,87 @@ const ComplaintAnalysis = ({ userRole }) => {
 
     }, [ppmData]);
 
+    const trendRows = useMemo(() => {
+        if (selectedCustomerId) {
+            return ppmData.filter(row => row.customerId === selectedCustomerId);
+        }
+        return ppmData;
+    }, [selectedCustomerId, ppmData]);
+
+    const trendTotals = useMemo(() => {
+        if (!trendRows.length) return null;
+
+        const monthlySales = Array(12).fill(0);
+        const monthlyRejection = Array(12).fill(0);
+        const monthlyPlanPPM = Array(12).fill(0);
+
+        let salesPrev = 0;
+        let salesLast = 0;
+        let rejPrev = 0;
+        let rejLast = 0;
+
+        let planPrevSum = 0;
+        let planLastSum = 0;
+        let planPrevCount = 0;
+        let planLastCount = 0;
+
+        trendRows.forEach(row => {
+            salesPrev += row.salesPrev || 0;
+            salesLast += row.salesLast || 0;
+            rejPrev += row.rejPrev || 0;
+            rejLast += row.rejLast || 0;
+
+            if (row.planPpmPrev > 0) {
+                planPrevSum += row.planPpmPrev;
+                planPrevCount++;
+            }
+            if (row.planPpmLast > 0) {
+                planLastSum += row.planPpmLast;
+                planLastCount++;
+            }
+
+            (row.sales || []).forEach((s, i) => { monthlySales[i] += Number(s) || 0; });
+            (row.rejection || []).forEach((r, i) => { monthlyRejection[i] += Number(r) || 0; });
+            (row.planPPM || []).forEach((p, i) => {
+                const val = Number(p) || 0;
+                monthlyPlanPPM[i] += val;
+            });
+        });
+
+        const totalSales = monthlySales.reduce((a, b) => a + b, 0);
+        const totalRej = monthlyRejection.reduce((a, b) => a + b, 0);
+        const totalPPM = totalSales === 0 ? 0 : Number(((totalRej * 1000000) / totalSales).toFixed(1));
+        const ppmMonths = monthlySales.map((s, i) => s === 0 ? 0 : Number(((monthlyRejection[i] * 1000000) / s).toFixed(1)));
+        
+        const planPPMMonths = monthlyPlanPPM.map((total, i) => {
+            const count = trendRows.filter(row => (row.planPPM?.[i] ?? 0) > 0).length;
+            return count === 0 ? 0 : Number((total / count).toFixed(1));
+        });
+
+        const activeMonths = planPPMMonths.filter(p => p > 0);
+        const totalPlanPPM = activeMonths.length === 0 ? 0 : Number((activeMonths.reduce((a, b) => a + b, 0) / activeMonths.length).toFixed(1));
+        
+        const totalPPMLast = salesLast === 0 ? 0 : Number(((rejLast * 1000000) / salesLast).toFixed(1));
+        const totalPlanPpmPrev = planPrevCount === 0 ? 0 : Number((planPrevSum / planPrevCount).toFixed(1));
+        const totalPlanPpmLast = planLastCount === 0 ? 0 : Number((planLastSum / planLastCount).toFixed(1));
+
+        return {
+            salesPrev, salesLast, rejPrev, rejLast,
+            monthlySales, monthlyRejection, totalSales, totalRej,
+            totalPPM, ppmMonths, monthlyPlanPPM, planPPMMonths, totalPlanPPM, totalPPMLast,
+            totalPlanPpmPrev, totalPlanPpmLast
+        };
+    }, [trendRows]);
+
     const monthlyTrend = useMemo(() => {
 
-        if (!ppmData.length) return [];
+        if (!trendRows.length) return [];
 
         const monthlySales = Array(12).fill(0);
         const monthlyRejection = Array(12).fill(0);
         const monthlyPlan = Array(12).fill(0);
 
-        ppmData.forEach(row => {
+        trendRows.forEach(row => {
 
             (row.sales || []).forEach((s, i) => {
                 monthlySales[i] += Number(s) || 0;
@@ -339,26 +413,26 @@ const ComplaintAnalysis = ({ userRole }) => {
 
         });
 
-    }, [ppmData]);
+    }, [trendRows]);
 
     const yearlyTrend = useMemo(() => {
 
-        if (!ppmData.length || !totals) return [];
+        if (!trendRows.length || !trendTotals) return [];
 
         return [
             {
                 year: lastYear,
-                actual: totals.totalPPMLast,
-                plan: totals.totalPlanPpmLast
+                actual: Math.round(trendTotals.totalPPMLast),
+                plan: Math.round(trendTotals.totalPlanPpmLast)
             },
             {
                 year: currentYear,
-                actual: totals.totalPPM,
-                plan: totals.totalPlanPPM
+                actual: Math.round(trendTotals.totalPPM),
+                plan: Math.round(trendTotals.totalPlanPPM)
             }
         ];
 
-    }, [ppmData, totals]);
+    }, [trendRows, trendTotals]);
 
     const exportRef = useRef(null);
     const monthlyExportRef = useRef(null);
@@ -572,6 +646,34 @@ const ComplaintAnalysis = ({ userRole }) => {
                 CUSTOMER PPM REPORT - {currentYear}
             </Typography>
 
+            {selectedCustomerId && (
+                <Box 
+                    sx={{ 
+                        mb: 2, 
+                        p: 1.5, 
+                        display: "flex", 
+                        alignItems: "center", 
+                        gap: 2, 
+                        bgcolor: "#e3f2fd", 
+                        borderRadius: 2,
+                        border: "1px solid #bbdefb"
+                    }}
+                >
+                    <Typography variant="body2" sx={{ fontWeight: 600, color: "#0d47a1" }}>
+                        Currently showing trends for: {ppmData.find(c => c.customerId === selectedCustomerId)?.customerName}
+                    </Typography>
+                    <Button 
+                        variant="contained" 
+                        size="small" 
+                        color="primary" 
+                        onClick={() => setSelectedCustomerId(null)}
+                        sx={{ textTransform: "none" }}
+                    >
+                        Show All Customers
+                    </Button>
+                </Box>
+            )}
+
             <Grid container spacing={4} mb={1}>
 
                 {/* ================= YEARLY COMPARISON ================= */}
@@ -724,7 +826,9 @@ const ComplaintAnalysis = ({ userRole }) => {
                                     strokeDasharray="6 6"
                                     strokeWidth={2}
                                     dot={{ r: 3 }}
-                                />
+                                >
+                                    <LabelList dataKey="plan" position="top" fill="#3b82f6" style={{ fontSize: 11, fontWeight: 600 }} />
+                                </Line>
 
                                 <Line
                                     type="monotone"
@@ -733,7 +837,9 @@ const ComplaintAnalysis = ({ userRole }) => {
                                     strokeWidth={3}
                                     dot={{ r: 4 }}
                                     activeDot={{ r: 6 }}
-                                />
+                                >
+                                    <LabelList dataKey="actual" position="top" fill="#ef4444" style={{ fontSize: 11, fontWeight: 600 }} />
+                                </Line>
                             </LineChart>
                         </ResponsiveContainer>
                     </Paper>
@@ -818,7 +924,19 @@ const ComplaintAnalysis = ({ userRole }) => {
 
                                     {/* REJ QTY */}
                                     <TableRow hover>
-                                        <TableCell rowSpan={4} sx={{ fontWeight: 600 }}>
+                                        <TableCell 
+                                            rowSpan={4} 
+                                            sx={{ 
+                                                fontWeight: 600, 
+                                                cursor: "pointer", 
+                                                color: selectedCustomerId === row.customerId ? "#1976d2" : "inherit",
+                                                backgroundColor: selectedCustomerId === row.customerId ? "#e3f2fd" : "inherit",
+                                                "&:hover": {
+                                                    backgroundColor: "#f5f5f5"
+                                                }
+                                            }}
+                                            onClick={() => setSelectedCustomerId(row.customerId)}
+                                        >
                                             {row.customerName}
                                         </TableCell>
 

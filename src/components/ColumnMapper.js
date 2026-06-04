@@ -544,7 +544,7 @@ const WarrantyColumnMapper = () => {
                   )}
                 </TableBody>
               </Table>
-            </TableContainer> 
+            </TableContainer>
           </CardContent>
         </Card>
       )}

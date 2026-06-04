@@ -19,13 +19,15 @@ import { saveImprovementBaseline, getAllImprovementList, deleteImprovementBaseli
 
 const ImprovementBaselinePage = () => {
     const dispatch = useDispatch();
-    const { models, customers } = useSelector((state) => state.masters);
+    const { models, customers, parts } = useSelector((state) => state.masters);
     const activeModels = models?.filter(m => m.IsActive);
     const activeCustomers = customers?.filter(c => c.IsActive === true) || [];
+    const activeParts = parts?.filter(p => p.IsActive) || [];
     const [config, setConfig] = useState({
         lastImprovementDate: new Date().toISOString().split("T")[0],
         customerId: "",
         modelId: "",
+        partNumber: "",
         improvementDescription: "",
     })
     const [confirmState, setConfirmState] = useState({
@@ -38,6 +40,8 @@ const ImprovementBaselinePage = () => {
     });
     const [selectedModel, setSelectedModel] = useState("");
     const [saving, setSaving] = useState(false);
+    const [modelSearch, setModelSearch] = useState("");
+    const [partSearch, setPartSearch] = useState("");
     const [errors, setErrors] = useState({});
     const [rawRows, setRawRows] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -57,6 +61,7 @@ const ImprovementBaselinePage = () => {
                     .replace(/\//g, "-"),
                 customer: item.CustomerName || customerObj?.CustomerName || "-",
                 model: item.ModelName,
+                part: item.PartNumber || "-",
                 description: item.Details,
             };
         }).sort((a, b) => new Date(b.rawDate) - new Date(a.rawDate));
@@ -124,6 +129,10 @@ const ImprovementBaselinePage = () => {
             newErrors.modelId = "Model selection is required";
         }
 
+        if (!config.partNumber) {
+            newErrors.partNumber = "Part selection is required";
+        }
+
         if (!config.improvementDescription?.trim()) {
             newErrors.improvementDescription = "Description is required";
         }
@@ -141,6 +150,7 @@ const ImprovementBaselinePage = () => {
                 ImprovementDate: config.lastImprovementDate,
                 CustomerId: Number(config.customerId),
                 ModelId: config.modelId,
+                PartNumber: config.partNumber,
                 Details: config.improvementDescription,
             };
             console.log("Creating improvement with payload:", payload);
@@ -150,6 +160,7 @@ const ImprovementBaselinePage = () => {
                 lastImprovementDate: new Date().toISOString().split("T")[0],
                 customerId: "",
                 modelId: "",
+                partNumber: "",
                 improvementDescription: "",
             });
 
@@ -187,7 +198,7 @@ const ImprovementBaselinePage = () => {
                     <Grid container spacing={3}>
 
                         {/* Customer */}
-                        <Grid item xs={12} md={4}>
+                        <Grid item xs={12} md={3}>
                             <TextField
                                 select
                                 fullWidth
@@ -213,7 +224,7 @@ const ImprovementBaselinePage = () => {
                         </Grid>
 
                         {/* Model */}
-                        <Grid item xs={12} md={4}>
+                        <Grid item xs={12} md={3}>
                             <TextField
                                 select
                                 fullWidth
@@ -225,21 +236,129 @@ const ImprovementBaselinePage = () => {
                                 }
                                 error={!!errors.modelId}
                                 helperText={errors.modelId}
+                                SelectProps={{
+                                    onClose: () => setModelSearch(""),
+                                    renderValue: (selected) => {
+                                        const m = activeModels.find(x => x.ModelId === selected);
+                                        return m ? m.ModelName : (selected || "");
+                                    },
+                                    MenuProps: {
+                                        autoFocus: false,
+                                        PaperProps: {
+                                            style: {
+                                                maxHeight: 300,
+                                            }
+                                        }
+                                    }
+                                }}
                             >
+                                <Box
+                                  sx={{
+                                    position: "sticky",
+                                    top: 0,
+                                    bgcolor: "background.paper",
+                                    zIndex: 1,
+                                    p: 1,
+                                    borderBottom: "1px solid #e0e0e0"
+                                  }}
+                                  onKeyDown={(e) => e.stopPropagation()}
+                                >
+                                  <TextField
+                                    size="small"
+                                    autoFocus
+                                    placeholder="Search Model..."
+                                    fullWidth
+                                    value={modelSearch}
+                                    onChange={(e) => setModelSearch(e.target.value)}
+                                    onClick={(e) => e.stopPropagation()}
+                                  />
+                                </Box>
                                 <MenuItem value="">
                                     <em>Select Model</em>
                                 </MenuItem>
 
-                                {activeModels?.map((model) => (
-                                    <MenuItem key={model.ModelId} value={model.ModelId}>
-                                        {model.ModelCode} - {model.ModelName}
-                                    </MenuItem>
-                                ))}
+                                {activeModels
+                                    ?.filter((model) =>
+                                        model.ModelName.toLowerCase().includes(modelSearch.toLowerCase())
+                                    )
+                                    .map((model) => (
+                                        <MenuItem key={model.ModelId} value={model.ModelId}>
+                                            {model.ModelName}
+                                        </MenuItem>
+                                    ))
+                                }
+                            </TextField>
+                        </Grid>
+
+                        {/* Part */}
+                        <Grid item xs={12} md={3}>
+                            <TextField
+                                select
+                                fullWidth
+                                size="small"
+                                label="Select Part"
+                                value={config.partNumber || ""}
+                                onChange={(e) =>
+                                    setConfig({ ...config, partNumber: e.target.value })
+                                }
+                                error={!!errors.partNumber}
+                                helperText={errors.partNumber}
+                                SelectProps={{
+                                    onClose: () => setPartSearch(""),
+                                    renderValue: (selected) => {
+                                        const p = activeParts.find(x => x.PartNumber === selected);
+                                        return p ? p.PartNumber : (selected || "");
+                                    },
+                                    MenuProps: {
+                                        autoFocus: false,
+                                        PaperProps: {
+                                            style: {
+                                                maxHeight: 300,
+                                            }
+                                        }
+                                    }
+                                }}
+                            >
+                                <Box
+                                  sx={{
+                                    position: "sticky",
+                                    top: 0,
+                                    bgcolor: "background.paper",
+                                    zIndex: 1,
+                                    p: 1,
+                                    borderBottom: "1px solid #e0e0e0"
+                                  }}
+                                  onKeyDown={(e) => e.stopPropagation()}
+                                >
+                                  <TextField
+                                    size="small"
+                                    autoFocus
+                                    placeholder="Search Part Number..."
+                                    fullWidth
+                                    value={partSearch}
+                                    onChange={(e) => setPartSearch(e.target.value)}
+                                    onClick={(e) => e.stopPropagation()}
+                                  />
+                                </Box>
+                                <MenuItem value="">
+                                    <em>Select Part</em>
+                                </MenuItem>
+
+                                {activeParts
+                                    ?.filter((part) =>
+                                        part.PartNumber.toLowerCase().includes(partSearch.toLowerCase())
+                                    )
+                                    .map((part) => (
+                                        <MenuItem key={part.PartId} value={part.PartNumber}>
+                                            {part.PartNumber}
+                                        </MenuItem>
+                                    ))
+                                }
                             </TextField>
                         </Grid>
 
                         {/* Date */}
-                        <Grid item xs={12} md={4}>
+                        <Grid item xs={12} md={3}>
                             <TextField
                                 type="date"
                                 fullWidth
@@ -338,7 +457,7 @@ const ImprovementBaselinePage = () => {
                                 field: "date",
                                 headerName: "Improvement Date",
                                 flex: 1,
-                                minWidth: 180,
+                                minWidth: 150,
                                 editable: false,
                                 align: "center",
                                 headerAlign: "center",
@@ -346,8 +465,8 @@ const ImprovementBaselinePage = () => {
                             {
                                 field: "customer",
                                 headerName: "Customer",
-                                flex: 1.5,
-                                minWidth: 200,
+                                flex: 1.2,
+                                minWidth: 180,
                                 editable: false,
                                 align: "center",
                                 headerAlign: "center",
@@ -355,8 +474,17 @@ const ImprovementBaselinePage = () => {
                             {
                                 field: "model",
                                 headerName: "Model",
-                                flex: 1.5,
-                                minWidth: 220,
+                                flex: 1.2,
+                                minWidth: 180,
+                                editable: false,
+                                align: "center",
+                                headerAlign: "center",
+                            },
+                            {
+                                field: "part",
+                                headerName: "Part",
+                                flex: 1.2,
+                                minWidth: 180,
                                 editable: false,
                                 align: "center",
                                 headerAlign: "center",
@@ -365,7 +493,7 @@ const ImprovementBaselinePage = () => {
                                 field: "description",
                                 headerName: "Description",
                                 flex: 2,
-                                minWidth: 280,
+                                minWidth: 250,
                                 editable: false,
                                 align: "center",
                                 headerAlign: "center",

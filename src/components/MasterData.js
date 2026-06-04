@@ -39,6 +39,7 @@ const MASTER_ID_FIELD = {
   cause: "RepairCauseCodeId",
   nature: "NatureCodeId",
   attachment: "Id",
+  defect: "DefectId",
 };
 
 const MASTER_LABEL = {
@@ -48,6 +49,7 @@ const MASTER_LABEL = {
   cause: "Cause Code",
   nature: "Nature Code",
   attachment: "Checklist Attachment",
+  defect: "Defect",
 };
 
 const MASTER_FORM_CONFIG = {
@@ -70,13 +72,6 @@ const MASTER_FORM_CONFIG = {
 
   model: [
     {
-      name: "ModelCode",
-      label: "Model Code",
-      required: true,
-      pattern: /^[A-Za-z0-9 ]+$/,
-      patternMessage: "Special characters are not allowed",
-    },
-    {
       name: "ModelName",
       label: "Model Name",
       required: true,
@@ -87,25 +82,12 @@ const MASTER_FORM_CONFIG = {
 
   part: [
     {
-      name: "PartNumber",
-      label: "Part Number",
-      required: true,
-      pattern: /^[A-Za-z0-9 ]+$/,
-      patternMessage: "Special characters are not allowed",
-    },
-    {
       name: "PartName",
       label: "Part Name",
       required: true,
-      pattern: /^[A-Za-z0-9 ]+$/,
+      pattern: /^[A-Za-z0-9 \-_]+$/,
       patternMessage: "Special characters are not allowed",
     },
-    // {
-    //   name: "PartDescription",
-    //   label: "Description",
-    //   multiline: true,
-    //   required: true,
-    // },
   ],
 
   cause: [
@@ -153,6 +135,16 @@ const MASTER_FORM_CONFIG = {
       name: "IsMandatory",
       label: "Is Mandatory",
       type: "checkbox",
+    },
+  ],
+
+  defect: [
+    {
+      name: "Defect",
+      label: "Defect Name",
+      required: true,
+      pattern: /^[A-Za-z0-9 ]+$/,
+      patternMessage: "Special characters are not allowed",
     },
   ],
 };
@@ -319,7 +311,7 @@ const MasterData = ({ userRole = "Admin" }) => {
     setConfirmState({
       open: true,
       title: `${newStatus ? "Activate" : "Deactivate"} ${MASTER_LABEL[masterType]}`,
-      message: `Are you sure you want to ${newStatus ? "activate" : "deactivate"} ${row.Name || row.CustomerName || row.ModelName || row.PartNumber || row.Code}?`,
+      message: `Are you sure you want to ${newStatus ? "activate" : "deactivate"} ${row.Name || row.CustomerName || row.ModelName || row.PartNumber || row.Code || row.Defect}?`,
       successMessage: `Record ${newStatus ? "activated" : "deactivated"} successfully.`,
       errorMessage: `Failed to ${newStatus ? "activate" : "deactivate"} record. Please try again.`,
       actionLabel: newStatus ? "Activate" : "Deactivate",
@@ -398,8 +390,7 @@ const MasterData = ({ userRole = "Admin" }) => {
 
 
       model: [
-        { field: "ModelCode", headerName: "Model Code", width: 180 },
-        { field: "ModelName", headerName: "Model Name", width: 260 },
+        { field: "ModelName", headerName: "Model Name", width: 440 },
         {
           field: "IsActive",
           headerName: "Status",
@@ -412,9 +403,7 @@ const MasterData = ({ userRole = "Admin" }) => {
 
 
       part: [
-        { field: "PartNumber", headerName: "Part Number", width: 180 },
-        { field: "PartName", headerName: "Part Name", width: 200 },
-        // { field: "PartDescription", headerName: "Description", width: 300 },
+        { field: "PartName", headerName: "Part Name", width: 380 },
         {
           field: "IsActive",
           headerName: "Status",
@@ -484,7 +473,16 @@ const MasterData = ({ userRole = "Admin" }) => {
         { ...actionColumn, width: 120 },
       ],
 
-
+      defect: [
+        { field: "Defect", headerName: "Defect Name", width: 260 },
+        {
+          field: "IsActive",
+          headerName: "Status",
+          width: 120,
+          renderCell: (p) => <StatusChip value={p.value} />,
+        },
+        { ...actionColumn, width: 120 },
+      ],
     };
   }, [masterType]);
 
@@ -525,6 +523,7 @@ const MasterData = ({ userRole = "Admin" }) => {
             <option value="cause">Cause Code</option>
             <option value="nature">Nature Code</option>
             <option value="attachment">Checklist Attachment</option>
+            <option value="defect">Defect</option>
           </TextField>
         </CardContent>
       </Card>

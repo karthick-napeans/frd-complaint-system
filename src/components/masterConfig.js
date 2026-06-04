@@ -23,13 +23,13 @@ export const MASTER_CONFIG = {
         baseUrl: "/masters/models",
 
         mapCreate: (data) => ({
-            ModelCode: data.ModelCode,
+            ModelCode: data.ModelName,
             ModelName: data.ModelName,
         }),
 
         mapUpdate: (data) => ({
             ModelId: data.ModelId,
-            ModelCode: data.ModelCode,
+            ModelCode: data.ModelName,
             ModelName: data.ModelName,
         }),
 
@@ -45,14 +45,14 @@ export const MASTER_CONFIG = {
 
         mapCreate: (data) => ({
             PartName: data.PartName,
-            PartNumber: data.PartNumber,
+            PartNumber: data.PartName,
             // PartDescription: data.PartDescription,
         }),
 
         mapUpdate: (data) => ({
             PartId: data.PartId,
             PartName: data.PartName,
-            PartNumber: data.PartNumber,
+            PartNumber: data.PartName,
             // PartDescription: data.PartDescription,
         }),
 
@@ -118,6 +118,24 @@ export const MASTER_CONFIG = {
 
         mapDelete: (id, isActive) => ({
             Id: id,
+            IsActive: isActive,
+        }),
+    },
+
+    defect: {
+        baseUrl: "/masters/defect",
+
+        mapCreate: (data) => ({
+            Defect: data.Defect,
+        }),
+
+        mapUpdate: (data) => ({
+            DefectId: data.DefectId,
+            Defect: data.Defect,
+        }),
+
+        mapDelete: (id, isActive) => ({
+            DefectId: id,
             IsActive: isActive,
         }),
     }

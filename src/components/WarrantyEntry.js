@@ -36,6 +36,7 @@ const WarrantyEntry = () => {
   console.log('Raw Data customers:', customers);
   const activeCustomers = customers.filter((c) => c.IsActive === true);
   const [customerSelected, setCustomerSelected] = useState('');
+  const [monthYear, setMonthYear] = useState('');
   const [uploadedFile, setUploadedFile] = useState(null);
   const [previewData, setPreviewData] = useState([]);
   const [message, setMessage] = useState('');
@@ -143,15 +144,19 @@ const WarrantyEntry = () => {
   };
 
   const handleValidateAndUpload = async () => {
-    if (!customerSelected || !uploadedFile) {
-      setMessage('Please select customer and upload file');
+    if (!customerSelected || !monthYear || !uploadedFile) {
+      setMessage('Please select customer, month/year, and upload file');
       return;
     }
 
     try {
+      const [year, month] = monthYear.split('-');
+      const formattedMonthYear = `${month}${year}`;
+
       // ✅ Build FormData
       const formData = new FormData();
       formData.append('customerId', String(customerSelected));
+      formData.append('MonthYear', formattedMonthYear);
       formData.append('file', uploadedFile);
 
       for (let pair of formData.entries()) {
@@ -360,7 +365,26 @@ const WarrantyEntry = () => {
                 variant="caption"
                 sx={{ display: 'block', mb: 0.5, color: 'text.secondary' }}
               >
-                Step 2 · Upload Excel File
+                Step 2 · Select Month & Year
+              </Typography>
+
+              <FormControl fullWidth sx={{ mb: 3 }}>
+                <TextField
+                  type="month"
+                  label="Month & Year"
+                  InputLabelProps={{ shrink: true }}
+                  value={monthYear}
+                  onChange={(e) => setMonthYear(e.target.value)}
+                  required
+                />
+              </FormControl>
+
+              {/* STEP 3 */}
+              <Typography
+                variant="caption"
+                sx={{ display: 'block', mb: 0.5, color: 'text.secondary' }}
+              >
+                Step 3 · Upload Excel File
               </Typography>
 
               <Box
@@ -383,7 +407,7 @@ const WarrantyEntry = () => {
                   component="label"
                   variant="outlined"
                   startIcon={<CloudUploadIcon />}
-                  disabled={!customerSelected}
+                  disabled={!customerSelected || !monthYear}
                 >
                   Browse
                   <input
@@ -397,12 +421,12 @@ const WarrantyEntry = () => {
                 </Button>
               </Box>
 
-              {/* STEP 3 */}
+              {/* STEP 4 */}
               <Typography
                 variant="caption"
                 sx={{ display: 'block', mb: 0.5, color: 'text.secondary' }}
               >
-                Step 3 · Review & Upload
+                Step 4 · Review & Upload
               </Typography>
 
               <Button
@@ -411,7 +435,7 @@ const WarrantyEntry = () => {
                 fullWidth
                 size="large"
                 onClick={handleValidateAndUpload}
-                disabled={!uploadedFile}
+                disabled={!uploadedFile || !customerSelected || !monthYear}
               >
                 Upload & Process
               </Button>
