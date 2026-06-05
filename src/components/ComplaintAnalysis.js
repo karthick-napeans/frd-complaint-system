@@ -24,14 +24,14 @@ import {
     Legend,
     BarChart, Area,
     Bar, ReferenceLine,
-    LabelList
+    LabelList, PieChart, Pie, Cell
 } from "recharts";
 import html2canvas from "html2canvas";
 import DownloadIcon from "@mui/icons-material/Download";
 import IconButton from "@mui/material/IconButton";
 import * as XLSX from "xlsx-js-style";
 
-import { getPPMData, saveMonthlySalesData } from "../api/pageApi";
+import { getPPMData, saveMonthlySalesData, getComplaintTrends } from "../api/pageApi";
 
 const MONTHS = [
     "Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -43,10 +43,17 @@ const ComplaintAnalysis = ({ userRole }) => {
     const dispatch = useDispatch();
     console.log("Rendering ComplaintAnalysis with userRole:", userRole);
     const [selectedCustomerId, setSelectedCustomerId] = useState(null);
+    const [downloadingChart, setDownloadingChart] = useState(null);
     const [salesInput, setSalesInput] = useState({});
     const [editingCell, setEditingCell] = useState(null);
     const [tempValue, setTempValue] = useState("");
     const [ppmSourceData, setPpmSourceData] = useState([]);
+    const [trendsSourceData, setTrendsSourceData] = useState({
+        FourMTrends: [],
+        ModelTrends: [],
+        PartTrends: [],
+        DefectTrends: []
+    });
     const currentYear = new Date().getFullYear();
     const previousYear = currentYear - 2;
     const lastYear = currentYear - 1;
@@ -54,6 +61,7 @@ const ComplaintAnalysis = ({ userRole }) => {
     const [editReason, setEditReason] = useState("");
     const [pendingEditCell, setPendingEditCell] = useState(null);
     const inputRef = useRef(null);
+    const salesQuantityRef = useRef(null);
     const isQcAdmin = ["qc_admin", "super_admin"].includes(userRole?.toLowerCase());
 
     /* ================= FETCH PPM DATA ================= */
@@ -61,6 +69,7 @@ const ComplaintAnalysis = ({ userRole }) => {
     useEffect(() => {
         dispatch(loadMasters());
         loadPPM();
+        loadTrends();
     }, [dispatch]);
 
     useEffect(() => {
@@ -111,6 +120,22 @@ const ComplaintAnalysis = ({ userRole }) => {
 
         }
 
+    };
+
+    const loadTrends = async () => {
+        try {
+            const res = await getComplaintTrends();
+            if (res) {
+                setTrendsSourceData({
+                    FourMTrends: res.FourMTrends || [],
+                    ModelTrends: res.ModelTrends || [],
+                    PartTrends: res.PartTrends || [],
+                    DefectTrends: res.DefectTrends || []
+                });
+            }
+        } catch (err) {
+            console.error("Trends API Error:", err);
+        }
     };
 
     const handleSalesCellClick = (row, value, index) => {
@@ -407,6 +432,7 @@ const ComplaintAnalysis = ({ userRole }) => {
 
             return {
                 month,
+                sales: monthlySales[i] || 0,
                 actual: Number(actualPPM.toFixed(1)),
                 plan: monthlyPlan[i] || 0
             };
@@ -434,8 +460,81 @@ const ComplaintAnalysis = ({ userRole }) => {
 
     }, [trendRows, trendTotals]);
 
+    const processedTrends = useMemo(() => {
+        const processGroup = (dataArray, keyField) => {
+            const filtered = selectedCustomerId
+                ? (dataArray || []).filter(item => item.CustomerId === selectedCustomerId)
+                : (dataArray || []);
+
+            const grouped = {};
+            filtered.forEach(item => {
+                const key = item[keyField] || "Unknown";
+                if (!grouped[key]) {
+                    grouped[key] = 0;
+                }
+                grouped[key] += item.ComplaintCount;
+            });
+
+            return Object.entries(grouped)
+                .map(([name, value]) => ({ name, value }))
+                .filter(item => item.value > 0)
+                .sort((a, b) => b.value - a.value);
+        };
+
+        return {
+            defect: processGroup(trendsSourceData.DefectTrends, "Defect"),
+            fourM: processGroup(trendsSourceData.FourMTrends, "FourM"),
+            model: processGroup(trendsSourceData.ModelTrends, "Model"),
+            part: processGroup(trendsSourceData.PartTrends, "Part"),
+        };
+    }, [trendsSourceData, selectedCustomerId]);
+
+    const COLORS = ["#1976d2", "#ff9800", "#4caf50", "#f44336", "#9c27b0", "#00bcd4", "#ffeb3b", "#e91e63", "#3f51b5", "#009688"];
+
     const exportRef = useRef(null);
     const monthlyExportRef = useRef(null);
+    const defectPieRef = useRef(null);
+    const fourMPieRef = useRef(null);
+    const modelPieRef = useRef(null);
+    const partPieRef = useRef(null);
+
+    const handlePieDownload = async (ref, chartName, fileName) => {
+        if (!ref.current) return;
+        
+        setDownloadingChart(chartName);
+        
+        setTimeout(async () => {
+            try {
+                const canvas = await html2canvas(ref.current, {
+                    backgroundColor: "#ffffff",
+                    scale: 2,
+                    useCORS: true
+                });
+                const image = canvas.toDataURL("image/jpeg", 1.0);
+                const link = document.createElement("a");
+                link.href = image;
+                link.download = `${fileName}.jpeg`;
+                link.click();
+            } catch (error) {
+                console.error("Download failed:", error);
+            } finally {
+                setDownloadingChart(null);
+            }
+        }, 150);
+    };
+
+    const CustomPieLegend = ({ data }) => (
+        <Box sx={{ mt: 1, display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 1.5, pb: 1 }}>
+            {data.map((entry, index) => (
+                <Box key={index} sx={{ display: "flex", alignItems: "center" }}>
+                    <Box sx={{ width: 12, height: 12, bgcolor: COLORS[index % COLORS.length], mr: 0.5, borderRadius: "2px" }} />
+                    <Typography sx={{ fontSize: 13, fontWeight: 500, color: COLORS[index % COLORS.length] }}>
+                        {entry.name}
+                    </Typography>
+                </Box>
+            ))}
+        </Box>
+    );
 
     const handleDownload = async () => {
         if (!exportRef.current) return;
@@ -473,6 +572,27 @@ const ComplaintAnalysis = ({ userRole }) => {
             const link = document.createElement("a");
             link.href = image;
             link.download = "Monthly-Performance-vs-Plan.jpeg";
+            link.click();
+        } catch (error) {
+            console.error("Download failed:", error);
+        }
+    };
+
+    const handleSalesQuantityDownload = async () => {
+        if (!salesQuantityRef.current) return;
+
+        try {
+            const canvas = await html2canvas(salesQuantityRef.current, {
+                backgroundColor: "#ffffff",
+                scale: 2,
+                useCORS: true
+            });
+
+            const image = canvas.toDataURL("image/jpeg", 1.0);
+
+            const link = document.createElement("a");
+            link.href = image;
+            link.download = "Sales-Quantity-Trend.jpeg";
             link.click();
         } catch (error) {
             console.error("Download failed:", error);
@@ -845,6 +965,146 @@ const ComplaintAnalysis = ({ userRole }) => {
                     </Paper>
                 </Grid>
 
+                <Grid item xs={12} md={12}>
+                    <Paper
+                        ref={salesQuantityRef}
+                        sx={{
+                            p: 2,
+                            borderRadius: 4,
+                            background: "linear-gradient(145deg,#ffffff,#f8fafc)",
+                            boxShadow: "0 12px 30px rgba(0,0,0,0.08)",
+                            position: "relative"
+                        }}
+                    >
+                        <IconButton
+                            onClick={handleSalesQuantityDownload}
+                            sx={{
+                                position: "absolute",
+                                top: 12,
+                                right: 12,
+                                bgcolor: "#f1f5f9",
+                                "&:hover": { bgcolor: "#e2e8f0" }
+                            }}
+                        >
+                            <DownloadIcon fontSize="small" />
+                        </IconButton>
+
+                        <Typography
+                            variant="subtitle1"
+                            fontWeight={600}
+                            mb={3}
+                            color="#1e293b"
+                        >
+                            Sales Quantity Trend
+                        </Typography>
+
+                        <ResponsiveContainer width="100%" height={260}>
+                            <LineChart
+                                data={monthlyTrend}
+                                margin={{ top: 10, right: 30, left: 10, bottom: 0 }}
+                            >
+                                <CartesianGrid stroke="#e2e8f0" strokeDasharray="4 4" />
+
+                                <XAxis
+                                    dataKey="month"
+                                    tick={{ fill: "#64748b", fontSize: 12 }}
+                                />
+
+                                <YAxis
+                                    tick={{ fill: "#64748b", fontSize: 12 }}
+                                    domain={[0, dataMax => dataMax === 0 ? 100 : Math.ceil(dataMax * 1.2)]}
+                                />
+
+                                <Tooltip />
+
+                                <Line
+                                    type="monotone"
+                                    dataKey="sales"
+                                    name="Sales Quantity"
+                                    stroke="#10b981"
+                                    strokeWidth={3}
+                                    dot={{ r: 4 }}
+                                    activeDot={{ r: 6 }}
+                                >
+                                    <LabelList dataKey="sales" position="top" fill="#10b981" style={{ fontSize: 11, fontWeight: 600 }} />
+                                </Line>
+                            </LineChart>
+                        </ResponsiveContainer>
+                    </Paper>
+                </Grid>
+
+            </Grid>
+
+            {/* ================= TREND PIE CHARTS ================= */}
+            <Grid container spacing={4} mb={3}>
+                <Grid item xs={12} md={3}>
+                    <Paper ref={defectPieRef} sx={{ p: 2, borderRadius: 4, background: "#ffffff", boxShadow: "0 4px 12px rgba(0,0,0,0.05)", height: "100%", border: "1px solid #f0f0f0", position: "relative" }}>
+                        <IconButton onClick={() => handlePieDownload(defectPieRef, "defect", "Defect_wise_Rejections")} sx={{ position: "absolute", top: 8, right: 8 }} size="small">
+                            <DownloadIcon sx={{ color: "#64748b", fontSize: 20 }} />
+                        </IconButton>
+                        <Typography variant="subtitle2" fontWeight={600} mb={1} color="#1976d2" align="left">Defect wise Rejections</Typography>
+                        <ResponsiveContainer width="100%" height={220}>
+                            <PieChart>
+                                <Pie data={processedTrends.defect} dataKey="value" nameKey="name" cx="50%" cy="45%" innerRadius={45} outerRadius={75} stroke="#fff" strokeWidth={2}>
+                                    {processedTrends.defect.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                                </Pie>
+                                <Tooltip contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }} />
+                            </PieChart>
+                        </ResponsiveContainer>
+                        {downloadingChart === "defect" && <CustomPieLegend data={processedTrends.defect} />}
+                    </Paper>
+                </Grid>
+                <Grid item xs={12} md={3}>
+                    <Paper ref={fourMPieRef} sx={{ p: 2, borderRadius: 4, background: "#ffffff", boxShadow: "0 4px 12px rgba(0,0,0,0.05)", height: "100%", border: "1px solid #f0f0f0", position: "relative" }}>
+                        <IconButton onClick={() => handlePieDownload(fourMPieRef, "fourM", "4M_wise_Rejections")} sx={{ position: "absolute", top: 8, right: 8 }} size="small">
+                            <DownloadIcon sx={{ color: "#64748b", fontSize: 20 }} />
+                        </IconButton>
+                        <Typography variant="subtitle2" fontWeight={600} mb={1} color="#e91e63" align="left">4M wise Rejections</Typography>
+                        <ResponsiveContainer width="100%" height={220}>
+                            <PieChart>
+                                <Pie data={processedTrends.fourM} dataKey="value" nameKey="name" cx="50%" cy="45%" innerRadius={45} outerRadius={75} stroke="#fff" strokeWidth={2}>
+                                    {processedTrends.fourM.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                                </Pie>
+                                <Tooltip contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }} />
+                            </PieChart>
+                        </ResponsiveContainer>
+                        {downloadingChart === "fourM" && <CustomPieLegend data={processedTrends.fourM} />}
+                    </Paper>
+                </Grid>
+                <Grid item xs={12} md={3}>
+                    <Paper ref={modelPieRef} sx={{ p: 2, borderRadius: 4, background: "#ffffff", boxShadow: "0 4px 12px rgba(0,0,0,0.05)", height: "100%", border: "1px solid #f0f0f0", position: "relative" }}>
+                        <IconButton onClick={() => handlePieDownload(modelPieRef, "model", "Model_wise_Rejections")} sx={{ position: "absolute", top: 8, right: 8 }} size="small">
+                            <DownloadIcon sx={{ color: "#64748b", fontSize: 20 }} />
+                        </IconButton>
+                        <Typography variant="subtitle2" fontWeight={600} mb={1} color="#1976d2" align="left">Model wise Rejections</Typography>
+                        <ResponsiveContainer width="100%" height={220}>
+                            <PieChart>
+                                <Pie data={processedTrends.model} dataKey="value" nameKey="name" cx="50%" cy="45%" innerRadius={45} outerRadius={75} stroke="#fff" strokeWidth={2}>
+                                    {processedTrends.model.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                                </Pie>
+                                <Tooltip contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }} />
+                            </PieChart>
+                        </ResponsiveContainer>
+                        {downloadingChart === "model" && <CustomPieLegend data={processedTrends.model} />}
+                    </Paper>
+                </Grid>
+                <Grid item xs={12} md={3}>
+                    <Paper ref={partPieRef} sx={{ p: 2, borderRadius: 4, background: "#ffffff", boxShadow: "0 4px 12px rgba(0,0,0,0.05)", height: "100%", border: "1px solid #f0f0f0", position: "relative" }}>
+                        <IconButton onClick={() => handlePieDownload(partPieRef, "part", "Part_wise_Rejections")} sx={{ position: "absolute", top: 8, right: 8 }} size="small">
+                            <DownloadIcon sx={{ color: "#64748b", fontSize: 20 }} />
+                        </IconButton>
+                        <Typography variant="subtitle2" fontWeight={600} mb={1} color="#e91e63" align="left">Part wise Rejections</Typography>
+                        <ResponsiveContainer width="100%" height={220}>
+                            <PieChart>
+                                <Pie data={processedTrends.part} dataKey="value" nameKey="name" cx="50%" cy="45%" innerRadius={45} outerRadius={75} stroke="#fff" strokeWidth={2}>
+                                    {processedTrends.part.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                                </Pie>
+                                <Tooltip contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }} />
+                            </PieChart>
+                        </ResponsiveContainer>
+                        {downloadingChart === "part" && <CustomPieLegend data={processedTrends.part} />}
+                    </Paper>
+                </Grid>
             </Grid>
 
             <Box sx={{ overflowX: "auto" }}>

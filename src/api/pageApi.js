@@ -101,6 +101,9 @@ export const getPPMData = (payload) => {
     return getRequestWithBody("/complaints/ppm", payload);
 }
 
+export const getComplaintTrends = () => {
+    return postRequest("/complaints/trends");
+}
 
 //postRequest
 export const loginApi = (payload) => {

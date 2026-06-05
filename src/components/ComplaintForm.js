@@ -1105,7 +1105,7 @@ const ComplaintForm = () => {
                         onClose={() => setPartSearch("")}
                         renderValue={(selected) => {
                           const p = activeParts.find(x => x.PartId === selected);
-                          return p ? p.PartNumber : (selected || "");
+                          return p ? p.PartName : (selected || "");
                         }}
                         MenuProps={{
                           autoFocus: false,
@@ -1472,7 +1472,7 @@ const ComplaintForm = () => {
                         <strong>Part:</strong>{" "}
                         {(() => {
                           const p = activeParts.find(x => x.PartId === formData.partSelected);
-                          return p ? p.PartNumber : (formData.partSelected || "-");
+                          return p ? p.PartName : (formData.partSelected || "-");
                         })()}
                       </Typography>
                       <Typography><strong>Problem Statement:</strong> {formData.problemStatement}</Typography>

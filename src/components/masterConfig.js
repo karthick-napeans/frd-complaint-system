@@ -45,15 +45,13 @@ export const MASTER_CONFIG = {
 
         mapCreate: (data) => ({
             PartName: data.PartName,
-            PartNumber: data.PartName,
-            // PartDescription: data.PartDescription,
+            PartNumber: data.PartNumber,
         }),
 
         mapUpdate: (data) => ({
             PartId: data.PartId,
             PartName: data.PartName,
-            PartNumber: data.PartName,
-            // PartDescription: data.PartDescription,
+            PartNumber: data.PartNumber,
         }),
 
         mapDelete: (id, isActive) => ({

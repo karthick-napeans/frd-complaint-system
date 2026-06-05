@@ -82,6 +82,13 @@ const MASTER_FORM_CONFIG = {
 
   part: [
     {
+      name: "PartNumber",
+      label: "Part Number",
+      required: true,
+      pattern: /^[A-Za-z0-9 \-_]+$/,
+      patternMessage: "Special characters are not allowed",
+    },
+    {
       name: "PartName",
       label: "Part Name",
       required: true,
@@ -403,7 +410,8 @@ const MasterData = ({ userRole = "Admin" }) => {
 
 
       part: [
-        { field: "PartName", headerName: "Part Name", width: 380 },
+        { field: "PartNumber", headerName: "Part Number", width: 200 },
+        { field: "PartName", headerName: "Part Name", width: 240 },
         {
           field: "IsActive",
           headerName: "Status",

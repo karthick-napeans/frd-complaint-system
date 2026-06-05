@@ -43,8 +43,10 @@ const WarrantyAnalysis = () => {
   const [rawData, setRawData] = useState([]);
   const [selectedModels, setSelectedModels] = useState([]);
   const [selectedParts, setSelectedParts] = useState([]);
+  const [selectedPartNames, setSelectedPartNames] = useState([]);
   const [modelSearch, setModelSearch] = useState("");
   const [partSearch, setPartSearch] = useState("");
+  const [partNameSearch, setPartNameSearch] = useState("");
   const [selectedRegions, setSelectedRegions] = useState([]);
 
   const filteredModels = useMemo(() => {
@@ -62,6 +64,25 @@ const WarrantyAnalysis = () => {
         part.PartNumber.toLowerCase().includes(partSearch.toLowerCase())
       ) || [];
   }, [parts, partSearch]);
+
+  const uniquePartNames = useMemo(() => {
+    const activeParts = parts?.filter(p => p.IsActive) || [];
+    const names = activeParts.map(p => p.PartName).filter(Boolean);
+    return [...new Set(names)];
+  }, [parts]);
+
+  const filteredPartNamesList = useMemo(() => {
+    return uniquePartNames.filter(name => name.toLowerCase().includes(partNameSearch.toLowerCase()));
+  }, [uniquePartNames, partNameSearch]);
+
+  const finalPartList = useMemo(() => {
+    let list = [...selectedParts];
+    if (selectedPartNames.length > 0) {
+      const matchingParts = parts.filter(p => selectedPartNames.includes(p.PartName)).map(p => p.PartNumber);
+      list = [...list, ...matchingParts];
+    }
+    return [...new Set(list)];
+  }, [selectedParts, selectedPartNames, parts]);
   const [selectedMonthYear, setSelectedMonthYear] = useState("");
   const [hideDatePickers, setHideDatePickers] = useState(false);
 
@@ -109,6 +130,7 @@ const WarrantyAnalysis = () => {
   const hasFetchedOnce = useRef(false);
   const [latestImprovement, setLatestImprovement] = useState(null);
   const [improvementList, setImprovementList] = useState([]);
+  const [downloadingChartId, setDownloadingChartId] = useState(null);
 
   const baselineColors = [
     "#ff0000", // red
@@ -343,7 +365,7 @@ const WarrantyAnalysis = () => {
         repairFromDate: userSelectedRepair ? (repairFrom || null) : minDateDefault,
         repairToDate: userSelectedRepair ? (repairTo || null) : maxDateDefault,
         modelList: selectedModels.map(id => models.find(m => m.ModelId === id)?.ModelCode).filter(Boolean) || [],
-        partList: selectedParts || [],
+        partList: finalPartList || [],
         regionList: selectedRegions || [],
         MonthYear: formattedMonthYear,
       };
@@ -385,20 +407,27 @@ const WarrantyAnalysis = () => {
   const downloadChart = async (id, fileName) => {
     let targetId = id;
     if (id === "prodRepairDiv") {
-      targetId = "prodRepairDiv_full";
+      setDownloadingChartId(id);
     }
-    const element = document.getElementById(targetId);
-    if (!element) return;
+    
+    setTimeout(async () => {
+      const element = document.getElementById(targetId);
+      if (!element) {
+        setDownloadingChartId(null);
+        return;
+      }
 
-    const canvas = await html2canvas(element, {
-      backgroundColor: "#ffffff",
-      scale: 2,
-    });
+      const canvas = await html2canvas(element, {
+        backgroundColor: "#ffffff",
+        scale: 2,
+      });
 
-    const link = document.createElement("a");
-    link.download = `${fileName}.jpeg`;
-    link.href = canvas.toDataURL("image/jpeg", 1.0);
-    link.click();
+      const link = document.createElement("a");
+      link.download = `${fileName}.jpeg`;
+      link.href = canvas.toDataURL("image/jpeg", 1.0);
+      link.click();
+      setDownloadingChartId(null);
+    }, 150);
   };
 
   const parseDate = (v) => (v ? new Date(v.split("T")[0]) : null);
@@ -425,7 +454,7 @@ const WarrantyAnalysis = () => {
       if (selectedModels.length && !selectedModels.some(id => models.find(m => m.ModelId === id)?.ModelName === d.Model_Name))
         return false;
 
-      if (selectedParts.length && !selectedParts.includes(d.Part_Number))
+      if (finalPartList.length && !finalPartList.includes(d.Part_Number))
         return false;
 
       if (selectedRegions.length && !selectedRegions.includes(d.region))
@@ -592,7 +621,7 @@ const WarrantyAnalysis = () => {
             <Grid container spacing={2}>
 
               {/* ROW 1 */}
-              <Grid item xs={12} md={2.4}>
+              <Grid item xs={12} md={2}>
                 <FormControl
                   fullWidth
                   size="small"
@@ -620,7 +649,7 @@ const WarrantyAnalysis = () => {
 
 
 
-              <Grid item xs={12} md={2.4}>
+              <Grid item xs={12} md={2}>
                 <FormControl
                   fullWidth
                   size="small"
@@ -683,7 +712,7 @@ const WarrantyAnalysis = () => {
                 </FormControl>
               </Grid>
 
-              <Grid item xs={12} md={2.4}>
+              <Grid item xs={12} md={2}>
                 <FormControl
                   fullWidth
                   size="small"
@@ -754,7 +783,66 @@ const WarrantyAnalysis = () => {
                 </FormControl>
               </Grid>
 
-              <Grid item xs={12} md={2.4}>
+              <Grid item xs={12} md={2}>
+                <FormControl
+                  fullWidth
+                  size="small"
+                  sx={{
+                    "& .MuiInputLabel-root": {
+                      backgroundColor: "#fff",
+                      px: 0.5,
+                    }
+                  }}
+                >
+                  <InputLabel shrink>Part Name</InputLabel>
+                  <Select
+                    multiple
+                    value={selectedPartNames}
+                    onChange={(e) => setSelectedPartNames(e.target.value)}
+                    onClose={() => setPartNameSearch("")}
+                    renderValue={(selected) => selected.join(", ")}
+                    MenuProps={{
+                      autoFocus: false,
+                      PaperProps: {
+                        style: {
+                          maxHeight: 300,
+                        }
+                      }
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        position: "sticky",
+                        top: 0,
+                        bgcolor: "background.paper",
+                        zIndex: 1,
+                        p: 1,
+                        borderBottom: "1px solid #e0e0e0"
+                      }}
+                      onKeyDown={(e) => e.stopPropagation()}
+                    >
+                      <TextField
+                        size="small"
+                        autoFocus
+                        placeholder="Search Part Name..."
+                        fullWidth
+                        value={partNameSearch}
+                        onChange={(e) => setPartNameSearch(e.target.value)}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </Box>
+
+                    {filteredPartNamesList.map((name) => (
+                      <MenuItem key={name} value={name}>
+                        <Checkbox checked={selectedPartNames.includes(name)} />
+                        <ListItemText primary={name} />
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              <Grid item xs={12} md={2}>
                 <FormControl
                   fullWidth
                   size="small"
@@ -782,7 +870,7 @@ const WarrantyAnalysis = () => {
                 </FormControl>
               </Grid>
 
-              <Grid item xs={12} md={2.4}>
+              <Grid item xs={12} md={2}>
                 <FormControl
                   fullWidth
                   size="small"
@@ -890,6 +978,7 @@ const WarrantyAnalysis = () => {
                 onClick={() => {
                   setSelectedModels([]);
                   setSelectedParts([]);
+                  setSelectedPartNames([]);
                   setSelectedRegions([]);
                   setProdDateFrom(lastYearMonthStart);
                   setProdDateTo(today);
@@ -1013,7 +1102,10 @@ const WarrantyAnalysis = () => {
                         position="top"
                         fill="#3b82f6"
                         fontSize={12}
-                        fontWeight="bold"
+                        fontWeight={600}
+                        stroke="#ffffff"
+                        strokeWidth={3}
+                        style={{ paintOrder: "stroke", pointerEvents: "none" }}
                         offset={6}
                       />
                     </Bar>
@@ -1022,15 +1114,18 @@ const WarrantyAnalysis = () => {
                       type="monotone"
                       dataKey="repair"
                       stroke="#ef4444"
-                      strokeWidth={3}
-                      dot={{ r: 4 }}
+                      strokeWidth={2}
+                      dot={{ r: 2 }}
                     >
                       <LabelList
                         dataKey="repair"
                         position="right"
                         fill="#ef4444"
-                        fontSize={12}
-                        fontWeight="bold"
+                        fontSize={13}
+                        fontWeight={800}
+                        stroke="#ffffff"
+                        strokeWidth={4}
+                        style={{ paintOrder: "stroke", pointerEvents: "none" }}
                         offset={6}
                       />
                     </Line>
@@ -1059,6 +1154,31 @@ const WarrantyAnalysis = () => {
                             isFront={true}
                             label={({ viewBox }) => {
                               const { x, y } = viewBox;
+                              
+                              if (downloadingChartId === "prodRepairDiv") {
+                                const dataPoint = sortedData.find(d => d.month === month);
+                                const boxWidth = 180;
+                                const boxHeight = 75 + (baselines.length * 20);
+                                const boxX = x > 200 ? x - boxWidth - 10 : x + 10;
+                                const boxY = y + 10;
+
+                                return (
+                                  <g>
+                                    <rect x={boxX} y={boxY} width={boxWidth} height={boxHeight} fill="#fff" stroke="#ddd" rx={6} />
+                                    <text x={boxX + 10} y={boxY + 20} fill="#333" fontSize={13} fontWeight="bold">{month}</text>
+                                    <text x={boxX + 10} y={boxY + 40} fill="#666" fontSize={13}>production: {dataPoint?.production || 0}</text>
+                                    <text x={boxX + 10} y={boxY + 60} fill="#666" fontSize={13}>repair: {dataPoint?.repair || 0}</text>
+                                    {baselines.map((baseline, idx) => {
+                                      const color = baselineColors[improvementList.indexOf(baseline) % baselineColors.length] || "#ef4444";
+                                      return (
+                                        <text key={baseline.id} x={boxX + 10} y={boxY + 80 + (idx * 20)} fill={color} fontSize={13} fontWeight="bold">
+                                          {baseline.modelCode} Improvement: {baseline.description || ""}
+                                        </text>
+                                      );
+                                    })}
+                                  </g>
+                                );
+                              }
 
                               return (
                                 <g>
@@ -1203,7 +1323,10 @@ const WarrantyAnalysis = () => {
                     position="top"
                     fill="#3b82f6"
                     fontSize={10}
-                    fontWeight="bold"
+                    fontWeight={600}
+                    stroke="#ffffff"
+                    strokeWidth={3}
+                    style={{ paintOrder: "stroke", pointerEvents: "none" }}
                     offset={6}
                   />
                 </Bar>
@@ -1218,8 +1341,11 @@ const WarrantyAnalysis = () => {
                     dataKey="repair"
                     position="right"
                     fill="#ef4444"
-                    fontSize={10}
-                    fontWeight="bold"
+                    fontSize={11}
+                    fontWeight={800}
+                    stroke="#ffffff"
+                    strokeWidth={4}
+                    style={{ paintOrder: "stroke", pointerEvents: "none" }}
                     offset={6}
                   />
                 </Line>
