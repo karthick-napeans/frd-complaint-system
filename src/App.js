@@ -27,7 +27,7 @@ import {
   Navigate,
 } from "react-router-dom";
 import Login from "./components/Login";
-import Dashboard from "./components/Dashboard";
+// import Dashboard from "./components/Dashboard";
 import UserManagement from "./components/UserManagement";
 import MasterData from "./components/MasterData";
 import BulkUpload from "./components/BulkUpload";
@@ -66,7 +66,7 @@ const AppLayout = ({ userRole, username, onLogout }) => {
 
   useReloadControl();
 
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(true);
   const [anchorEl, setAnchorEl] = useState(null);
   const [openPasswordDialog, setOpenPasswordDialog] = useState(false);
   const [password, setPassword] = useState("");
@@ -212,7 +212,7 @@ const AppLayout = ({ userRole, username, onLogout }) => {
 
         <Routes>
 
-          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/home" element={<Box />} />
 
           {/* Warranty */}
           <Route path="/warranty/entry" element={<WarrantyEntry />} />
@@ -544,7 +544,7 @@ function App() {
           element={
             !isAuthenticated
               ? <Login onLogin={handleLogin} />
-              : <Navigate to="/dashboard" replace />
+              : <Navigate to="/home" replace />
           }
         />
 

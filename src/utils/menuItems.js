@@ -25,13 +25,13 @@ const menuItems = [
   // =====================
   // DASHBOARD
   // =====================
-  {
-    id: 'dashboard',
-    label: 'Dashboard',
-    icon: <DashboardIcon />,
-    path: '/dashboard',
-    roles: ['Super_Admin', 'QC Admin', 'QC User'],
-  },
+  // {
+  //   id: 'dashboard',
+  //   label: 'Dashboard',
+  //   icon: <DashboardIcon />,
+  //   path: '/dashboard',
+  //   roles: ['Super_Admin', 'QC Admin', 'QC User'],
+  // },
 
   // =====================
   // FIELD REPORTS (WARRANTY)

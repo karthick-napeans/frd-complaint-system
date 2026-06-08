@@ -38,7 +38,7 @@ const Login = ({ onLogin }) => {
       localStorage.setItem("username", UserName);
 
       onLogin(UserRole, UserName);
-      navigate("/dashboard", { replace: true });
+      navigate("/home", { replace: true });
 
     } catch (err) {
       if (err.response?.status === 401) {

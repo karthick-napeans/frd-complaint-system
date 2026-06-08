@@ -48,6 +48,11 @@ const WarrantyAnalysis = () => {
   const [partSearch, setPartSearch] = useState("");
   const [partNameSearch, setPartNameSearch] = useState("");
   const [selectedRegions, setSelectedRegions] = useState([]);
+  const [appliedFilters, setAppliedFilters] = useState({
+    customerSelected: "",
+    selectedModels: [],
+    finalPartList: [],
+  });
 
   const filteredModels = useMemo(() => {
     return models
@@ -140,11 +145,11 @@ const WarrantyAnalysis = () => {
     "#00d9ff", // cyan
   ];
 
-  const filteredBaselines = (customerSelected && selectedModels.length > 0 && selectedParts.length > 0)
+  const filteredBaselines = (appliedFilters.customerSelected && appliedFilters.selectedModels.length > 0 && appliedFilters.finalPartList.length > 0)
     ? improvementList?.filter(b =>
-        selectedModels.includes(b.modelId) && 
-        b.customerId == customerSelected &&
-        selectedParts.includes(b.partNumber)
+        appliedFilters.selectedModels.includes(b.modelId) && 
+        b.customerId == appliedFilters.customerSelected &&
+        appliedFilters.finalPartList.includes(b.partNumber)
       )
     : [];
 
@@ -196,6 +201,11 @@ const WarrantyAnalysis = () => {
       if (!hasData) {
         setFiltersOpen(true);
       }
+      setAppliedFilters({
+        customerSelected,
+        selectedModels,
+        finalPartList,
+      });
     };
     initLoad();
   }, [customerSelected]);
@@ -314,6 +324,11 @@ const WarrantyAnalysis = () => {
       if (hasData) {
         setFiltersOpen(false);
       }
+      setAppliedFilters({
+        customerSelected,
+        selectedModels,
+        finalPartList,
+      });
     } finally {
       setLoading(false);
     }
@@ -1244,45 +1259,6 @@ const WarrantyAnalysis = () => {
 
 
                 </ResponsiveContainer>
-                {filteredBaselines?.length > 0 && (
-                  <Box
-                    display="flex"
-                    justifyContent="center"
-                    gap={3}
-                    mt={2}
-                    flexWrap="wrap"
-                  >
-                    {filteredBaselines.map((baseline) => {
-                      const color = baselineColors[improvementList.indexOf(baseline) % baselineColors.length];
-
-                      return (
-                        <Box
-                          key={baseline.id}
-                          display="flex"
-                          alignItems="center"
-                          gap={1}
-                        >
-                          {/* Colored Line Indicator */}
-                          <Box
-                            sx={{
-                              width: 30,
-                              height: 3,
-                              backgroundColor: color,
-                              borderRadius: 1
-                            }}
-                          />
-
-                          <Typography
-                            variant="caption"
-                            sx={{ fontWeight: 600, color }}
-                          >
-                            {baseline.modelCode} BASELINE
-                          </Typography>
-                        </Box>
-                      );
-                    })}
-                  </Box>
-                )}
               </CardContent>
 
             </div>

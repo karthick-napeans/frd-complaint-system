@@ -58,10 +58,9 @@ const ComplaintForm = () => {
   const activeModels = models.filter((m) => m.IsActive === true);
   const activeRepairCauses = repairCauses.filter((c) => c.IsActive === true);
   const activeDefects = defects ? defects.filter((d) => d.IsActive === true) : [];
-  const fallbackDefects = ["Dent", "Scratch", "Dimension Issue", "Broken", "Leakage", "Others"];
   const displayDefects = activeDefects.length > 0
     ? activeDefects.map((d) => d.Defect)
-    : fallbackDefects;
+    : [];
   const [expandedPanel, setExpandedPanel] = useState(null);
   const SEVERITY_LEVELS = ["Low", "Medium", "High", "Critical"];
   const [activeStep, setActiveStep] = useState(0);
@@ -1096,16 +1095,16 @@ const ComplaintForm = () => {
                   {/* Part */}
                   <Grid item xs={12} >
                     <FormControl fullWidth error={!!errors.partSelected}>
-                      <InputLabel>Part</InputLabel>
+                      <InputLabel>Part Name - Part Number</InputLabel>
                       <Select
                         name="partSelected"
                         value={formData.partSelected || ""}
-                        label="Part"
+                        label="Part Name - Part Number"
                         onChange={handleSelectChange}
                         onClose={() => setPartSearch("")}
                         renderValue={(selected) => {
                           const p = activeParts.find(x => x.PartId === selected);
-                          return p ? p.PartName : (selected || "");
+                          return p ? `${p.PartName} - ${p.PartNumber}` : (selected || "");
                         }}
                         MenuProps={{
                           autoFocus: false,
@@ -1139,11 +1138,12 @@ const ComplaintForm = () => {
                         </Box>
                         {activeParts
                           .filter((p) =>
-                            p.PartNumber.toLowerCase().includes(partSearch.toLowerCase())
+                            p.PartNumber.toLowerCase().includes(partSearch.toLowerCase()) ||
+                            p.PartName.toLowerCase().includes(partSearch.toLowerCase())
                           )
                           .map((p) => (
                             <MenuItem key={p.PartId} value={p.PartId}>
-                              {p.PartNumber}
+                              {p.PartName} - {p.PartNumber}
                             </MenuItem>
                           ))
                         }
@@ -1465,14 +1465,21 @@ const ComplaintForm = () => {
                         <strong>Model:</strong>{" "}
                         {(() => {
                           const m = activeModels.find(x => x.ModelId === formData.modelSelected);
-                          return m ? `${m.ModelCode} - ${m.ModelName}` : (formData.modelSelected || "-");
+                          return m ? `${m.ModelName}` : (formData.modelSelected || "-");
                         })()}
                       </Typography>
                       <Typography>
-                        <strong>Part:</strong>{" "}
+                        <strong>Part Name:</strong>{" "}
                         {(() => {
                           const p = activeParts.find(x => x.PartId === formData.partSelected);
                           return p ? p.PartName : (formData.partSelected || "-");
+                        })()}
+                      </Typography>
+                      <Typography>
+                        <strong>Part Number:</strong>{" "}
+                        {(() => {
+                          const p = activeParts.find(x => x.PartId === formData.partSelected);
+                          return p ? p.PartNumber : "-";
                         })()}
                       </Typography>
                       <Typography><strong>Problem Statement:</strong> {formData.problemStatement}</Typography>

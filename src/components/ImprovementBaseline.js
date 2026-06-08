@@ -8,7 +8,7 @@ import {
     Button,
     Grid,
     Chip,
-    Stack, MenuItem
+    Stack, MenuItem, Checkbox
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import ConfirmDialog from "./ConfirmDialog";
@@ -27,7 +27,7 @@ const ImprovementBaselinePage = () => {
         lastImprovementDate: new Date().toISOString().split("T")[0],
         customerId: "",
         modelId: "",
-        partNumber: "",
+        partNumber: [],
         improvementDescription: "",
     })
     const [confirmState, setConfirmState] = useState({
@@ -129,7 +129,7 @@ const ImprovementBaselinePage = () => {
             newErrors.modelId = "Model selection is required";
         }
 
-        if (!config.partNumber) {
+        if (!config.partNumber || config.partNumber.length === 0) {
             newErrors.partNumber = "Part selection is required";
         }
 
@@ -146,21 +146,25 @@ const ImprovementBaselinePage = () => {
         try {
             setSaving(true);
 
-            const payload = {
-                ImprovementDate: config.lastImprovementDate,
-                CustomerId: Number(config.customerId),
-                ModelId: config.modelId,
-                PartNumber: config.partNumber,
-                Details: config.improvementDescription,
-            };
-            console.log("Creating improvement with payload:", payload);
-            await saveImprovementBaseline(payload);
+            const partsToSave = Array.isArray(config.partNumber) ? config.partNumber : [config.partNumber];
+
+            for (const part of partsToSave) {
+                const payload = {
+                    ImprovementDate: config.lastImprovementDate,
+                    CustomerId: Number(config.customerId),
+                    ModelId: config.modelId,
+                    PartNumber: part,
+                    Details: config.improvementDescription,
+                };
+                console.log("Creating improvement with payload:", payload);
+                await saveImprovementBaseline(payload);
+            }
 
             setConfig({
                 lastImprovementDate: new Date().toISOString().split("T")[0],
                 customerId: "",
                 modelId: "",
-                partNumber: "",
+                partNumber: [],
                 improvementDescription: "",
             });
 
@@ -296,18 +300,21 @@ const ImprovementBaselinePage = () => {
                                 select
                                 fullWidth
                                 size="small"
-                                label="Select Part"
-                                value={config.partNumber || ""}
+                                label="Select Parts"
+                                value={config.partNumber || []}
                                 onChange={(e) =>
                                     setConfig({ ...config, partNumber: e.target.value })
                                 }
                                 error={!!errors.partNumber}
                                 helperText={errors.partNumber}
                                 SelectProps={{
+                                    multiple: true,
                                     onClose: () => setPartSearch(""),
                                     renderValue: (selected) => {
-                                        const p = activeParts.find(x => x.PartNumber === selected);
-                                        return p ? p.PartNumber : (selected || "");
+                                        return selected.map(s => {
+                                            const p = activeParts.find(x => x.PartNumber === s);
+                                            return p ? `${p.PartNumber} - ${p.PartName}` : s;
+                                        }).join(', ');
                                     },
                                     MenuProps: {
                                         autoFocus: false,
@@ -346,11 +353,13 @@ const ImprovementBaselinePage = () => {
 
                                 {activeParts
                                     ?.filter((part) =>
-                                        part.PartNumber.toLowerCase().includes(partSearch.toLowerCase())
+                                        part.PartNumber.toLowerCase().includes(partSearch.toLowerCase()) || 
+                                        (part.PartName && part.PartName.toLowerCase().includes(partSearch.toLowerCase()))
                                     )
                                     .map((part) => (
                                         <MenuItem key={part.PartId} value={part.PartNumber}>
-                                            {part.PartNumber}
+                                            <Checkbox checked={config.partNumber.indexOf(part.PartNumber) > -1} />
+                                            {part.PartNumber} - {part.PartName}
                                         </MenuItem>
                                     ))
                                 }

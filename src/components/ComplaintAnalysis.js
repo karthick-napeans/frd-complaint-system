@@ -208,7 +208,7 @@ const ComplaintAnalysis = ({ userRole }) => {
             const ppmMonths = sales.map((s, i) =>
                 s === 0
                     ? 0
-                    : Number(((rejection[i] * 1000000) / s).toFixed(1))
+                    : Number(((rejection[i] * 1000000) / s).toFixed(0))
             );
 
             const totalSales = sales.reduce((a, b) => a + b, 0);
@@ -217,15 +217,15 @@ const ComplaintAnalysis = ({ userRole }) => {
             const totalPPM =
                 totalSales === 0
                     ? 0
-                    : Number(((totalRej * 1000000) / totalSales).toFixed(1));
+                    : Number(((totalRej * 1000000) / totalSales).toFixed(0));
 
             const ppmPrev = customer.salesPrev === 0
                 ? 0
-                : Number(((customer.rejPrev * 1000000) / customer.salesPrev).toFixed(1));
+                : Number(((customer.rejPrev * 1000000) / customer.salesPrev).toFixed(0));
 
             const ppmLast = customer.salesLast === 0
                 ? 0
-                : Number(((customer.rejLast * 1000000) / customer.salesLast).toFixed(1));
+                : Number(((customer.rejLast * 1000000) / customer.salesLast).toFixed(0));
 
             return {
                 customerId: customer.customerId,
@@ -234,7 +234,7 @@ const ComplaintAnalysis = ({ userRole }) => {
                 sales,
                 rejection,
                 planPPM,
-                avgPlanPPM: activePlans.length === 0 ? 0 : Number((activePlans.reduce((a, b) => a + b, 0) / activePlans.length).toFixed(1)),
+                avgPlanPPM: activePlans.length === 0 ? 0 : Number((activePlans.reduce((a, b) => a + b, 0) / activePlans.length).toFixed(0)),
                 ppmMonths,
 
                 totalSales,
@@ -301,20 +301,20 @@ const ComplaintAnalysis = ({ userRole }) => {
 
         const totalSales = monthlySales.reduce((a, b) => a + b, 0);
         const totalRej = monthlyRejection.reduce((a, b) => a + b, 0);
-        const totalPPM = totalSales === 0 ? 0 : Number(((totalRej * 1000000) / totalSales).toFixed(1));
-        const ppmMonths = monthlySales.map((s, i) => s === 0 ? 0 : Number(((monthlyRejection[i] * 1000000) / s).toFixed(1)));
+        const totalPPM = totalSales === 0 ? 0 : Number(((totalRej * 1000000) / totalSales).toFixed(0));
+        const ppmMonths = monthlySales.map((s, i) => s === 0 ? 0 : Number(((monthlyRejection[i] * 1000000) / s).toFixed(0)));
         
         const planPPMMonths = monthlyPlanPPM.map((total, i) => {
             const count = ppmData.filter(row => (row.planPPM?.[i] ?? 0) > 0).length;
-            return count === 0 ? 0 : Number((total / count).toFixed(1));
+            return count === 0 ? 0 : Number((total / count).toFixed(0));
         });
 
         const activeMonths = planPPMMonths.filter(p => p > 0);
-        const totalPlanPPM = activeMonths.length === 0 ? 0 : Number((activeMonths.reduce((a, b) => a + b, 0) / activeMonths.length).toFixed(1));
+        const totalPlanPPM = activeMonths.length === 0 ? 0 : Number((activeMonths.reduce((a, b) => a + b, 0) / activeMonths.length).toFixed(0));
         
-        const totalPPMLast = salesLast === 0 ? 0 : Number(((rejLast * 1000000) / salesLast).toFixed(1));
-        const totalPlanPpmPrev = planPrevCount === 0 ? 0 : Number((planPrevSum / planPrevCount).toFixed(1));
-        const totalPlanPpmLast = planLastCount === 0 ? 0 : Number((planLastSum / planLastCount).toFixed(1));
+        const totalPPMLast = salesLast === 0 ? 0 : Number(((rejLast * 1000000) / salesLast).toFixed(0));
+        const totalPlanPpmPrev = planPrevCount === 0 ? 0 : Number((planPrevSum / planPrevCount).toFixed(0));
+        const totalPlanPpmLast = planLastCount === 0 ? 0 : Number((planLastSum / planLastCount).toFixed(0));
 
         return {
             salesPrev, salesLast, rejPrev, rejLast,
@@ -374,20 +374,20 @@ const ComplaintAnalysis = ({ userRole }) => {
 
         const totalSales = monthlySales.reduce((a, b) => a + b, 0);
         const totalRej = monthlyRejection.reduce((a, b) => a + b, 0);
-        const totalPPM = totalSales === 0 ? 0 : Number(((totalRej * 1000000) / totalSales).toFixed(1));
-        const ppmMonths = monthlySales.map((s, i) => s === 0 ? 0 : Number(((monthlyRejection[i] * 1000000) / s).toFixed(1)));
+        const totalPPM = totalSales === 0 ? 0 : Number(((totalRej * 1000000) / totalSales).toFixed(0));
+        const ppmMonths = monthlySales.map((s, i) => s === 0 ? 0 : Number(((monthlyRejection[i] * 1000000) / s).toFixed(0)));
         
         const planPPMMonths = monthlyPlanPPM.map((total, i) => {
             const count = trendRows.filter(row => (row.planPPM?.[i] ?? 0) > 0).length;
-            return count === 0 ? 0 : Number((total / count).toFixed(1));
+            return count === 0 ? 0 : Number((total / count).toFixed(0));
         });
 
         const activeMonths = planPPMMonths.filter(p => p > 0);
-        const totalPlanPPM = activeMonths.length === 0 ? 0 : Number((activeMonths.reduce((a, b) => a + b, 0) / activeMonths.length).toFixed(1));
+        const totalPlanPPM = activeMonths.length === 0 ? 0 : Number((activeMonths.reduce((a, b) => a + b, 0) / activeMonths.length).toFixed(0));
         
-        const totalPPMLast = salesLast === 0 ? 0 : Number(((rejLast * 1000000) / salesLast).toFixed(1));
-        const totalPlanPpmPrev = planPrevCount === 0 ? 0 : Number((planPrevSum / planPrevCount).toFixed(1));
-        const totalPlanPpmLast = planLastCount === 0 ? 0 : Number((planLastSum / planLastCount).toFixed(1));
+        const totalPPMLast = salesLast === 0 ? 0 : Number(((rejLast * 1000000) / salesLast).toFixed(0));
+        const totalPlanPpmPrev = planPrevCount === 0 ? 0 : Number((planPrevSum / planPrevCount).toFixed(0));
+        const totalPlanPpmLast = planLastCount === 0 ? 0 : Number((planLastSum / planLastCount).toFixed(0));
 
         return {
             salesPrev, salesLast, rejPrev, rejLast,
@@ -433,7 +433,7 @@ const ComplaintAnalysis = ({ userRole }) => {
             return {
                 month,
                 sales: monthlySales[i] || 0,
-                actual: Number(actualPPM.toFixed(1)),
+                actual: Number(actualPPM.toFixed(0)),
                 plan: monthlyPlan[i] || 0
             };
 
@@ -749,13 +749,58 @@ const ComplaintAnalysis = ({ userRole }) => {
     };
 
 
-    // Helper: calculate the same AVG that is displayed in each row
     const calculateDisplayedAverage = (arr = []) => {
         const activeValues = (arr || []).map(v => Number(v) || 0).filter(v => v > 0);
         if (activeValues.length === 0) return 0;
 
         return Math.round(
             activeValues.reduce((sum, val) => sum + val, 0) / activeValues.length
+        );
+    };
+
+    const renderCustomPieLabel = (props) => {
+        const { cx, cy, midAngle, outerRadius, percent, name, value, fill } = props;
+        
+        // Hide very small slices to prevent overlapping labels
+        if (!value || percent < 0.03) return null; 
+
+        const RADIAN = Math.PI / 180;
+        const sin = Math.sin(-RADIAN * midAngle);
+        const cos = Math.cos(-RADIAN * midAngle);
+        
+        // Start from edge of pie
+        const sx = cx + (outerRadius) * cos;
+        const sy = cy + (outerRadius) * sin;
+        
+        // Elbow point (shorter distance)
+        const mx = cx + (outerRadius + 8) * cos;
+        const my = cy + (outerRadius + 8) * sin;
+        
+        // End point of the line
+        const ex = mx + (cos >= 0 ? 1 : -1) * 8;
+        const ey = my;
+
+        const textAnchor = cos >= 0 ? 'start' : 'end';
+        // Truncate to save horizontal space
+        const displayName = name.length > 12 ? name.substring(0, 10) + '..' : name;
+
+        return (
+            <g>
+                <path d={`M${sx},${sy}L${mx},${my}L${ex},${ey}`} stroke={fill} fill="none" strokeWidth={1} />
+                <text 
+                    x={ex + (cos >= 0 ? 4 : -4)} 
+                    y={ey} 
+                    textAnchor={textAnchor} 
+                    dominantBaseline="central"
+                >
+                    <tspan x={ex + (cos >= 0 ? 4 : -4)} dy="-0.4em" fill={fill} fontSize={11} fontWeight={600}>
+                        {displayName}
+                    </tspan>
+                    <tspan x={ex + (cos >= 0 ? 4 : -4)} dy="1.2em" fill={fill} fontSize={11} fontWeight={600}>
+                        {value}
+                    </tspan>
+                </text>
+            </g>
         );
     };
 
@@ -1043,9 +1088,9 @@ const ComplaintAnalysis = ({ userRole }) => {
                             <DownloadIcon sx={{ color: "#64748b", fontSize: 20 }} />
                         </IconButton>
                         <Typography variant="subtitle2" fontWeight={600} mb={1} color="#1976d2" align="left">Defect wise Rejections</Typography>
-                        <ResponsiveContainer width="100%" height={220}>
+                        <ResponsiveContainer width="100%" height={260}>
                             <PieChart>
-                                <Pie data={processedTrends.defect} dataKey="value" nameKey="name" cx="50%" cy="45%" innerRadius={45} outerRadius={75} stroke="#fff" strokeWidth={2}>
+                                <Pie data={processedTrends.defect} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={25} outerRadius={40} stroke="#fff" strokeWidth={2} label={renderCustomPieLabel} labelLine={false}>
                                     {processedTrends.defect.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                                 </Pie>
                                 <Tooltip contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }} />
@@ -1060,9 +1105,9 @@ const ComplaintAnalysis = ({ userRole }) => {
                             <DownloadIcon sx={{ color: "#64748b", fontSize: 20 }} />
                         </IconButton>
                         <Typography variant="subtitle2" fontWeight={600} mb={1} color="#e91e63" align="left">4M wise Rejections</Typography>
-                        <ResponsiveContainer width="100%" height={220}>
+                        <ResponsiveContainer width="100%" height={260}>
                             <PieChart>
-                                <Pie data={processedTrends.fourM} dataKey="value" nameKey="name" cx="50%" cy="45%" innerRadius={45} outerRadius={75} stroke="#fff" strokeWidth={2}>
+                                <Pie data={processedTrends.fourM} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={25} outerRadius={40} stroke="#fff" strokeWidth={2} label={renderCustomPieLabel} labelLine={false}>
                                     {processedTrends.fourM.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                                 </Pie>
                                 <Tooltip contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }} />
@@ -1077,9 +1122,9 @@ const ComplaintAnalysis = ({ userRole }) => {
                             <DownloadIcon sx={{ color: "#64748b", fontSize: 20 }} />
                         </IconButton>
                         <Typography variant="subtitle2" fontWeight={600} mb={1} color="#1976d2" align="left">Model wise Rejections</Typography>
-                        <ResponsiveContainer width="100%" height={220}>
+                        <ResponsiveContainer width="100%" height={260}>
                             <PieChart>
-                                <Pie data={processedTrends.model} dataKey="value" nameKey="name" cx="50%" cy="45%" innerRadius={45} outerRadius={75} stroke="#fff" strokeWidth={2}>
+                                <Pie data={processedTrends.model} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={25} outerRadius={40} stroke="#fff" strokeWidth={2} label={renderCustomPieLabel} labelLine={false}>
                                     {processedTrends.model.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                                 </Pie>
                                 <Tooltip contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }} />
@@ -1094,9 +1139,9 @@ const ComplaintAnalysis = ({ userRole }) => {
                             <DownloadIcon sx={{ color: "#64748b", fontSize: 20 }} />
                         </IconButton>
                         <Typography variant="subtitle2" fontWeight={600} mb={1} color="#e91e63" align="left">Part wise Rejections</Typography>
-                        <ResponsiveContainer width="100%" height={220}>
+                        <ResponsiveContainer width="100%" height={260}>
                             <PieChart>
-                                <Pie data={processedTrends.part} dataKey="value" nameKey="name" cx="50%" cy="45%" innerRadius={45} outerRadius={75} stroke="#fff" strokeWidth={2}>
+                                <Pie data={processedTrends.part} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={25} outerRadius={40} stroke="#fff" strokeWidth={2} label={renderCustomPieLabel} labelLine={false}>
                                     {processedTrends.part.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                                 </Pie>
                                 <Tooltip contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }} />
