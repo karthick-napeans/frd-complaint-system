@@ -7,10 +7,7 @@ import * as XLSX from 'xlsx';
 const BulkUpload = ({ userRole }) => {
   const [uploadType, setUploadType] = useState('repair');
   const [file, setFile] = useState(null);
-  const [uploadHistory, setUploadHistory] = useState([
-    { id: 1, filename: 'repair_data_oct_2025.xlsx', type: 'Repair', uploadedBy: 'qcadmin', uploadDate: '2025-10-28', status: 'Success', recordsProcessed: 145 },
-    { id: 2, filename: 'dre_data_sep_2025.xlsx', type: 'DRE', uploadedBy: 'qcadmin', uploadDate: '2025-09-25', status: 'Success', recordsProcessed: 58 },
-  ]);
+  const [uploadHistory, setUploadHistory] = useState([]);
   const [message, setMessage] = useState('');
   const [preview, setPreview] = useState(null);
   const [openPreview, setOpenPreview] = useState(false);

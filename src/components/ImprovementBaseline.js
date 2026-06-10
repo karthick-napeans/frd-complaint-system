@@ -8,7 +8,7 @@ import {
     Button,
     Grid,
     Chip,
-    Stack, MenuItem, Checkbox
+    Stack, MenuItem, Checkbox, ListItemText
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import ConfirmDialog from "./ConfirmDialog";
@@ -302,9 +302,23 @@ const ImprovementBaselinePage = () => {
                                 size="small"
                                 label="Select Parts"
                                 value={config.partNumber || []}
-                                onChange={(e) =>
-                                    setConfig({ ...config, partNumber: e.target.value })
-                                }
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    if (val.includes("all")) {
+                                        const visibleParts = activeParts?.filter((part) =>
+                                            part.PartNumber.toLowerCase().includes(partSearch.toLowerCase()) || 
+                                            (part.PartName && part.PartName.toLowerCase().includes(partSearch.toLowerCase()))
+                                        ).map(p => p.PartNumber) || [];
+                                        
+                                        if (config.partNumber.length === visibleParts.length && visibleParts.length > 0) {
+                                            setConfig({ ...config, partNumber: [] });
+                                        } else {
+                                            setConfig({ ...config, partNumber: visibleParts });
+                                        }
+                                    } else {
+                                        setConfig({ ...config, partNumber: val });
+                                    }
+                                }}
                                 error={!!errors.partNumber}
                                 helperText={errors.partNumber}
                                 SelectProps={{
@@ -347,8 +361,19 @@ const ImprovementBaselinePage = () => {
                                     onClick={(e) => e.stopPropagation()}
                                   />
                                 </Box>
-                                <MenuItem value="">
-                                    <em>Select Part</em>
+
+                                <MenuItem value="all">
+                                    <Checkbox 
+                                        checked={config.partNumber.length > 0 && config.partNumber.length === (activeParts?.filter((part) =>
+                                            part.PartNumber.toLowerCase().includes(partSearch.toLowerCase()) || 
+                                            (part.PartName && part.PartName.toLowerCase().includes(partSearch.toLowerCase()))
+                                        ).length || 0)} 
+                                        indeterminate={config.partNumber.length > 0 && config.partNumber.length < (activeParts?.filter((part) =>
+                                            part.PartNumber.toLowerCase().includes(partSearch.toLowerCase()) || 
+                                            (part.PartName && part.PartName.toLowerCase().includes(partSearch.toLowerCase()))
+                                        ).length || 0)} 
+                                    />
+                                    <ListItemText primary="Select All" />
                                 </MenuItem>
 
                                 {activeParts

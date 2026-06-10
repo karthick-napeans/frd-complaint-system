@@ -43,7 +43,8 @@ const ComplaintAnalysis = ({ userRole }) => {
     const dispatch = useDispatch();
     console.log("Rendering ComplaintAnalysis with userRole:", userRole);
     const [selectedCustomerId, setSelectedCustomerId] = useState(null);
-    const [downloadingChart, setDownloadingChart] = useState(null);
+    const [exportPieInfo, setExportPieInfo] = useState(null);
+    const hiddenPieExportRef = useRef(null);
     const [salesInput, setSalesInput] = useState({});
     const [editingCell, setEditingCell] = useState(null);
     const [tempValue, setTempValue] = useState("");
@@ -100,11 +101,11 @@ const ComplaintAnalysis = ({ userRole }) => {
 
                     salesPrev: dataPrev.Sales || 0,
                     rejPrev: dataPrev.Rejection || 0,
-                    planPpmPrev: dataPrev.ppm || 0, 
+                    planPpmPrev: dataPrev.ppm || 0,
 
                     salesLast: dataLast.Sales || 0,
                     rejLast: dataLast.Rejection || 0,
-                    planPpmLast: dataLast.ppm || 0, 
+                    planPpmLast: dataLast.ppm || 0,
 
                     sales: monthlySales,
                     rejection: monthlyRejection,
@@ -303,7 +304,7 @@ const ComplaintAnalysis = ({ userRole }) => {
         const totalRej = monthlyRejection.reduce((a, b) => a + b, 0);
         const totalPPM = totalSales === 0 ? 0 : Number(((totalRej * 1000000) / totalSales).toFixed(0));
         const ppmMonths = monthlySales.map((s, i) => s === 0 ? 0 : Number(((monthlyRejection[i] * 1000000) / s).toFixed(0)));
-        
+
         const planPPMMonths = monthlyPlanPPM.map((total, i) => {
             const count = ppmData.filter(row => (row.planPPM?.[i] ?? 0) > 0).length;
             return count === 0 ? 0 : Number((total / count).toFixed(0));
@@ -311,7 +312,7 @@ const ComplaintAnalysis = ({ userRole }) => {
 
         const activeMonths = planPPMMonths.filter(p => p > 0);
         const totalPlanPPM = activeMonths.length === 0 ? 0 : Number((activeMonths.reduce((a, b) => a + b, 0) / activeMonths.length).toFixed(0));
-        
+
         const totalPPMLast = salesLast === 0 ? 0 : Number(((rejLast * 1000000) / salesLast).toFixed(0));
         const totalPlanPpmPrev = planPrevCount === 0 ? 0 : Number((planPrevSum / planPrevCount).toFixed(0));
         const totalPlanPpmLast = planLastCount === 0 ? 0 : Number((planLastSum / planLastCount).toFixed(0));
@@ -376,7 +377,7 @@ const ComplaintAnalysis = ({ userRole }) => {
         const totalRej = monthlyRejection.reduce((a, b) => a + b, 0);
         const totalPPM = totalSales === 0 ? 0 : Number(((totalRej * 1000000) / totalSales).toFixed(0));
         const ppmMonths = monthlySales.map((s, i) => s === 0 ? 0 : Number(((monthlyRejection[i] * 1000000) / s).toFixed(0)));
-        
+
         const planPPMMonths = monthlyPlanPPM.map((total, i) => {
             const count = trendRows.filter(row => (row.planPPM?.[i] ?? 0) > 0).length;
             return count === 0 ? 0 : Number((total / count).toFixed(0));
@@ -384,7 +385,7 @@ const ComplaintAnalysis = ({ userRole }) => {
 
         const activeMonths = planPPMMonths.filter(p => p > 0);
         const totalPlanPPM = activeMonths.length === 0 ? 0 : Number((activeMonths.reduce((a, b) => a + b, 0) / activeMonths.length).toFixed(0));
-        
+
         const totalPPMLast = salesLast === 0 ? 0 : Number(((rejLast * 1000000) / salesLast).toFixed(0));
         const totalPlanPpmPrev = planPrevCount === 0 ? 0 : Number((planPrevSum / planPrevCount).toFixed(0));
         const totalPlanPpmLast = planLastCount === 0 ? 0 : Number((planLastSum / planLastCount).toFixed(0));
@@ -498,17 +499,17 @@ const ComplaintAnalysis = ({ userRole }) => {
     const modelPieRef = useRef(null);
     const partPieRef = useRef(null);
 
-    const handlePieDownload = async (ref, chartName, fileName) => {
-        if (!ref.current) return;
-        
-        setDownloadingChart(chartName);
-        
+    const handlePieDownload = async (data, title, fileName) => {
+        setExportPieInfo({ data, title, fileName });
+
         setTimeout(async () => {
+            if (!hiddenPieExportRef.current) return;
             try {
-                const canvas = await html2canvas(ref.current, {
+                const canvas = await html2canvas(hiddenPieExportRef.current, {
                     backgroundColor: "#ffffff",
                     scale: 2,
-                    useCORS: true
+                    useCORS: true,
+                    logging: false
                 });
                 const image = canvas.toDataURL("image/jpeg", 1.0);
                 const link = document.createElement("a");
@@ -518,7 +519,7 @@ const ComplaintAnalysis = ({ userRole }) => {
             } catch (error) {
                 console.error("Download failed:", error);
             } finally {
-                setDownloadingChart(null);
+                setExportPieInfo(null);
             }
         }, 150);
     };
@@ -758,49 +759,32 @@ const ComplaintAnalysis = ({ userRole }) => {
         );
     };
 
-    const renderCustomPieLabel = (props) => {
-        const { cx, cy, midAngle, outerRadius, percent, name, value, fill } = props;
-        
-        // Hide very small slices to prevent overlapping labels
-        if (!value || percent < 0.03) return null; 
+    const renderStaticPieLabel = (props) => {
+        const { cx, cy, midAngle, outerRadius, percent, name, fill, value } = props;
+
+        // Hide very small slices
+        if (!value || percent < 0.03) return null;
 
         const RADIAN = Math.PI / 180;
         const sin = Math.sin(-RADIAN * midAngle);
         const cos = Math.cos(-RADIAN * midAngle);
-        
-        // Start from edge of pie
-        const sx = cx + (outerRadius) * cos;
-        const sy = cy + (outerRadius) * sin;
-        
-        // Elbow point (shorter distance)
-        const mx = cx + (outerRadius + 8) * cos;
-        const my = cy + (outerRadius + 8) * sin;
-        
-        // End point of the line
-        const ex = mx + (cos >= 0 ? 1 : -1) * 8;
-        const ey = my;
 
+        const radius = outerRadius + 30; // Push label outside pie
+        const x = cx + radius * cos;
+        const y = cy + radius * sin;
         const textAnchor = cos >= 0 ? 'start' : 'end';
-        // Truncate to save horizontal space
-        const displayName = name.length > 12 ? name.substring(0, 10) + '..' : name;
+
+        const percentage = (percent * 100).toFixed(0) + "%";
 
         return (
-            <g>
-                <path d={`M${sx},${sy}L${mx},${my}L${ex},${ey}`} stroke={fill} fill="none" strokeWidth={1} />
-                <text 
-                    x={ex + (cos >= 0 ? 4 : -4)} 
-                    y={ey} 
-                    textAnchor={textAnchor} 
-                    dominantBaseline="central"
-                >
-                    <tspan x={ex + (cos >= 0 ? 4 : -4)} dy="-0.4em" fill={fill} fontSize={11} fontWeight={600}>
-                        {displayName}
-                    </tspan>
-                    <tspan x={ex + (cos >= 0 ? 4 : -4)} dy="1.2em" fill={fill} fontSize={11} fontWeight={600}>
-                        {value}
-                    </tspan>
-                </text>
-            </g>
+            <text x={x} y={y} textAnchor={textAnchor} dominantBaseline="central">
+                <tspan x={x} dy="-0.6em" fill={fill} fontSize={20} fontWeight="bold">
+                    {percentage}
+                </tspan>
+                <tspan x={x} dy="1.4em" fill={fill} fontSize={16} fontWeight={500}>
+                    {name}
+                </tspan>
+            </text>
         );
     };
 
@@ -812,14 +796,14 @@ const ComplaintAnalysis = ({ userRole }) => {
             </Typography>
 
             {selectedCustomerId && (
-                <Box 
-                    sx={{ 
-                        mb: 2, 
-                        p: 1.5, 
-                        display: "flex", 
-                        alignItems: "center", 
-                        gap: 2, 
-                        bgcolor: "#e3f2fd", 
+                <Box
+                    sx={{
+                        mb: 2,
+                        p: 1.5,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 2,
+                        bgcolor: "#e3f2fd",
                         borderRadius: 2,
                         border: "1px solid #bbdefb"
                     }}
@@ -827,10 +811,10 @@ const ComplaintAnalysis = ({ userRole }) => {
                     <Typography variant="body2" sx={{ fontWeight: 600, color: "#0d47a1" }}>
                         Currently showing trends for: {ppmData.find(c => c.customerId === selectedCustomerId)?.customerName}
                     </Typography>
-                    <Button 
-                        variant="contained" 
-                        size="small" 
-                        color="primary" 
+                    <Button
+                        variant="contained"
+                        size="small"
+                        color="primary"
                         onClick={() => setSelectedCustomerId(null)}
                         sx={{ textTransform: "none" }}
                     >
@@ -914,14 +898,18 @@ const ComplaintAnalysis = ({ userRole }) => {
                                     radius={[4, 4, 0, 0]}
                                     fill="#94a3b8"
                                     barSize={32}
-                                />
+                                >
+                                    <LabelList dataKey="plan" position="top" fill="#94a3b8" style={{ fontSize: 11, fontWeight: 600 }} />
+                                </Bar>
                                 <Bar
                                     dataKey="actual"
                                     name="Actual PPM"
                                     radius={[4, 4, 0, 0]}
                                     fill="#6366f1"
                                     barSize={32}
-                                />
+                                >
+                                    <LabelList dataKey="actual" position="top" fill="#6366f1" style={{ fontSize: 11, fontWeight: 600 }} />
+                                </Bar>
                             </BarChart>
                         </ResponsiveContainer>
                     </Paper>
@@ -1010,7 +998,7 @@ const ComplaintAnalysis = ({ userRole }) => {
                     </Paper>
                 </Grid>
 
-                <Grid item xs={12} md={12}>
+                {/* <Grid item xs={12} md={12}>
                     <Paper
                         ref={salesQuantityRef}
                         sx={{
@@ -1076,81 +1064,111 @@ const ComplaintAnalysis = ({ userRole }) => {
                             </LineChart>
                         </ResponsiveContainer>
                     </Paper>
-                </Grid>
+                </Grid> */}
 
             </Grid>
 
             {/* ================= TREND PIE CHARTS ================= */}
             <Grid container spacing={4} mb={3}>
                 <Grid item xs={12} md={3}>
-                    <Paper ref={defectPieRef} sx={{ p: 2, borderRadius: 4, background: "#ffffff", boxShadow: "0 4px 12px rgba(0,0,0,0.05)", height: "100%", border: "1px solid #f0f0f0", position: "relative" }}>
-                        <IconButton onClick={() => handlePieDownload(defectPieRef, "defect", "Defect_wise_Rejections")} sx={{ position: "absolute", top: 8, right: 8 }} size="small">
+                    <Paper sx={{ p: 2, borderRadius: 4, background: "#ffffff", boxShadow: "0 4px 12px rgba(0,0,0,0.05)", height: "100%", border: "1px solid #f0f0f0", position: "relative" }}>
+                        <IconButton onClick={() => handlePieDownload(processedTrends.defect, "Defect wise Rejections", "Defect_wise_Rejections")} sx={{ position: "absolute", top: 8, right: 8 }} size="small">
                             <DownloadIcon sx={{ color: "#64748b", fontSize: 20 }} />
                         </IconButton>
                         <Typography variant="subtitle2" fontWeight={600} mb={1} color="#1976d2" align="left">Defect wise Rejections</Typography>
                         <ResponsiveContainer width="100%" height={260}>
                             <PieChart>
-                                <Pie data={processedTrends.defect} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={25} outerRadius={40} stroke="#fff" strokeWidth={2} label={renderCustomPieLabel} labelLine={false}>
+                                <Pie data={processedTrends.defect} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={85} stroke="#fff" strokeWidth={2} label={false} labelLine={false}>
                                     {processedTrends.defect.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                                 </Pie>
                                 <Tooltip contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }} />
                             </PieChart>
                         </ResponsiveContainer>
-                        {downloadingChart === "defect" && <CustomPieLegend data={processedTrends.defect} />}
                     </Paper>
                 </Grid>
                 <Grid item xs={12} md={3}>
-                    <Paper ref={fourMPieRef} sx={{ p: 2, borderRadius: 4, background: "#ffffff", boxShadow: "0 4px 12px rgba(0,0,0,0.05)", height: "100%", border: "1px solid #f0f0f0", position: "relative" }}>
-                        <IconButton onClick={() => handlePieDownload(fourMPieRef, "fourM", "4M_wise_Rejections")} sx={{ position: "absolute", top: 8, right: 8 }} size="small">
+                    <Paper sx={{ p: 2, borderRadius: 4, background: "#ffffff", boxShadow: "0 4px 12px rgba(0,0,0,0.05)", height: "100%", border: "1px solid #f0f0f0", position: "relative" }}>
+                        <IconButton onClick={() => handlePieDownload(processedTrends.fourM, "4M wise Rejections", "4M_wise_Rejections")} sx={{ position: "absolute", top: 8, right: 8 }} size="small">
                             <DownloadIcon sx={{ color: "#64748b", fontSize: 20 }} />
                         </IconButton>
                         <Typography variant="subtitle2" fontWeight={600} mb={1} color="#e91e63" align="left">4M wise Rejections</Typography>
                         <ResponsiveContainer width="100%" height={260}>
                             <PieChart>
-                                <Pie data={processedTrends.fourM} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={25} outerRadius={40} stroke="#fff" strokeWidth={2} label={renderCustomPieLabel} labelLine={false}>
+                                <Pie data={processedTrends.fourM} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={85} stroke="#fff" strokeWidth={2} label={false} labelLine={false}>
                                     {processedTrends.fourM.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                                 </Pie>
                                 <Tooltip contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }} />
                             </PieChart>
                         </ResponsiveContainer>
-                        {downloadingChart === "fourM" && <CustomPieLegend data={processedTrends.fourM} />}
                     </Paper>
                 </Grid>
                 <Grid item xs={12} md={3}>
-                    <Paper ref={modelPieRef} sx={{ p: 2, borderRadius: 4, background: "#ffffff", boxShadow: "0 4px 12px rgba(0,0,0,0.05)", height: "100%", border: "1px solid #f0f0f0", position: "relative" }}>
-                        <IconButton onClick={() => handlePieDownload(modelPieRef, "model", "Model_wise_Rejections")} sx={{ position: "absolute", top: 8, right: 8 }} size="small">
+                    <Paper sx={{ p: 2, borderRadius: 4, background: "#ffffff", boxShadow: "0 4px 12px rgba(0,0,0,0.05)", height: "100%", border: "1px solid #f0f0f0", position: "relative" }}>
+                        <IconButton onClick={() => handlePieDownload(processedTrends.model, "Model Rejections", "Model_wise_Rejections")} sx={{ position: "absolute", top: 8, right: 8 }} size="small">
                             <DownloadIcon sx={{ color: "#64748b", fontSize: 20 }} />
                         </IconButton>
-                        <Typography variant="subtitle2" fontWeight={600} mb={1} color="#1976d2" align="left">Model wise Rejections</Typography>
+                        <Typography variant="subtitle2" fontWeight={600} mb={1} color="#1976d2" align="left">Model Rejections</Typography>
                         <ResponsiveContainer width="100%" height={260}>
                             <PieChart>
-                                <Pie data={processedTrends.model} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={25} outerRadius={40} stroke="#fff" strokeWidth={2} label={renderCustomPieLabel} labelLine={false}>
+                                <Pie data={processedTrends.model} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={85} stroke="#fff" strokeWidth={2} label={false} labelLine={false}>
                                     {processedTrends.model.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                                 </Pie>
                                 <Tooltip contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }} />
                             </PieChart>
                         </ResponsiveContainer>
-                        {downloadingChart === "model" && <CustomPieLegend data={processedTrends.model} />}
                     </Paper>
                 </Grid>
                 <Grid item xs={12} md={3}>
-                    <Paper ref={partPieRef} sx={{ p: 2, borderRadius: 4, background: "#ffffff", boxShadow: "0 4px 12px rgba(0,0,0,0.05)", height: "100%", border: "1px solid #f0f0f0", position: "relative" }}>
-                        <IconButton onClick={() => handlePieDownload(partPieRef, "part", "Part_wise_Rejections")} sx={{ position: "absolute", top: 8, right: 8 }} size="small">
+                    <Paper sx={{ p: 2, borderRadius: 4, background: "#ffffff", boxShadow: "0 4px 12px rgba(0,0,0,0.05)", height: "100%", border: "1px solid #f0f0f0", position: "relative" }}>
+                        <IconButton onClick={() => handlePieDownload(processedTrends.part, "Part Rejections", "Part_wise_Rejections")} sx={{ position: "absolute", top: 8, right: 8 }} size="small">
                             <DownloadIcon sx={{ color: "#64748b", fontSize: 20 }} />
                         </IconButton>
-                        <Typography variant="subtitle2" fontWeight={600} mb={1} color="#e91e63" align="left">Part wise Rejections</Typography>
+                        <Typography variant="subtitle2" fontWeight={600} mb={1} color="#e91e63" align="left">Part Rejections</Typography>
                         <ResponsiveContainer width="100%" height={260}>
                             <PieChart>
-                                <Pie data={processedTrends.part} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={25} outerRadius={40} stroke="#fff" strokeWidth={2} label={renderCustomPieLabel} labelLine={false}>
+                                <Pie data={processedTrends.part} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={85} stroke="#fff" strokeWidth={2} label={false} labelLine={false}>
                                     {processedTrends.part.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                                 </Pie>
                                 <Tooltip contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }} />
                             </PieChart>
                         </ResponsiveContainer>
-                        {downloadingChart === "part" && <CustomPieLegend data={processedTrends.part} />}
                     </Paper>
                 </Grid>
             </Grid>
+
+            {/* HIDDEN EXPORT CONTAINER (No Flicker) */}
+            <Box sx={{ position: 'absolute', top: -9999, left: -9999, zIndex: -1 }}>
+                <Paper ref={hiddenPieExportRef} sx={{ width: 800, height: 800, p: 4, borderRadius: 4, background: "#ffffff" }}>
+                    {exportPieInfo && (
+                        <>
+                            <Typography variant="h5" fontWeight={700} mb={4} color="#1976d2" align="center">
+                                {exportPieInfo.title}
+                            </Typography>
+                            <ResponsiveContainer width="100%" height={650}>
+                                <PieChart>
+                                    <Pie
+                                        data={exportPieInfo.data}
+                                        dataKey="value"
+                                        nameKey="name"
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={130}
+                                        outerRadius={200}
+                                        stroke="#fff"
+                                        strokeWidth={3}
+                                        label={renderStaticPieLabel}
+                                        labelLine={false}
+                                        isAnimationActive={false}
+                                    >
+                                        {exportPieInfo.data.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                                    </Pie>
+                                </PieChart>
+                            </ResponsiveContainer>
+                            <CustomPieLegend data={exportPieInfo.data} />
+                        </>
+                    )}
+                </Paper>
+            </Box>
 
             <Box sx={{ overflowX: "auto" }}>
                 <Button
@@ -1229,11 +1247,11 @@ const ComplaintAnalysis = ({ userRole }) => {
 
                                     {/* REJ QTY */}
                                     <TableRow hover>
-                                        <TableCell 
-                                            rowSpan={4} 
-                                            sx={{ 
-                                                fontWeight: 600, 
-                                                cursor: "pointer", 
+                                        <TableCell
+                                            rowSpan={4}
+                                            sx={{
+                                                fontWeight: 600,
+                                                cursor: "pointer",
                                                 color: selectedCustomerId === row.customerId ? "#1976d2" : "inherit",
                                                 backgroundColor: selectedCustomerId === row.customerId ? "#e3f2fd" : "inherit",
                                                 "&:hover": {

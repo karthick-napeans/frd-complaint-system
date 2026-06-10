@@ -147,10 +147,10 @@ const WarrantyAnalysis = () => {
 
   const filteredBaselines = (appliedFilters.customerSelected && appliedFilters.selectedModels.length > 0 && appliedFilters.finalPartList.length > 0)
     ? improvementList?.filter(b =>
-        appliedFilters.selectedModels.includes(b.modelId) && 
-        b.customerId == appliedFilters.customerSelected &&
-        appliedFilters.finalPartList.includes(b.partNumber)
-      )
+      appliedFilters.selectedModels.includes(b.modelId) &&
+      b.customerId == appliedFilters.customerSelected &&
+      appliedFilters.finalPartList.includes(b.partNumber)
+    )
     : [];
 
   useEffect(() => {
@@ -424,7 +424,7 @@ const WarrantyAnalysis = () => {
     if (id === "prodRepairDiv") {
       setDownloadingChartId(id);
     }
-    
+
     setTimeout(async () => {
       const element = document.getElementById(targetId);
       if (!element) {
@@ -527,19 +527,18 @@ const WarrantyAnalysis = () => {
     const regionMap = {};
 
     apiData.RegionDistribution.forEach(item => {
-      regionMap[item.Region] = item.FailureCount;
+      let region = item.Region;
+      if (region === 'W') region = 'West';
+      if (region === 'E') region = 'East';
+      if (region === 'N') region = 'North';
+      if (region === 'S') region = 'South';
+
+      regionMap[region] = (regionMap[region] || 0) + item.FailureCount;
     });
 
-    const regionNameMap = {
-      N: "North",
-      S: "South",
-      E: "East",
-      W: "West",
-    };
-
-    return ["N", "S", "E", "W"].map(code => ({
-      region: regionNameMap[code],
-      count: regionMap[code] || 0,
+    return ["North", "South", "East", "West"].map(region => ({
+      region: region,
+      count: regionMap[region] || 0,
     }));
 
   }, [apiData]);
@@ -675,10 +674,22 @@ const WarrantyAnalysis = () => {
                     }
                   }}
                 >
-                                   <Select
+                  <InputLabel shrink>Model</InputLabel>
+                  <Select
                     multiple
                     value={selectedModels}
-                    onChange={(e) => setSelectedModels(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val.includes("all")) {
+                        if (selectedModels.length === filteredModels.length && filteredModels.length > 0) {
+                          setSelectedModels([]);
+                        } else {
+                          setSelectedModels(filteredModels.map(m => m.ModelId));
+                        }
+                      } else {
+                        setSelectedModels(val);
+                      }
+                    }}
                     onClose={() => setModelSearch("")}
                     renderValue={(selected) =>
                       selected
@@ -717,6 +728,14 @@ const WarrantyAnalysis = () => {
                       />
                     </Box>
 
+                    <MenuItem value="all">
+                      <Checkbox 
+                        checked={selectedModels.length > 0 && selectedModels.length === filteredModels.length}
+                        indeterminate={selectedModels.length > 0 && selectedModels.length < filteredModels.length}
+                      />
+                      <ListItemText primary="Select All" />
+                    </MenuItem>
+
                     {filteredModels.map((model) => (
                       <MenuItem key={model.ModelId} value={model.ModelId}>
                         <Checkbox checked={selectedModels.includes(model.ModelId)} />
@@ -742,7 +761,18 @@ const WarrantyAnalysis = () => {
                   <Select
                     multiple
                     value={selectedParts}
-                    onChange={(e) => setSelectedParts(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val.includes("all")) {
+                        if (selectedParts.length === filteredParts.length && filteredParts.length > 0) {
+                          setSelectedParts([]);
+                        } else {
+                          setSelectedParts(filteredParts.map(p => p.PartNumber));
+                        }
+                      } else {
+                        setSelectedParts(val);
+                      }
+                    }}
                     onClose={() => setPartSearch("")}
                     renderValue={(selected) =>
                       selected
@@ -781,6 +811,14 @@ const WarrantyAnalysis = () => {
                       />
                     </Box>
 
+                    <MenuItem value="all">
+                      <Checkbox 
+                        checked={selectedParts.length > 0 && selectedParts.length === filteredParts.length}
+                        indeterminate={selectedParts.length > 0 && selectedParts.length < filteredParts.length}
+                      />
+                      <ListItemText primary="Select All" />
+                    </MenuItem>
+
                     {filteredParts.map((part) => (
                       <MenuItem
                         key={part.PartId}
@@ -813,7 +851,18 @@ const WarrantyAnalysis = () => {
                   <Select
                     multiple
                     value={selectedPartNames}
-                    onChange={(e) => setSelectedPartNames(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val.includes("all")) {
+                        if (selectedPartNames.length === filteredPartNamesList.length && filteredPartNamesList.length > 0) {
+                          setSelectedPartNames([]);
+                        } else {
+                          setSelectedPartNames(filteredPartNamesList);
+                        }
+                      } else {
+                        setSelectedPartNames(val);
+                      }
+                    }}
                     onClose={() => setPartNameSearch("")}
                     renderValue={(selected) => selected.join(", ")}
                     MenuProps={{
@@ -847,6 +896,14 @@ const WarrantyAnalysis = () => {
                       />
                     </Box>
 
+                    <MenuItem value="all">
+                      <Checkbox 
+                        checked={selectedPartNames.length > 0 && selectedPartNames.length === filteredPartNamesList.length}
+                        indeterminate={selectedPartNames.length > 0 && selectedPartNames.length < filteredPartNamesList.length}
+                      />
+                      <ListItemText primary="Select All" />
+                    </MenuItem>
+
                     {filteredPartNamesList.map((name) => (
                       <MenuItem key={name} value={name}>
                         <Checkbox checked={selectedPartNames.includes(name)} />
@@ -872,9 +929,27 @@ const WarrantyAnalysis = () => {
                   <Select
                     multiple
                     value={selectedRegions}
-                    onChange={(e) => setSelectedRegions(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val.includes("all")) {
+                        if (selectedRegions.length === 4) {
+                          setSelectedRegions([]);
+                        } else {
+                          setSelectedRegions(["North", "South", "East", "West"]);
+                        }
+                      } else {
+                        setSelectedRegions(val);
+                      }
+                    }}
                     renderValue={(selected) => selected.join(", ")}
                   >
+                    <MenuItem value="all">
+                      <Checkbox 
+                        checked={selectedRegions.length === 4}
+                        indeterminate={selectedRegions.length > 0 && selectedRegions.length < 4}
+                      />
+                      <ListItemText primary="Select All" />
+                    </MenuItem>
                     {["North", "South", "East", "West"].map((region) => (
                       <MenuItem key={region} value={region}>
                         <Checkbox checked={selectedRegions.indexOf(region) > -1} />
@@ -1169,7 +1244,7 @@ const WarrantyAnalysis = () => {
                             isFront={true}
                             label={({ viewBox }) => {
                               const { x, y } = viewBox;
-                              
+
                               if (downloadingChartId === "prodRepairDiv") {
                                 const dataPoint = sortedData.find(d => d.month === month);
                                 const boxWidth = 180;
@@ -1265,7 +1340,7 @@ const WarrantyAnalysis = () => {
           </Card>
         </Grid>
 
-         <div
+        <div
           id="prodRepairDiv_full"
           style={{
             position: "absolute",

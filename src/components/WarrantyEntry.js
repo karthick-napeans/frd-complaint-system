@@ -79,16 +79,18 @@ const WarrantyEntry = () => {
   const fetchUploadHistory = async () => {
     try {
       const response = await getUploadHistory(); // already response.data because interceptor
+      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
       const rows = response.map((item, index) => ({
         id: item.UploadHeadId, // DataGrid requires `id`
         serialNo: index + 1,
         customer: item.CustomerName,
         filename: item.FileName,
+        uploadmonthyear: (item.Month && item.Year) ? `${monthNames[item.Month - 1] || item.Month} ${item.Year}` : '-',
         uploadDate: new Date(item.UploadDateTime).toLocaleDateString(),
         recordsProcessed: item.TotalRecords,
         Sublet_Cost: item.Sublet_Cost,
         Total_Cost: item.Total_Cost,
-        status: 'Success', // backend doesn’t send status
+        status: 'Success',
         downloadUrl: item.DownloadUrl,
       }));
 
@@ -215,6 +217,14 @@ const WarrantyEntry = () => {
       align: 'center',
     },
 
+    {
+      field: 'uploadmonthyear',
+      headerName: 'Month-Year',
+      width: 140,
+      resizable: false,
+      headerAlign: 'center',
+      align: 'center',
+    },
     {
       field: 'uploadDate',
       headerName: 'Upload Date',
