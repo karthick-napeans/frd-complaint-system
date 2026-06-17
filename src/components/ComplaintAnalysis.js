@@ -599,7 +599,213 @@ const ComplaintAnalysis = ({ userRole }) => {
             console.error("Download failed:", error);
         }
     };
+    const handleExcelDownload = () => {
 
+    const workbook = XLSX.utils.book_new();
+    const wsData = [];
+
+    // ================= HEADER ROW 1 =================
+    wsData.push([
+        "Customer",
+        "Type",
+        String(previousYear),
+        String(lastYear),
+        `${currentYear} Avg`,
+        String(currentYear),
+        "", "", "", "", "", "", "", "", "", "", "",
+        "Remarks",
+        "Reduced %"
+    ]);
+
+    // ================= HEADER ROW 2 =================
+    wsData.push([
+        "",
+        "",
+        "ACT",
+        "ACT",
+        "AVG",
+        ...MONTHS,
+        "",
+        ""
+    ]);
+
+    // ================= CUSTOMER DATA =================
+    ppmData.forEach((row) => {
+
+        // REJ QTY
+        wsData.push([
+            row.customerName,
+            "REJ QTY",
+            row.rejPrev,
+            row.rejLast,
+            calculateDisplayedAverage(row.rejection),
+            ...(row.rejection || Array(12).fill(0)),
+            "",
+            "-100%"
+        ]);
+
+        // SALES QTY
+        wsData.push([
+            "",
+            "SALES QTY",
+            row.salesPrev,
+            row.salesLast,
+            calculateDisplayedAverage(row.sales),
+            ...(row.sales || Array(12).fill(0)),
+            "",
+            ""
+        ]);
+
+        // PLAN PPM
+        wsData.push([
+            "",
+            "PLAN PPM",
+            row.planPpmPrev,
+            row.planPpmLast,
+            row.avgPlanPPM,
+            ...(row.planPPM || Array(12).fill(0)),
+            "",
+            ""
+        ]);
+
+        // ACTUAL PPM
+        wsData.push([
+            "",
+            "ACTUAL PPM",
+            row.ppmPrev,
+            row.ppmLast,
+            calculateDisplayedAverage(row.ppmMonths),
+            ...(row.ppmMonths || Array(12).fill(0)),
+            "",
+            ""
+        ]);
+    });
+
+    // ================= TOTAL SECTION =================
+    if (totals) {
+
+        wsData.push([
+            "TOTAL",
+            "REJ QTY",
+            totals.rejPrev,
+            totals.rejLast,
+            calculateDisplayedAverage(totals.monthlyRejection),
+            ...(totals.monthlyRejection || Array(12).fill(0)),
+            "",
+            ""
+        ]);
+
+        wsData.push([
+            "",
+            "SALES QTY",
+            totals.salesPrev,
+            totals.salesLast,
+            calculateDisplayedAverage(totals.monthlySales),
+            ...(totals.monthlySales || Array(12).fill(0)),
+            "",
+            ""
+        ]);
+
+        wsData.push([
+            "",
+            "PLAN PPM",
+            totals.totalPlanPpmPrev,
+            totals.totalPlanPpmLast,
+            totals.totalPlanPPM,
+            ...(totals.planPPMMonths || Array(12).fill(0)),
+            "",
+            ""
+        ]);
+
+        wsData.push([
+            "",
+            "ACTUAL PPM",
+            "-",
+            "-",
+            calculateDisplayedAverage(totals.ppmMonths),
+            ...(totals.ppmMonths || Array(12).fill(0)),
+            "",
+            ""
+        ]);
+    }
+
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+    // ================= MERGES =================
+    ws["!merges"] = [
+        { s: { r: 0, c: 0 }, e: { r: 1, c: 0 } },
+        { s: { r: 0, c: 1 }, e: { r: 1, c: 1 } },
+        { s: { r: 0, c: 5 }, e: { r: 0, c: 16 } },
+        { s: { r: 0, c: 17 }, e: { r: 1, c: 17 } },
+        { s: { r: 0, c: 18 }, e: { r: 1, c: 18 } }
+    ];
+
+    // ================= HEADER STYLE =================
+    const headerStyle = {
+        font: {
+            bold: true,
+            color: { rgb: "000000" }
+        },
+        alignment: {
+            horizontal: "center",
+            vertical: "center"
+        },
+        fill: {
+            fgColor: { rgb: "C9DAEB" }
+        },
+        border: {
+            top: { style: "thin" },
+            bottom: { style: "thin" },
+            left: { style: "thin" },
+            right: { style: "thin" }
+        }
+    };
+
+    const subHeaderStyle = {
+        font: {
+            bold: true
+        },
+        alignment: {
+            horizontal: "center",
+            vertical: "center"
+        },
+        fill: {
+            fgColor: { rgb: "CADBEC" }
+        },
+        border: {
+            top: { style: "thin" },
+            bottom: { style: "thin" },
+            left: { style: "thin" },
+            right: { style: "thin" }
+        }
+    };
+
+    // Header style
+    for (let col = 0; col <= 18; col++) {
+
+        const cell1 = XLSX.utils.encode_cell({ r: 0, c: col });
+        const cell2 = XLSX.utils.encode_cell({ r: 1, c: col });
+
+        if (ws[cell1]) ws[cell1].s = headerStyle;
+        if (ws[cell2]) ws[cell2].s = subHeaderStyle;
+    }
+
+    // ================= COLUMN WIDTH =================
+    ws["!cols"] = [
+        { wch: 18 },
+        { wch: 15 },
+        ...Array(17).fill({ wch: 12 })
+    ];
+
+    XLSX.utils.book_append_sheet(workbook, ws, "PPM Report");
+
+    XLSX.writeFile(
+        workbook,
+        `PPM_Report_${currentYear}.xlsx`
+    );
+};
+
+/*
     const handleExcelDownload = () => {
         const workbook = XLSX.utils.book_new();
 
@@ -732,7 +938,7 @@ const ComplaintAnalysis = ({ userRole }) => {
 
         XLSX.writeFile(workbook, "PPM_Report_Styled.xlsx");
     };
-
+*/
     const submitReason = () => {
 
         if (!editReason.trim()) {
@@ -1484,74 +1690,92 @@ const ComplaintAnalysis = ({ userRole }) => {
                             ))}
 
                             {totals && (
-                                <>
-                                    {/* REJ QTY */}
-                                    <TableRow sx={{ background: "#f1f5f9", fontWeight: 700 }}>
-                                        <TableCell rowSpan={4}><b>TOTAL</b></TableCell>
+    <>
+        {/* REJ QTY */}
+        <TableRow sx={{ background: "#f1f5f9", fontWeight: 700 }}>
+            <TableCell rowSpan={4}><b>TOTAL</b></TableCell>
 
-                                        <TableCell><b>REJ QTY</b></TableCell>
+            <TableCell><b>REJ QTY</b></TableCell>
 
-                                        <TableCell>{totals.rejPrev}</TableCell>
-                                        <TableCell>{totals.rejLast}</TableCell>
+            <TableCell>{totals.rejPrev}</TableCell>
+            <TableCell>{totals.rejLast}</TableCell>
 
-                                        <TableCell>
-                                            {calculateDisplayedAverage(totals.monthlyRejection)}
-                                        </TableCell>
+            <TableCell>
+                {
+                    ppmData.length
+                        ? Math.round(
+                            ppmData.reduce(
+                                (sum, row) =>
+                                    sum + calculateDisplayedAverage(row.rejection),
+                                0
+                            ) / ppmData.length
+                        )
+                        : 0
+                }
+            </TableCell>
 
-                                        {(totals.monthlyRejection || []).map((v, i) => (
-                                            <TableCell key={i}>{v}</TableCell>
-                                        ))}
-                                    </TableRow>
+            {(totals.monthlyRejection || []).map((v, i) => (
+                <TableCell key={i}>{v}</TableCell>
+            ))}
+        </TableRow>
 
-                                    {/* SALES QTY */}
-                                    <TableRow sx={{ background: "#f1f5f9", fontWeight: 700 }}>
-                                        <TableCell><b>SALES QTY</b></TableCell>
+        {/* SALES QTY */}
+        <TableRow sx={{ background: "#f1f5f9", fontWeight: 700 }}>
+            <TableCell><b>SALES QTY</b></TableCell>
 
-                                        <TableCell>{totals.salesPrev}</TableCell>
-                                        <TableCell>{totals.salesLast}</TableCell>
+            <TableCell>{totals.salesPrev}</TableCell>
+            <TableCell>{totals.salesLast}</TableCell>
 
-                                        <TableCell>
-                                            {calculateDisplayedAverage(totals.monthlySales)}
-                                        </TableCell>
+            <TableCell>
+                {calculateDisplayedAverage(totals.monthlySales)}
+            </TableCell>
 
-                                        {(totals.monthlySales || []).map((v, i) => (
-                                            <TableCell key={i}>{v}</TableCell>
-                                        ))}
-                                    </TableRow>
+            {(totals.monthlySales || []).map((v, i) => (
+                <TableCell key={i}>{v}</TableCell>
+            ))}
+        </TableRow>
 
-                                    {/* PLAN PPM */}
-                                    <TableRow sx={{ background: "#f1f5f9", fontWeight: 700 }}>
-                                        <TableCell><b>PLAN PPM</b></TableCell>
+        {/* PLAN PPM */}
+        <TableRow sx={{ background: "#f1f5f9", fontWeight: 700 }}>
+            <TableCell><b>PLAN PPM</b></TableCell>
 
-                                        <TableCell>{totals.totalPlanPpmPrev}</TableCell>
-                                        <TableCell>{totals.totalPlanPpmLast}</TableCell>
+            <TableCell>{totals.totalPlanPpmPrev}</TableCell>
+            <TableCell>{totals.totalPlanPpmLast}</TableCell>
 
-                                        <TableCell>
-                                            {totals.totalPlanPPM}
-                                        </TableCell>
+            <TableCell>{totals.totalPlanPPM}</TableCell>
 
-                                        {(totals.monthlyPlanPPM || []).map((v, i) => (
-                                            <TableCell key={i}>{v}</TableCell>
-                                        ))}
-                                    </TableRow>
+            {(totals.planPPMMonths || []).map((v, i) => (
+                <TableCell key={i}>{v}</TableCell>
+            ))}
+        </TableRow>
 
-                                    {/* ACTUAL PPM */}
-                                    <TableRow sx={{ background: "#f1f5f9", fontWeight: 700 }}>
-                                        <TableCell><b>ACTUAL PPM</b></TableCell>
+        {/* ACTUAL PPM */}
+        <TableRow sx={{ background: "#f1f5f9", fontWeight: 700 }}>
+            <TableCell><b>ACTUAL PPM</b></TableCell>
 
-                                        <TableCell>-</TableCell>
-                                        <TableCell>-</TableCell>
+            <TableCell>-</TableCell>
+            <TableCell>-</TableCell>
 
-                                        <TableCell>
-                                            {calculateDisplayedAverage(totals.ppmMonths)}
-                                        </TableCell>
+            <TableCell>
+                {
+                    ppmData.length
+                        ? Math.round(
+                            ppmData.reduce(
+                                (sum, row) =>
+                                    sum + calculateDisplayedAverage(row.ppmMonths),
+                                0
+                            ) / ppmData.length
+                        )
+                        : 0
+                }
+            </TableCell>
 
-                                        {(totals.ppmMonths || []).map((v, i) => (
-                                            <TableCell key={i}>{v}</TableCell>
-                                        ))}
-                                    </TableRow>
-                                </>
-                            )}
+            {(totals.ppmMonths || []).map((v, i) => (
+                <TableCell key={i}>{v}</TableCell>
+            ))}
+        </TableRow>
+    </>
+)}
                         </TableBody>
                     </Table>
                 </TableContainer>
